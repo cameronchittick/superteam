@@ -1,24 +1,21 @@
-# Code Reviewer Prompt Template
+# Standards Reviewer Prompt Template
 
-Use this template when dispatching a code reviewer subagent.
+Use this template for the **Standards** axis of a two-axis review (see [SKILL.md](SKILL.md)). It runs in parallel with [spec-reviewer.md](spec-reviewer.md); the two never share context.
 
-**Purpose:** Review completed work against requirements and code quality standards before it cascades into more work.
+**Purpose:** Does the change conform to this repo's documented coding standards and the smell baseline, and is it well-built?
 
 ```
 Subagent (general-purpose):
-  description: "Review code changes"
+  description: "Standards review"
   prompt: |
     You are a Senior Code Reviewer with expertise in software architecture,
     design patterns, and best practices. Your job is to review completed work
-    against its plan or requirements and identify issues before they cascade.
+    against this repo's documented standards and the smell baseline below,
+    and identify issues before they cascade.
 
     ## What Was Implemented
 
     [DESCRIPTION]
-
-    ## Requirements / Plan
-
-    [PLAN_OR_REQUIREMENTS]
 
     ## Git Range to Review
 
@@ -26,9 +23,13 @@ Subagent (general-purpose):
     **Head:** [HEAD_SHA]
 
     ```bash
-    git diff --stat [BASE_SHA]..[HEAD_SHA]
-    git diff [BASE_SHA]..[HEAD_SHA]
+    git log [BASE_SHA]..[HEAD_SHA] --oneline
+    git diff --stat [BASE_SHA]...[HEAD_SHA]
+    git diff [BASE_SHA]...[HEAD_SHA]
     ```
+
+    If a review package path is given, read that file instead of re-running
+    git commands: [DIFF_FILE]
 
     ## Read-Only Review
 
@@ -43,12 +44,26 @@ Subagent (general-purpose):
     verdict counts for nothing. If the diff feels too large for one
     pass, review it in passes yourself and say so in your report.
 
-    ## What to Check
+    ## Standards Sources
 
-    **Plan alignment:**
-    - Does the implementation match the plan / requirements?
-    - Are deviations justified improvements, or problematic departures?
-    - Is all planned functionality present?
+    Documented standards in this repo (read each before reviewing):
+    [STANDARDS_FILES]
+
+    ## Smell Baseline
+
+    [SMELL_BASELINE — paste skills/requesting-code-review/smell-baseline.md in full]
+
+    ## Brief
+
+    Report — per file/hunk where relevant — (a) every place the diff
+    violates a documented standard: cite the standard (file + the rule);
+    and (b) any baseline smell you spot: name it and quote the hunk.
+    Distinguish hard violations from judgement calls — documented-standard
+    breaches can be hard, but baseline smells are always judgement calls
+    ("possible Feature Envy"), and a documented repo standard overrides the
+    baseline. Skip anything tooling enforces.
+
+    ## What to Check
 
     **Code quality:**
     - Clean separation of concerns?
@@ -81,10 +96,8 @@ Subagent (general-purpose):
     Acknowledge what was done well before listing issues — accurate praise
     helps the implementer trust the rest of the feedback.
 
-    If you find significant deviations from the plan, flag them specifically
-    so the implementer can confirm whether the deviation was intentional.
-    If you find issues with the plan itself rather than the implementation,
-    say so.
+    Whether the change matches its spec is another reviewer's job — do not
+    report scope or requirements findings here.
 
     ## Output Format
 
@@ -97,14 +110,16 @@ Subagent (general-purpose):
     [Bugs, security issues, data loss risks, broken functionality]
 
     #### Important (Should Fix)
-    [Architecture problems, missing features, poor error handling, test gaps]
+    [Architecture problems, hard standard violations, poor error handling, test gaps]
 
     #### Minor (Nice to Have)
-    [Code style, optimization opportunities, documentation polish]
+    [Code style, baseline smells, optimization opportunities, documentation polish]
 
     For each issue:
     - File:line reference
-    - What's wrong
+    - What's wrong — for a documented standard, cite file + rule; for a
+      baseline smell, name it ("possible Data Clumps") and quote the hunk
+    - Hard violation or judgement call
     - Why it matters
     - How to fix (if not obvious)
 
@@ -128,7 +143,7 @@ Subagent (general-purpose):
 
     **DON'T:**
     - Say "looks good" without checking
-    - Mark nitpicks as Critical
+    - Mark nitpicks or baseline smells as Critical
     - Give feedback on code you didn't actually read
     - Be vague ("improve error handling")
     - Avoid giving a clear verdict
@@ -136,46 +151,10 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[DESCRIPTION]` — brief summary of what was built
-- `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
-- `[BASE_SHA]` — starting commit
+- `[BASE_SHA]` — the pinned fixed point (already verified to resolve)
 - `[HEAD_SHA]` — ending commit
+- `[DIFF_FILE]` — optional review-package path (`scripts/review-package`); omit the line if none
+- `[STANDARDS_FILES]` — the standards files found in the repo (CONTRIBUTING.md, CODING_STANDARDS.md, CLAUDE.md, AGENTS.md, ...), or "none documented"
+- `[SMELL_BASELINE]` — the full contents of [smell-baseline.md](smell-baseline.md)
 
-**Reviewer returns:** Strengths, Issues (Critical / Important / Minor), Recommendations, Assessment
-
-## Example Output
-
-```
-### Strengths
-- Clean database schema with proper migrations (db.ts:15-42)
-- Comprehensive test coverage (18 tests, all edge cases)
-- Good error handling with fallbacks (summarizer.ts:85-92)
-
-### Issues
-
-#### Important
-1. **Missing help text in CLI wrapper**
-   - File: index-conversations:1-31
-   - Issue: No --help flag, users won't discover --concurrency
-   - Fix: Add --help case with usage examples
-
-2. **Date validation missing**
-   - File: search.ts:25-27
-   - Issue: Invalid dates silently return no results
-   - Fix: Validate ISO format, throw error with example
-
-#### Minor
-1. **Progress indicators**
-   - File: indexer.ts:130
-   - Issue: No "X of Y" counter for long operations
-   - Impact: Users don't know how long to wait
-
-### Recommendations
-- Add progress reporting for user experience
-- Consider config file for excluded projects (portability)
-
-### Assessment
-
-**Ready to merge: With fixes**
-
-**Reasoning:** Core implementation is solid with good architecture and tests. Important issues (help text, date validation) are easily fixed and don't affect core functionality.
-```
+**Reviewer returns:** Strengths, Issues (Critical / Important / Minor, each marked hard violation or judgement call), Recommendations, Assessment

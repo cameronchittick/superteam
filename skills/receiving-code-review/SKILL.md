@@ -172,6 +172,7 @@ State the correction factually and move on.
 | Avoiding pushback | Technical correctness > comfort |
 | Partial implementation | Clarify all items first |
 | Can't verify, proceed anyway | State limitation, ask for direction |
+| Treating a named baseline smell ("possible Data Clumps") as a verdict | It is a heuristic — verify it against this codebase and its documented standards before acting; a repo standard that endorses the pattern wins |
 
 ## Real Examples
 

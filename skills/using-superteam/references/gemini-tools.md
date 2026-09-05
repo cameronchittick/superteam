@@ -36,7 +36,7 @@ Skills dispatch with `Subagent (general-purpose):` and either reference a prompt
 | Skill dispatch form | Gemini CLI equivalent |
 |---------------------|----------------------|
 | References a `*-prompt.md` template (implementer, task-reviewer, code-reviewer, etc.) | Fill the template, then `invoke_agent` with `agent_name: "generalist"` and the filled prompt |
-| References `superteam:requesting-code-review`'s `./code-reviewer.md` | `invoke_agent` with `agent_name: "generalist"` and the filled review template |
+| References `superteam:requesting-code-review`'s `./standards-reviewer.md` + `./spec-reviewer.md` | Two `invoke_agent` calls with `agent_name: "generalist"`, one per filled review template, in the same turn |
 | Inline prompt (no template referenced) | `invoke_agent` with `agent_name: "generalist"` and your inline prompt |
 
 ### Prompt filling
