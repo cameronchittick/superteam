@@ -27,7 +27,6 @@ Superteam is a complete software development methodology for your coding agents,
 - [Contributing](#contributing)
 - [Updating](#updating)
 - [License](#license)
-- [Visual companion telemetry](#visual-companion-telemetry)
 
 ## How it works
 
@@ -331,7 +330,3 @@ Superteam updates are somewhat coding-agent dependent, but are often automatic.
 ## License
 
 MIT License - see LICENSE file for details
-
-## Visual companion telemetry
-
-Because skills and plugins don't provide any feedback to creators, we have no idea how many of you are using Superteam. By default, the Prime Radiant logo on brainstorming's optional visual companion feature is loaded from our website. It includes the version of Superteam in use. It does not include any details about your project, prompt, or coding agent. We don't see your clicks or anything about what you're building. This helps us have a rough idea of how many folks are using Superteam and which version of Superteam they're using. It's 100% optional. To disable this, set the environment variable `SUPERTEAM_DISABLE_TELEMETRY` to any true value. Superteam also honors Claude Code's `DISABLE_TELEMETRY` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` opt-outs.
