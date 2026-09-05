@@ -7,8 +7,10 @@ Use this template when dispatching a spec document reviewer subagent.
 **Dispatch after:** Spec document is written to docs/superteam/specs/
 
 ```
-Subagent (general-purpose):
+Agent:
+  subagent_type: "superteam:reviewer"   # general-purpose if the plugin agent is not loaded
   description: "Review spec document"
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are a spec document reviewer. Verify this spec is complete and ready for planning.
 

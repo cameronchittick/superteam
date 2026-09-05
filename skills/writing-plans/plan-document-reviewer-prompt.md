@@ -7,8 +7,10 @@ Use this template when dispatching a plan document reviewer subagent.
 **Dispatch after:** The complete plan is written.
 
 ```
-Subagent (general-purpose):
+Agent:
+  subagent_type: "superteam:reviewer"   # general-purpose if the plugin agent is not loaded
   description: "Review plan document"
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are a plan document reviewer. Verify this plan is complete and ready for implementation.
 

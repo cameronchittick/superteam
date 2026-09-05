@@ -116,7 +116,7 @@ Surface architectural friction and propose **deepening opportunities** — refac
 
 Read the project's domain glossary (`CONTEXT.md`) and any ADRs in the area you're touching first.
 
-Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
+Then use the Agent tool with `subagent_type=Explore` to walk the codebase; when the friction questions need synthesis across modules, dispatch `superteam:researcher`. Don't follow rigid heuristics — explore organically and note where you experience friction:
 
 - Where does understanding one concept require bouncing between many small modules?
 - Where are modules **shallow** — interface nearly as complex as the implementation?
@@ -135,7 +135,7 @@ Present the candidates as markdown — in chat, or under `docs/superteam/` if yo
 - **Before / After** — described in prose or a mermaid block, illustrating the shallowness and the deepening
 - **Recommendation strength** — one of `Strong`, `Worth exploring`, `Speculative`
 
-End with a **Top recommendation**: which candidate you'd tackle first and why.
+End with a **Top recommendation**: which candidate you'd tackle first and why. Then offer a `superteam:skeptic` pass over the candidate list (kill / keep / shrink) before your human partner picks one.
 
 **ADR conflicts**: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly (e.g. _"contradicts ADR-0007 — but worth reopening because…"_). Don't list every theoretical refactor an ADR forbids.
 

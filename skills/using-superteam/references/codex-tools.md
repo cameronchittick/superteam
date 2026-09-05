@@ -21,6 +21,11 @@ disagree.
   Full-history forks accept `model` and `reasoning_effort` overrides
   (only `agent_type` is refused there) — isolated forks are the SDD
   default for context hygiene, not because overrides require them.
+- **Roster roles:** `subagent_type: "superteam:<role>"` (implementer,
+  writer, researcher, reviewer, skeptic, integrator) → `spawn_agent`
+  with the named `*-prompt.md` file filled in; researcher, reviewer and
+  skeptic are read-only — keep that rule by instruction in the prompt,
+  since `spawn_agent` cannot restrict tools.
 - **Fix rounds:** resume the implementer with `followup_task` — it
   delivers your message, triggers a turn, and transparently reloads a
   child the harness evicted. Never dispatch a fresh implementer on the
