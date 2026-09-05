@@ -17,7 +17,7 @@ The review runs along two axes, as two parallel subagents that never see each ot
 ## When to Request Review
 
 **Mandatory:**
-- After each task in subagent-driven development
+- After each task in team-driven development
 - After completing major feature
 - Before merge to main
 
