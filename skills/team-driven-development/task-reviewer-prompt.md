@@ -122,6 +122,7 @@ Agent:
     - DRY without premature abstraction?
     - Edge cases handled?
     - Names or vocabulary that contradict `CONTEXT.md` (if present) — flag, don't fix
+    - Baseline smells per superteam:requesting-code-review's `smell-baseline.md` — each is a labelled judgement call ("possible Feature Envy"), a documented repo standard overrides it, skip what tooling enforces
 
     **Tests:**
     - Do the new and changed tests verify real behavior, not mocks?
@@ -131,6 +132,7 @@ Agent:
     - Does each file have one clear responsibility with a well-defined interface?
     - Are units decomposed so they can be understood and tested independently?
     - Is the implementation following the file structure from the plan?
+    - Deletion test: would deleting this unit concentrate complexity, or just move it? A shallow module (interface nearly as complex as its implementation) is a finding.
     - Did this change create new files that are already large, or
       significantly grow existing files? (Don't flag pre-existing file
       sizes — focus on what this change contributed.)

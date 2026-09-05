@@ -137,7 +137,7 @@ digraph process {
 
     "Setup: lane branch, ledger check, read plan, pre-flight review" [shape=box];
     "More tasks remain?" [shape=diamond];
-    "Dispatch final reviewer teammate (../requesting-code-review/code-reviewer.md)" [shape=box];
+    "Dispatch two-axis final review (superteam:requesting-code-review)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
     "Final review clean: delete this plan's workspace" [shape=box];
     "Use superteam:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
@@ -166,8 +166,8 @@ digraph process {
     "Park findings in ledger with rulings" -> "Merge worktree branch into lane, remove worktree, ledger completion";
     "Merge worktree branch into lane, remove worktree, ledger completion" -> "More tasks remain?";
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
-    "More tasks remain?" -> "Dispatch final reviewer teammate (../requesting-code-review/code-reviewer.md)" [label="no"];
-    "Dispatch final reviewer teammate (../requesting-code-review/code-reviewer.md)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
+    "More tasks remain?" -> "Dispatch two-axis final review (superteam:requesting-code-review)" [label="no"];
+    "Dispatch two-axis final review (superteam:requesting-code-review)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete this plan's workspace";
     "Final review clean: delete this plan's workspace" -> "Use superteam:finishing-a-development-branch";
 }
@@ -532,11 +532,16 @@ The final whole-branch review gets a package too: run
 branch started from, e.g. `git merge-base main HEAD`) and include the
 printed path in the final review dispatch, so the final reviewer reads
 one file instead of re-deriving the branch diff with git commands. Dispatch
-on the most capable available model (see Model Selection), using
-superteam:requesting-code-review's
-[code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
-the ledger's deferred-minor and parked lines so it can triage which must be
-fixed before merge.
+the two-axis review from superteam:requesting-code-review on the most
+capable available model (see Model Selection): a Standards reviewer
+([standards-reviewer.md](../requesting-code-review/standards-reviewer.md))
+and a Spec reviewer
+([spec-reviewer.md](../requesting-code-review/spec-reviewer.md)) in
+parallel, in one message. The spec is the plan file plus its spec; both
+reviewers get the review-package path. Aggregate under `## Standards` and
+`## Spec` without reranking across axes. Point both at the ledger's
+deferred-minor and parked lines so they can triage which must be fixed
+before merge.
 
 If the final whole-branch review returns findings, dispatch ONE fix subagent
 with the complete findings list — not one fixer per finding.
