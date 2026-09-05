@@ -70,10 +70,10 @@ claude -p "Good analysis. I've already written the plan to docs/superteam/plans/
 echo "Turn 2 complete."
 echo ""
 
-# Turn 3: The critical test - ask for subagent-driven-development
-echo ">>> Turn 3: Requesting subagent-driven-development..."
+# Turn 3: The critical test - ask for team-driven-development
+echo ">>> Turn 3: Requesting team-driven-development..."
 TURN3_LOG="$OUTPUT_DIR/turn3.json"
-claude -p "subagent-driven-development, please" \
+claude -p "team-driven-development, please" \
     --continue \
     --plugin-dir "$PLUGIN_DIR" \
     --dangerously-skip-permissions \
@@ -87,12 +87,12 @@ echo ""
 echo "=== Results ==="
 
 # Check if skill was triggered in Turn 3
-SKILL_PATTERN='"skill":"([^"]*:)?subagent-driven-development"'
+SKILL_PATTERN='"skill":"([^"]*:)?team-driven-development"'
 if grep -q '"name":"Skill"' "$TURN3_LOG" && grep -qE "$SKILL_PATTERN" "$TURN3_LOG"; then
-    echo "PASS: Skill 'subagent-driven-development' was triggered in Turn 3"
+    echo "PASS: Skill 'team-driven-development' was triggered in Turn 3"
     TRIGGERED=true
 else
-    echo "FAIL: Skill 'subagent-driven-development' was NOT triggered in Turn 3"
+    echo "FAIL: Skill 'team-driven-development' was NOT triggered in Turn 3"
     TRIGGERED=false
 fi
 
