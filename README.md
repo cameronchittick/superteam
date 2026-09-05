@@ -303,6 +303,17 @@ Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) b
 - **writing-skills** - Create new skills following best practices (includes testing methodology)
 - **using-superteam** - Introduction to the skills system
 
+### Agents
+
+Named roles the skills dispatch as `superteam:<name>`; each carries its own model so nothing inherits the session's.
+
+- **implementer** — owns one plan task's files in an isolated worktree, TDD, commits, reports a diff summary — sonnet
+- **researcher** — read-only investigation that returns a conclusion with file:line evidence, or one design-it-twice brief — sonnet
+- **reviewer** — reads a diff or document once and returns a verdict by severity; the prompt file it is filled with sets the rubric — sonnet
+- **skeptic** — pre-build veteran skeptic: numbered kill/keep/shrink verdicts on a spec, plan or approach list — opus
+- **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) in an isolated worktree, self-review instead of TDD — sonnet
+- **integrator** — merges a reviewed branch, runs the full suite, removes the worktree, bumps manifests when told — sonnet
+
 ## Philosophy
 
 - **Test-Driven Development** - Write tests first, always
