@@ -50,7 +50,16 @@ Honor any existing declared preference without asking. If the user declines cons
 
 ### 1a. Native Worktree Tools (preferred)
 
-The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
+The user has asked for an isolated workspace (Step 0 consent). Use your harness's native mechanism and skip to Step 2.
+
+**Claude Code** has two, depending on who needs isolating:
+
+- **Isolating a teammate (you are the PM/lead):** pass `isolation: "worktree"` on the `Agent` tool call. Claude Code creates the worktree at `.claude/worktrees/<name>` on branch `worktree-<name>`, branched from the repo's default branch (or from your `HEAD` if `worktree.baseRef` is `"head"` in settings), and removes it automatically if the teammate finishes without changes. Git commands aimed at the main checkout are blocked inside it. If the task builds on work already merged into a lane branch, the teammate's first step inside the worktree is `git merge <lane>`.
+- **Isolating yourself (teammate or solo session):** call the `EnterWorktree` tool, or launch with `claude --worktree <name>`. Same path, branch, and guard rules as above. Call `ExitWorktree` when done.
+
+A worktree is a fresh checkout, so gitignored files (`.env`, installed deps) are absent. Add a `.worktreeinclude` file at the project root listing files to copy into every new worktree.
+
+**Other harnesses:** look for a tool with a name like `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you have one, use it.
 
 Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
 
@@ -146,6 +155,8 @@ Ready to implement <feature-name>
 | Already in linked worktree | Skip creation (Step 0) |
 | In a submodule | Treat as normal repo (Step 0 guard) |
 | Native worktree tool available | Use it (Step 1a) |
+| Claude Code, isolating a teammate | `isolation: "worktree"` on the `Agent` call (Step 1a) |
+| Claude Code, isolating yourself | `EnterWorktree` or `claude --worktree <name>` (Step 1a) |
 | No native tool | Git worktree fallback (Step 1b) |
 | `.worktrees/` exists | Use it (verify ignored) |
 | `worktrees/` exists | Use it (verify ignored) |
