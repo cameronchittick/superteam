@@ -81,7 +81,7 @@ your path and complete them in order.
 1. **Explore project context** — enough to frame the probe; read `CONTEXT.md` (or `CONTEXT-MAP.md` then the relevant `CONTEXT.md`) if present — its terms are the agreed language for everything that follows (read only on a spike)
 2. **Present question + probe plan** — 2-3 sentences
 3. **Get approval** — a nod is enough
-4. **Investigate** — as cheaply as correctness allows
+4. **Investigate** — as cheaply as correctness allows; when the probe needs a codebase walk, dispatch `superteam:researcher` (built-in `Explore` for pure file lookup)
 5. **Report findings** — a recommendation; label anything built as throwaway
 
 **Bounded:**
@@ -92,15 +92,16 @@ your path and complete them in order.
 5. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
 
 **Architectural:**
-1. **Explore project context** — check files, docs, recent commits; read `CONTEXT.md` (or `CONTEXT-MAP.md` then the relevant `CONTEXT.md`) if present — its terms are the agreed language for everything that follows
+1. **Explore project context** — check files, docs, recent commits; when it needs a codebase walk, dispatch `superteam:researcher` (built-in `Explore` for pure file lookup); read `CONTEXT.md` (or `CONTEXT-MAP.md` then the relevant `CONTEXT.md`) if present — its terms are the agreed language for everything that follows
 2. **Offer the visual companion just-in-time** — NOT upfront. The first time a question would genuinely be clearer shown than described, offer it then (its own message); on approval its browser tab opens for you. If no visual question ever arises, never offer it. See the Visual Companion section below.
 3. **Ask clarifying questions** — one at a time, understand purpose/constraints/success criteria; run superteam:domain-modeling alongside — challenge terms against the glossary, sharpen fuzzy ones, stress-test with scenarios; when a term is resolved with your human partner, record it in `CONTEXT.md` right then. If no `CONTEXT.md` exists, do not create it silently: when the first term is resolved, offer "Want me to start a `CONTEXT.md` with the terms we've agreed so far?" and create it only on an explicit yes, from that session's agreed terms
 4. **Propose 2-3 approaches** — with trade-offs and your recommendation; when the design touches module boundaries, use superteam:codebase-design vocabulary (module, interface, seam, adapter, depth, leverage, locality) and offer its design-it-twice pass for the chosen interface — Architectural path only
-5. **Present design** — in sections scaled to their complexity, get user approval after each section
-6. **Write design doc** — save to `docs/superteam/specs/YYYY-MM-DD-<topic>-design.md` and commit; the spec uses `CONTEXT.md` terms; any term the spec needs that is missing or contradicted is resolved with your human partner (superteam:domain-modeling) before the spec is written, never invented in the spec
-7. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
-8. **User reviews written spec** — ask user to review the spec file before proceeding
-9. **Transition to implementation** — invoke writing-plans skill to create implementation plan
+5. **Offer the skeptic pass** — offer (its own message, not forced) to run `superteam:skeptic` on the recommended approach; it returns kill / keep / shrink per item and one "cut this first"; your human partner decides what to act on. Also available on demand at any point.
+6. **Present design** — in sections scaled to their complexity, get user approval after each section
+7. **Write design doc** — save to `docs/superteam/specs/YYYY-MM-DD-<topic>-design.md` and commit; the lead writes it, or dispatches `superteam:writer` with the agreed sections as the brief; the spec uses `CONTEXT.md` terms; any term the spec needs that is missing or contradicted is resolved with your human partner (superteam:domain-modeling) before the spec is written, never invented in the spec
+8. **Spec self-review** — quick inline check for placeholders, contradictions, ambiguity, scope (see below)
+9. **User reviews written spec** — ask user to review the spec file before proceeding
+10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
 ## Process Flow
 
@@ -116,6 +117,7 @@ digraph brainstorming {
     "Explore project context" [shape=box];
     "Ask clarifying questions" [shape=box];
     "Propose 2-3 approaches" [shape=box];
+    "Offer skeptic pass" [shape=box];
     "Present design sections" [shape=box];
     "User approves design?" [shape=diamond];
     "Write design doc" [shape=box];
@@ -135,7 +137,8 @@ digraph brainstorming {
     "Hidden complexity? Upgrade path" -> "Classify: spike / bounded / architectural";
     "Explore project context" -> "Ask clarifying questions";
     "Ask clarifying questions" -> "Propose 2-3 approaches";
-    "Propose 2-3 approaches" -> "Present design sections";
+    "Propose 2-3 approaches" -> "Offer skeptic pass";
+    "Offer skeptic pass" -> "Present design sections";
     "Present design sections" -> "User approves design?";
     "User approves design?" -> "Present design sections" [label="no, revise"];
     "User approves design?" -> "Write design doc" [label="yes"];

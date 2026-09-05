@@ -166,6 +166,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
+On demand, or for large plans, dispatch `superteam:skeptic` on the task breakdown (kill / keep / shrink per task) before the plan review; the plan-document reviewer is `superteam:reviewer` (see `./plan-document-reviewer-prompt.md`).
+
 ## Execution Handoff
 
 After saving the plan, offer execution choice:

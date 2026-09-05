@@ -18,7 +18,7 @@ Show this to your human partner, then immediately proceed to Step 2. Your human 
 
 ### 2. Dispatch design agents
 
-Dispatch 3+ design agents in parallel per superteam:dispatching-parallel-agents — read-only, one brief each, all in one message, `subagent_type: general-purpose`, no worktree (they only design, they don't edit). Each must produce a **radically different** interface for the deepened module.
+Dispatch 3+ design agents in parallel per superteam:dispatching-parallel-agents — each is `superteam:researcher`: read-only, one brief, one constraint each, all in one message, no worktree (they only design, they don't edit). Each must produce a **radically different** interface for the deepened module.
 
 Prompt each design agent with a separate technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the human-partner-facing problem-space explanation in Step 1. Give each agent a different design constraint:
 
@@ -39,6 +39,6 @@ Each design agent outputs:
 
 ### 3. Present and compare
 
-Present designs sequentially so your human partner can absorb each one, then compare them in prose. Contrast by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
+Present designs sequentially so your human partner can absorb each one, then compare them in prose. Contrast by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**; then offer `superteam:skeptic` on the comparison before recommending.
 
 After comparing, give your own recommendation: which design you think is strongest and why. If elements from different designs would combine well, propose a hybrid. Be opinionated — your human partner wants a strong read, not a menu.
