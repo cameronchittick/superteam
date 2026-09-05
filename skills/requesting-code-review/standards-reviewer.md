@@ -5,8 +5,11 @@ Use this template for the **Standards** axis of a two-axis review (see [SKILL.md
 **Purpose:** Does the change conform to this repo's documented coding standards and the smell baseline, and is it well-built?
 
 ```
-Subagent (general-purpose):
+Agent:
+  name: "standards-review"
+  subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
   description: "Standards review"
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are a Senior Code Reviewer with expertise in software architecture,
     design patterns, and best practices. Your job is to review completed work

@@ -88,6 +88,15 @@ is theirs.
 
 ### Option 1: Merge Locally
 
+On Claude Code, the mechanics below are one dispatch, not inline work:
+`Agent` with `subagent_type: "superteam:integrator"` (`# general-purpose if the plugin agent is not loaded`),
+no `isolation` (it runs in this checkout), and a prompt naming the base
+branch, the feature branch, the test command, and the manifests to bump
+(or "no bump"). It merges, runs the suite on the merged result, pushes
+only if the base has a remote, removes the worktree and branch, and
+reports what it did. The lead never merges inline when the integrator is
+available; on other harnesses, run the steps yourself as written.
+
 ```bash
 # Get main repo root for CWD safety
 MAIN_ROOT=$(git -C "$(git rev-parse --git-common-dir)/.." rev-parse --show-toplevel)

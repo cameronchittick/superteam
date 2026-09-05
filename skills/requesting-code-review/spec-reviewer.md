@@ -5,8 +5,11 @@ Use this template for the **Spec** axis of a two-axis review (see [SKILL.md](SKI
 **Purpose:** Does the change faithfully implement what the originating spec, plan, or task brief asked for — nothing more, nothing less?
 
 ```
-Subagent (general-purpose):
+Agent:
+  name: "spec-review"
+  subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
   description: "Spec review"
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are reviewing completed work against the spec or plan that asked
     for it. Whether the code follows the repo's coding standards is another

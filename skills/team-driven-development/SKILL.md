@@ -1,6 +1,6 @@
 ---
 name: team-driven-development
-description: Use when executing an implementation plan as the lead (PM) of a team — one implementer IC per task in its own worktree, a reviewer per task, the lead merges
+description: Use when executing an implementation plan as the lead (PM) of a team — one implementer IC per task in its own worktree, a reviewer per task, an integrator merges
 ---
 
 # Team-Driven Development
@@ -8,9 +8,10 @@ description: Use when executing an implementation plan as the lead (PM) of a tea
 You are the lead (PM). Execute the plan by dispatching one fresh implementer
 IC per task into its own worktree, a task review (spec compliance + code
 quality) after each, and a broad whole-branch review at the end. The lead
-never implements beyond a one-line fix: it briefs, reviews, rules, and merges.
+never implements beyond a one-line fix: it briefs, reviews, rules, and
+dispatches the integrator to merge.
 
-**Why ICs:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
+**Why ICs:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never receive your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
 **Core principle:** Fresh IC per task + task review (spec + quality) + broad final review = high quality, fast iteration
 
@@ -62,15 +63,32 @@ digraph when_to_use {
 
 ## Two kinds of IC
 
+The roster (`agents/*.md`, invoked as `superteam:<name>`) has two shapes.
+Worktree subagents that write: **implementer** (code, TDD, commits) and
+**writer** (prose deliverables — docs, drafts — same call shape, no TDD).
+Read-only seats with no isolation: **reviewer** (a teammate; every review
+seat in this skill), **researcher** (investigation that returns a
+conclusion), **skeptic** (pre-build objections; never sees a diff), and
+**integrator** (the one seat that mutates your checkout: merges, cleanup,
+version bumps — one at a time). Four rules bind every dispatch:
+
+1. **Name the agent.** Every `Agent` call uses `subagent_type: "superteam:<role>"`; the harness-generic agent name appears only in the other-harness fallback comment.
+2. **The agent carries the model.** Each agent file sets `model` and `effort`; a call overrides `model` only with a reason from Model Selection written next to it.
+3. **Tools follow the role.** Read-only roles carry `disallowedTools`; the skill never widens them.
+4. **One role per seat.** A reviewer does not fix; a researcher does not edit; an implementer does not merge.
+
+The roster is a merge-roles list — a new agent needs a written reason it
+cannot be a seat of an existing one.
+
 **Implementer** — a named subagent with worktree isolation. It writes code,
-commits on its own branch, and reports; you merge. The call shape:
+commits on its own branch, and reports; the integrator merges. The call shape:
 
 ```
 Agent:
   name: "task-3-impl"            # its SendMessage address for fix rounds
   isolation: "worktree"          # branch worktree-task-3-impl, from the repo default branch
-  model: [MODEL — REQUIRED, per Model Selection]
-  subagent_type: "superteam:ic"  # general-purpose if the plugin agent is not loaded
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
+  subagent_type: "superteam:implementer"  # general-purpose if the plugin agent is not loaded
   description: "Implement Task 3: [task name]"
   prompt: [implementer-prompt.md, filled]
 ```
@@ -91,8 +109,8 @@ same either way:
 ```
 Agent:
   name: "task-3-review"
-  model: [MODEL — REQUIRED, per Model Selection]
-  subagent_type: "general-purpose"
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
+  subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
   description: "Review Task 3 (spec + quality)"
   prompt: [task-reviewer-prompt.md, filled — includes the review-package path]
 ```
@@ -101,6 +119,12 @@ A reviewer may `SendMessage` the implementer by name to ask what a change
 was for; it never edits, and it never fixes. Both kinds report back to you:
 implementer results arrive as completion notifications, reviewer verdicts
 as their final message.
+
+**Integrator** — `subagent_type: "superteam:integrator"`, no `isolation`,
+dispatched one at a time in your checkout after a task's review is clean
+(§5) and again at Finish. It gets the branch to merge, the lane, the test
+command, and whether to bump; it reports the merge commit and the suite
+result. You never merge inline when the integrator is available.
 
 **Other harnesses:** without `Agent`/`SendMessage`/worktree isolation, the
 older subagent dispatch shape still applies — dispatch each prompt template
@@ -240,38 +264,34 @@ implementation.
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+**Defaults live in the agent files.** Each roster agent sets the model its
+role needs (`sonnet` for implementer, writer, researcher, reviewer and
+integrator; `opus` for skeptic). Omit `model` on the call and the
+agent's default applies. This section governs the overrides: a call sets
+`model` only for one of the reasons below, with the reason written next to
+it. The session's model is never the fallback.
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+**Override down to `haiku`** when the task's plan text contains the
+complete code to write — the implementation is transcription plus testing.
+Single-file mechanical fixes qualify too.
 
-**Architecture and design tasks**: use the most capable available model.
-The final whole-branch review is one of these — dispatch it on the most
-capable available model, not the session default.
-
-**Review tasks**: choose the model with the same judgment, scaled to the
-diff's size, complexity, and risk. A small mechanical diff does not need the
-most capable model; a subtle concurrency change does. Scoped re-reviews of
-small fix diffs take a cheap-to-mid tier.
-
-**Fix-loop escalation (rounds 4-5)**: use a model at least one tier above
-the implementer that got stuck.
-
-**Always specify the model explicitly when dispatching an IC.** An
-omitted model inherits your session's model — often the most capable and
-most expensive — which silently defeats this section.
+**Override up to `opus`** for: the final whole-branch review (both axes);
+a review of a risky diff (concurrency, a function or API contract, shared
+mutable state); fix-loop rounds 4-5 (the fresh implementer goes at least
+one tier above the one that got stuck); a task that needs design judgment
+or broad codebase understanding across many files.
 
 **Turn count beats token price.** Wall-clock and context cost scale with how
 many turns a subagent takes, and the cheapest models routinely take 2-3× the
-turns on multi-step work — costing more overall. Use a mid-tier model as the
-floor for reviewers and for implementers working from prose descriptions.
-When the task's plan text contains the complete code to write, the
-implementation is transcription plus testing: use the cheapest tier for
-that implementer. Single-file mechanical fixes also take the cheapest tier.
+turns on multi-step work — costing more overall. That is why the roster
+defaults are mid-tier and why reviewers never go to `haiku`: a cheap
+reviewer misses subtle findings and costs a re-round. Implementers working
+from prose descriptions stay on the default.
 
 **Task complexity signals (implementation tasks):**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+- Touches 1-2 files with the complete code in the plan → `haiku`, reason written
+- Touches multiple files with integration concerns → default
+- Requires design judgment or broad codebase understanding → `opus`, reason written
 
 ## The Task Loop
 
@@ -306,7 +326,8 @@ default branch tip before it has). Its diff is
 diffs need BASE — never `HEAD~1`.
 
 Dispatch with the Implementer call shape from "Two kinds of IC": `name`,
-`isolation: "worktree"`, explicit `model`, `subagent_type`. If the task
+`isolation: "worktree"`, `subagent_type: "superteam:implementer"`, and
+`model` only with a written Model Selection reason. If the task
 depends on merged prior tasks, the dispatch says
 "first run `git merge <lane>`".
 
@@ -441,17 +462,20 @@ Before the loop starts, two routes leave it immediately:
 Everything else enters the loop. A fix round is one fix dispatch plus one
 scoped re-review. Five rounds maximum per task:
 
-**Rounds 1-3 — resume the original implementer.** `SendMessage` to its
-`name` with the open findings verbatim. Its context is intact: it knows the
-task, the code, and its own choices; it fixes in the same worktree branch.
+**Rounds 1-3 — resume the original implementer.** The fixer is the same
+`superteam:implementer` you dispatched, resumed by name: `SendMessage` to
+its `name` with the open findings verbatim. Its context is intact: it knows
+the task, the code, and its own choices; it fixes in the same worktree
+branch. No new agent, no new seat.
 If your harness cannot send another message to a live subagent, dispatch a
 fresh implementer carrying the brief path, the report-file path, and the
 findings — the report file is the persistent memory either way.
 
 **Rounds 4-5 — dispatch a fresh implementer on a more capable model** — a
-new `Agent` call with a new `name`, `isolation: "worktree"`, and a `model`
-at least one tier up (per Model Selection). Its first step is
-`git merge worktree-<old-name>` so it inherits the prior attempt; it gets
+new `superteam:implementer` call with a new `name`, `isolation: "worktree"`,
+and a `model` at least one tier up, the reason written on the call (per
+Model Selection). Its first step is
+`git merge worktree-<old-name>` so it starts from the prior attempt; it gets
 the brief path, the report-file path, the open findings, and this framing: "A prior implementer attempted this task
 [N] times; you own it now. Read the report file for what was tried." A loop
 that survives three resumes usually means the implementer cannot see its
@@ -503,19 +527,29 @@ a silent discard is forbidden.
 ### 5. Complete the task
 
 When the review comes back clean — or every open finding is parked with a
-ruling at the cap — merge the IC's branch into the lane:
+ruling at the cap — dispatch the integrator to merge the IC's branch into
+the lane. One dispatch per merge, never two at once (it mutates your
+checkout), no `isolation`:
 
 ```
-git diff <lane>..worktree-<name> --stat     # confirm only the brief's files moved
-git merge --no-ff worktree-<name>           # on the lane branch
-git worktree remove .claude/worktrees/<name>
-git branch -d worktree-<name>
+Agent:
+  name: "task-3-merge"
+  subagent_type: "superteam:integrator"  # general-purpose if the plugin agent is not loaded
+  description: "Merge Task 3 into <lane>"
+  prompt: |
+    Merge worktree-task-3-impl into <lane> in this checkout.
+    Files the brief allowed: [list] — confirm `git diff <lane>..worktree-task-3-impl --stat`
+    moved nothing else. `git merge --no-ff`, run `<test command>`, then
+    `git worktree remove .claude/worktrees/task-3-impl` and
+    `git branch -d worktree-task-3-impl`. Bump: [none | manifests to bump].
+    Report the merge commit, the suite result, and any conflict you resolved.
 ```
 
-A merge conflict means two ICs touched the same file — resolve it as a
-one-line fix only if it is one; otherwise it is a finding for the next fix
-round. Then append the completion line to the ledger in the same message
-as your other bookkeeping:
+A merge conflict means two ICs touched the same file — the integrator
+resolves a textual conflict and reports it; a semantic conflict comes back
+unresolved and is a finding for the next fix round. Then append the
+completion line to the ledger in the same message as your other
+bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
@@ -532,8 +566,10 @@ The final whole-branch review gets a package too: run
 branch started from, e.g. `git merge-base main HEAD`) and include the
 printed path in the final review dispatch, so the final reviewer reads
 one file instead of re-deriving the branch diff with git commands. Dispatch
-the two-axis review from superteam:requesting-code-review on the most
-capable available model (see Model Selection): a Standards reviewer
+the two-axis review from superteam:requesting-code-review as two
+`superteam:reviewer` agents, each with `model: opus` and the reason written
+on the call ("final whole-branch review, per Model Selection"): a Standards
+reviewer
 ([standards-reviewer.md](../requesting-code-review/standards-reviewer.md))
 and a Spec reviewer
 ([spec-reviewer.md](../requesting-code-review/spec-reviewer.md)) in
@@ -543,7 +579,8 @@ reviewers get the review-package path. Aggregate under `## Standards` and
 deferred-minor and parked lines so they can triage which must be fixed
 before merge.
 
-If the final whole-branch review returns findings, dispatch ONE fix subagent
+If the final whole-branch review returns findings, dispatch ONE
+`superteam:implementer` (worktree isolation, first step `git merge <lane>`)
 with the complete findings list — not one fixer per finding.
 Per-finding fixers each rebuild context and re-run suites; a real
 session's final-review fix wave cost more than all its tasks combined.
@@ -569,10 +606,11 @@ made in secret. Next to it list **Proposed terms** — every term ICs
 proposed, collected from the ledger — so your human partner can decide
 whether to run superteam:domain-modeling; the lead never edits `CONTEXT.md`.
 
-When the final whole-branch review is clean and its fixes are merged,
-delete this plan's workspace (`rm -rf <workspace>`) — the git history is
-the record now. Sibling directories belong to other plans; leave them
-alone.
+When the final whole-branch review is clean and its fixes are merged
+(the fix wave's branch goes through the integrator like any task), dispatch
+the integrator once more to delete this plan's workspace
+(`rm -rf <workspace>`) — the git history is the record now. Sibling
+directories belong to other plans; the dispatch names exactly one path.
 
 Use superteam:finishing-a-development-branch.
 
@@ -602,7 +640,7 @@ You: I'm using Team-Driven Development to execute this plan.
 
 Task 1: Hook installation script
 
-[Run task-brief for Task 1; Agent name=task-1-impl isolation=worktree model=<tier> with brief + report paths + context]
+[Run task-brief for Task 1; Agent name=task-1-impl subagent_type=superteam:implementer isolation=worktree with brief + report paths + context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
@@ -614,11 +652,11 @@ Implementer: [Later]
   - Self-review: Found I missed --force flag, added it
   - Committed
 
-[Run review-package PLAN_FILE BASE worktree-task-1-impl; Agent name=task-1-review (no isolation) with the printed path]
+[Run review-package PLAN_FILE BASE worktree-task-1-impl; Agent name=task-1-review subagent_type=superteam:reviewer (no isolation) with the printed path]
 Task reviewer: Spec ✅ - all requirements met, nothing extra.
   Strengths: Good test coverage, clean. Issues: None. Task quality: Approved.
 
-[git merge --no-ff worktree-task-1-impl; worktree remove; branch -d]
+[Agent name=task-1-merge subagent_type=superteam:integrator: merge worktree-task-1-impl into lane, run tests, remove worktree, delete branch]
 [Ledger: Task 1: complete (commits a1b2c3d..d4e5f6a, review clean)]
 
 Task 2: Recovery modes
@@ -645,16 +683,16 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
   Verdict: all findings addressed.
 
 [Ledger: Task 2: fix round 1/5 (2 addressed, 0 open; commits d4e5f6a..b7c8d9e)]
-[git merge --no-ff worktree-task-2-impl; worktree remove; branch -d]
+[Agent name=task-2-merge subagent_type=superteam:integrator: merge worktree-task-2-impl into lane, run tests, remove worktree, delete branch]
 [Ledger: Task 2: complete (commits d4e5f6a..b7c8d9e, review clean)]
 
 ...
 
 [After all tasks]
-[Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch final code-reviewer, most capable model]
-Final reviewer: All requirements met. Deferred minors triaged: none block merge.
+[Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch two superteam:reviewer agents (Standards, Spec), model=opus — final whole-branch review]
+Standards: no findings. Spec: all requirements met. Deferred minors triaged: none block merge.
 
-[Delete this plan's workspace — the record now lives in git]
+[Agent subagent_type=superteam:integrator: delete this plan's workspace — the record now lives in git]
 
 Done! Using superteam:finishing-a-development-branch.
 ```
