@@ -273,7 +273,7 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 ## Credit
 
-Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent and Prime Radiant, used under the MIT license (see LICENSE). It is maintained by Cameron Chittick as a private plugin: trimmed to Claude Code agent teams while keeping other-harness support.
+Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent and Prime Radiant, used under the MIT license (see LICENSE). It is maintained by Cameron Chittick as a private plugin: trimmed to Claude Code agent teams while keeping other-harness support. The `domain-modeling` skill is ported from Matt Pocock's [skills](https://github.com/mattpocock/skills) (MIT).
 
 ## What's Inside
 
@@ -288,6 +288,7 @@ Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) b
 
 **Collaboration** 
 - **brainstorming** - Socratic design refinement
+- **domain-modeling** - Build and sharpen the project's domain model: challenge terms, keep CONTEXT.md as the agreed glossary, record ADRs sparingly
 - **writing-plans** - Detailed implementation plans
 - **executing-plans** - Batch execution with checkpoints
 - **dispatching-parallel-agents** - Concurrent subagent workflows
