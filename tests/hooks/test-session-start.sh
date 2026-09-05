@@ -206,6 +206,27 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST"
 
+trim_home="$(make_home claude-code-trimmed)"
+assert_command_output \
+    "Claude Code drops the Platform Adaptation section but keeps Red Flags" \
+    "nested" \
+    "Red Flags" \
+    "Platform Adaptation" \
+    "$trim_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
+cursor_full_home="$(make_home cursor-full)"
+assert_command_output \
+    "Cursor still injects the Platform Adaptation section" \
+    "cursor" \
+    "Platform Adaptation" \
+    "" \
+    "$cursor_full_home" \
+    CURSOR_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
 legacy_home="$(make_home legacy-warning-removed)"
 mkdir -p "$legacy_home/.config/superteam/skills"
 assert_command_output \

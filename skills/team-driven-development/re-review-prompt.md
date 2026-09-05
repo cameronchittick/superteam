@@ -8,7 +8,9 @@ new breakage. It is not a fresh review — the full review already happened.
 that the fix itself broke nothing.
 
 ```
-Subagent (general-purpose):
+Agent:
+  name: "task-N-rereview-R"      # no isolation: read-only, runs as a teammate
+  subagent_type: "general-purpose"
   description: "Re-review Task N fix round R"
   model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]

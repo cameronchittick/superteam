@@ -45,10 +45,13 @@ This determines which menu to show and how cleanup works:
 
 ## Step 3: Determine Base Branch
 
-The base branch is whatever this work forked from — usually named in the
-plan, the conversation, or the branch's upstream. If it is not already
-known, ask: "This branch split from <your best guess> - is that correct?"
-Confirm before merging: merging into the wrong base is expensive to undo.
+The base branch is the repo's trunk as named by the plan, the brief, or the
+branch's upstream — never assume `main`. In a lead/IC workflow the lane
+branch merges into that trunk here; IC worktree branches merge into the lane
+under superteam:team-driven-development, not this skill. If the base is not
+already known, ask: "This branch split from <your best guess> - is that
+correct?" Confirm before merging: merging into the wrong base is expensive
+to undo.
 
 ## Step 4: Present Options
 
@@ -103,8 +106,17 @@ If tests fail on the merged result: stop, leave the worktree and branch in
 place, and investigate — nothing has been pushed, so the merge is local
 and recoverable.
 
-Once the merged result is green: clean up the worktree (Step 6), then
-delete the branch:
+Once the merged result is green, push only if the base has a remote:
+
+```bash
+if git rev-parse --abbrev-ref <base-branch>@{upstream} >/dev/null 2>&1; then
+  git push
+else
+  echo "no remote configured, merged locally"
+fi
+```
+
+Then clean up the worktree (Step 6) and delete the branch:
 
 ```bash
 git branch -d <feature-branch>
@@ -166,6 +178,10 @@ Step 2, from before that directory change.
 
 **If `GIT_DIR == GIT_COMMON`:** Normal repo, no worktree to clean up. Done.
 
+**If the worktree came from Claude Code's `isolation: "worktree"` or
+`EnterWorktree`:** the harness removes it when it is unchanged; otherwise
+`git worktree remove <path>` then `git branch -d <branch>` as below.
+
 **If `WORKTREE_PATH` is under `.worktrees/` or `worktrees/`:** Superteam
 created this worktree — we own cleanup:
 
@@ -204,7 +220,7 @@ place. If your platform provides a workspace-exit tool, use it.
 
 | Option | Merge | Push | Keep Worktree | Cleanup Branch |
 |--------|-------|------|---------------|----------------|
-| 1. Merge locally | yes | - | - | yes |
+| 1. Merge locally | yes | if remote | - | yes |
 | 2. Create PR | - | yes | yes | - |
 | 3. Keep as-is | - | - | yes | - |
 | Discard (explicit request only) | - | - | - | yes (force) |

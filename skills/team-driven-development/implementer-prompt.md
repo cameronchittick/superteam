@@ -1,9 +1,12 @@
-# Implementer Subagent Prompt Template
+# Implementer IC Prompt Template
 
-Use this template when dispatching an implementer subagent.
+Use this template when dispatching an implementer IC into its worktree.
 
 ```
-Subagent (general-purpose):
+Agent:
+  name: "task-N-impl"            # SendMessage address for fix rounds
+  isolation: "worktree"          # commits land on branch worktree-task-N-impl
+  subagent_type: "superteam:ic"  # general-purpose if the plugin agent is not loaded
   description: "Implement Task N: [task name]"
   model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]
