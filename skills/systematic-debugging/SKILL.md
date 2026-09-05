@@ -66,6 +66,7 @@ You MUST complete each phase before proceeding to the next.
    - Git diff, recent commits
    - New dependencies, config changes
    - Environmental differences
+   - Read `CONTEXT.md` (if present) for the mental model of the modules involved, and ADRs in the area you're touching
 
 4. **Gather Evidence in Multi-Component Systems**
 

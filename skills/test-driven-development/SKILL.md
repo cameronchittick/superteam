@@ -28,6 +28,8 @@ Write the test first. Watch it fail. Write minimal code to pass.
 
 Thinking "skip TDD just this once"? Stop. That's rationalization.
 
+Read `CONTEXT.md` (if present) so test names and interface vocabulary match the project's domain language, and respect ADRs in the area you're touching.
+
 ## The Iron Law
 
 ```
@@ -194,6 +196,14 @@ Keep tests green. Don't add behavior.
 ### Repeat
 
 Next failing test for next feature.
+
+## Seams
+
+A **seam** is the public boundary you test at: the interface is the test surface (see superteam:codebase-design). Tests live at seams, never against internals.
+
+Before writing the first test, name the seams under test and confirm them with your human partner. No test at an unconfirmed seam.
+
+Ask: "What's the public interface, and which seams should we test?"
 
 ## Good Tests
 
