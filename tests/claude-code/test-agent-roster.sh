@@ -51,7 +51,7 @@ main() {
             echo "    $line"
             bad=$((bad + 1))
         fi
-    done < <(grep -rn 'subagent_type: *"[^"]*"' "$SKILLS")
+    done < <(grep -rn 'subagent_type: *"[^"]*"' "$SKILLS" | grep -v 'superteam:<role>')
     if [[ "$bad" -eq 0 ]]; then
         pass "every subagent_type in skills/ names a roster agent"
     else
