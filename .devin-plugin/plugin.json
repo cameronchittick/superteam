@@ -1,13 +1,10 @@
 {
   "name": "superteam",
-  "version": "6.3.0",
+  "version": "6.4.2",
   "description": "An agentic skills framework & software development methodology that works: planning, TDD, debugging, and collaboration workflows.",
   "author": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "Cameron Chittick"
   },
-  "homepage": "https://github.com/obra/superpowers",
-  "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
   "keywords": [
     "brainstorming",

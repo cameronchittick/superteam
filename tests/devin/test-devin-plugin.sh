@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validate the Devin CLI integration. `devin plugins install obra/superteam`
+# Validate the Devin CLI integration. `devin plugins install ~/Code/cameronchittick/superteam`
 # reads `.devin-plugin/plugin.json` and auto-discovers the co-located `skills/`
 # directory; Devin CLI surfaces every installed skill's name + description in
 # the system prompt at session start and invokes them via its native `skill`

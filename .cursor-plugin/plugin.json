@@ -2,13 +2,10 @@
   "name": "superteam",
   "displayName": "Superteam",
   "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "6.3.0",
+  "version": "6.4.2",
   "author": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "Cameron Chittick"
   },
-  "homepage": "https://github.com/obra/superpowers",
-  "repository": "https://github.com/obra/superpowers",
   "license": "MIT",
   "keywords": [
     "skills",

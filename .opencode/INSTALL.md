@@ -10,7 +10,7 @@ Add superteam to the `plugin` array in your `opencode.json` (global or project-l
 
 ```json
 {
-  "plugin": ["superteam@git+https://github.com/obra/superpowers.git"]
+  "plugin": ["superteam@git+~/Code/cameronchittick/superteam.git"]
 }
 ```
 
@@ -59,7 +59,7 @@ To pin a specific version:
 
 ```json
 {
-  "plugin": ["superteam@git+https://github.com/obra/superpowers.git#v5.0.3"]
+  "plugin": ["superteam@git+~/Code/cameronchittick/superteam.git#v5.0.3"]
 }
 ```
 
@@ -80,7 +80,7 @@ the plugin, try installing with system npm and pointing OpenCode at the local
 package:
 
 ```powershell
-npm install superteam@git+https://github.com/obra/superpowers.git --prefix "$HOME\.config\opencode"
+npm install superteam@git+~/Code/cameronchittick/superteam.git --prefix "$HOME\.config\opencode"
 ```
 
 Then use the installed package path in `opencode.json`:
@@ -111,5 +111,4 @@ Skills speak in actions ("create a todo", "dispatch a subagent", "read a file").
 
 ## Getting Help
 
-- Report issues: https://github.com/obra/superpowers/issues
-- Full documentation: https://github.com/obra/superpowers/blob/main/docs/README.opencode.md
+- Full documentation: docs/README.opencode.md in the repo

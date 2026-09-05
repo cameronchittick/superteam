@@ -1,12 +1,10 @@
 {
   "name": "superteam",
-  "version": "6.3.0",
+  "version": "6.4.2",
   "description": "An agentic skills framework and software development methodology.",
   "author": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "Cameron Chittick"
   },
-  "homepage": "https://github.com/obra/superpowers",
   "license": "MIT",
   "keywords": [
     "brainstorming",
@@ -27,12 +25,11 @@
     "displayName": "Superteam",
     "shortDescription": "Planning, TDD, debugging, and delivery workflows for coding agents",
     "longDescription": "Use Superteam to guide agent work through brainstorming, implementation planning, test-driven development, systematic debugging, parallel execution, code review, and finish-the-branch workflows.",
-    "developerName": "Jesse Vincent",
+    "developerName": "Cameron Chittick",
     "capabilities": [
       "Interactive",
       "Read",
       "Write"
-    ],
-    "websiteURL": "https://github.com/obra/superpowers"
+    ]
   }
 }

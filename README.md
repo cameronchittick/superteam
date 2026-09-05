@@ -5,7 +5,6 @@ Superteam is a complete software development methodology for your coding agents,
 ## Table of Contents
 
 - [How it works](#how-it-works)
-- [Commercial Services](#commercial-services)
 - [Getting Started](#installation)
   - [Claude Code](#claude-code)
   - [Antigravity](#antigravity)
@@ -22,7 +21,7 @@ Superteam is a complete software development methodology for your coding agents,
   - [Pi](#pi)
   - [Hermes Agent](#hermes-agent)
 - [The Basic Workflow](#the-basic-workflow)
-- [Community](#community)
+- [Credit](#credit)
 - [What's Inside](#whats-inside)
 - [Philosophy](#philosophy)
 - [Contributing](#contributing)
@@ -42,9 +41,6 @@ Next up, once you say "go", it launches a *team-driven-development* process, hav
 
 There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Superteam.
 
-## Commercial Services
-
-If you're using Superteam in enterprise and could benefit from commercial support, additional tooling, or managed spending, please don't hesitate to drop us a line at sales@primeradiant.com.
 
 ## Installation
 
@@ -69,13 +65,13 @@ The Superteam marketplace provides Superteam and some other related plugins for 
 - Register the marketplace:
 
   ```bash
-  /plugin marketplace add obra/superteam-marketplace
+  /plugin marketplace add ~/Code/cameronchittick/superteam
   ```
 
 - Install the plugin from this marketplace:
 
   ```bash
-  /plugin install superteam@superteam-marketplace
+  /plugin install superteam@cameronchittick
   ```
 
 ### Antigravity
@@ -83,7 +79,7 @@ The Superteam marketplace provides Superteam and some other related plugins for 
 Install Superteam as a plugin from this repository:
 
 ```bash
-agy plugin install https://github.com/obra/superpowers
+agy plugin install ~/Code/cameronchittick/superteam
 ```
 
 Antigravity runs the plugin's session-start hook, so Superteam is active from
@@ -130,7 +126,7 @@ Superteam is available via the [official Codex plugin marketplace](https://githu
 - Install the plugin from this repository:
 
   ```bash
-  devin plugins install obra/superteam
+  devin plugins install ~/Code/cameronchittick/superteam
   ```
 
 - Update to the latest version with:
@@ -144,7 +140,7 @@ Superteam is available via the [official Codex plugin marketplace](https://githu
 - Register the marketplace:
 
   ```bash
-  droid plugin marketplace add https://github.com/obra/superpowers
+  droid plugin marketplace add ~/Code/cameronchittick/superteam
   ```
 
 - Install the plugin:
@@ -158,7 +154,7 @@ Superteam is available via the [official Codex plugin marketplace](https://githu
 - Install the extension:
 
   ```bash
-  gemini extensions install https://github.com/obra/superpowers
+  gemini extensions install ~/Code/cameronchittick/superteam
   ```
 
 - Update later:
@@ -172,13 +168,13 @@ Superteam is available via the [official Codex plugin marketplace](https://githu
 - Register the marketplace:
 
   ```bash
-  copilot plugin marketplace add obra/superteam-marketplace
+  copilot plugin marketplace add ~/Code/cameronchittick/superteam
   ```
 
 - Install the plugin:
 
   ```bash
-  copilot plugin install superteam@superteam-marketplace
+  copilot plugin install superteam@cameronchittick
   ```
 
 ### Grok Build CLI
@@ -212,7 +208,7 @@ Superteam is available in Kimi Code's plugin marketplace.
 - Or install directly from this repository:
 
   ```text
-  /plugins install https://github.com/obra/superpowers
+  /plugins install ~/Code/cameronchittick/superteam
   ```
 
 - Detailed docs: [docs/README.kimi.md](docs/README.kimi.md)
@@ -225,7 +221,7 @@ already use it in another harness.
 - Tell OpenCode:
 
   ```
-  Fetch and follow instructions from https://raw.githubusercontent.com/obra/superteam/refs/heads/main/.opencode/INSTALL.md
+  Fetch and follow instructions from ~/Code/cameronchittick/superteam/.opencode/INSTALL.md
   ```
 
 - Detailed docs: [docs/README.opencode.md](docs/README.opencode.md)
@@ -235,7 +231,7 @@ already use it in another harness.
 Install Superteam as a Pi package from this repository:
 
 ```bash
-pi install git:github.com/obra/superpowers
+pi install ~/Code/cameronchittick/superteam
 ```
 
 For local development, run Pi with this checkout loaded as a temporary package:
@@ -251,7 +247,7 @@ The Pi package loads the Superteam skills and a small extension that injects the
 Install Superteam as a Hermes plugin from this repository:
 
 ```bash
-hermes plugins install obra/superteam --enable
+hermes plugins install ~/Code/cameronchittick/superteam --enable
 ```
 
 Restart any active Hermes sessions after installing. Note: Hermes has no
@@ -276,13 +272,9 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
-## Community
+## Credit
 
-Superteam is built by [Jesse Vincent](https://blog.fsck.com) and the rest of the folks at [Prime Radiant](https://primeradiant.com).
-
-- **Discord**: [Join us](https://discord.gg/35wsABTejz) for community support, questions, and sharing what you're building with Superteam
-- **Issues**: https://github.com/obra/superpowers/issues
-- **Release announcements**: [Sign up](https://primeradiant.com/superteam/) to get notified about new versions
+Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent and Prime Radiant, used under the MIT license (see LICENSE). It is maintained by Cameron Chittick as a private plugin: trimmed to Claude Code agent teams while keeping other-harness support.
 
 ## What's Inside
 
@@ -317,7 +309,6 @@ Superteam is built by [Jesse Vincent](https://blog.fsck.com) and the rest of the
 - **Complexity reduction** - Simplicity as primary goal
 - **Evidence over claims** - Verify before declaring success
 
-Read [the original release announcement](https://blog.fsck.com/2025/10/09/superteam/).
 
 ## Contributing
 
