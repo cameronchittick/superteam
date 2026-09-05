@@ -14,14 +14,14 @@ PASSED=0
 FAILED=0
 RESULTS=""
 
-# Test: subagent-driven-development, please
-echo ">>> Test 1: subagent-driven-development-please"
-if "$SCRIPT_DIR/run-test.sh" "subagent-driven-development" "$PROMPTS_DIR/subagent-driven-development-please.txt"; then
+# Test: team-driven-development, please
+echo ">>> Test 1: team-driven-development-please"
+if "$SCRIPT_DIR/run-test.sh" "team-driven-development" "$PROMPTS_DIR/team-driven-development-please.txt"; then
     PASSED=$((PASSED + 1))
-    RESULTS="$RESULTS\nPASS: subagent-driven-development-please"
+    RESULTS="$RESULTS\nPASS: team-driven-development-please"
 else
     FAILED=$((FAILED + 1))
-    RESULTS="$RESULTS\nFAIL: subagent-driven-development-please"
+    RESULTS="$RESULTS\nFAIL: team-driven-development-please"
 fi
 echo ""
 
@@ -49,7 +49,7 @@ echo ""
 
 # Test: mid-conversation execute plan
 echo ">>> Test 4: mid-conversation-execute-plan"
-if "$SCRIPT_DIR/run-test.sh" "subagent-driven-development" "$PROMPTS_DIR/mid-conversation-execute-plan.txt"; then
+if "$SCRIPT_DIR/run-test.sh" "team-driven-development" "$PROMPTS_DIR/mid-conversation-execute-plan.txt"; then
     PASSED=$((PASSED + 1))
     RESULTS="$RESULTS\nPASS: mid-conversation-execute-plan"
 else

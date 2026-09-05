@@ -25,7 +25,7 @@ This test suite verifies that skills are loaded correctly and Claude follows the
 
 ### Run specific test:
 ```bash
-./run-skill-tests.sh --test test-subagent-driven-development.sh
+./run-skill-tests.sh --test test-team-driven-development.sh
 ```
 
 ### Run with verbose output:
@@ -82,7 +82,7 @@ echo "=== All tests passed ==="
 
 ### Fast Tests (run by default)
 
-#### test-subagent-driven-development.sh
+#### test-team-driven-development.sh
 Tests skill content and requirements (~2 minutes):
 - Skill loading and accessibility
 - Workflow ordering (spec compliance before code quality)
@@ -94,11 +94,11 @@ Tests skill content and requirements (~2 minutes):
 
 ### Integration Tests (use --integration flag)
 
-#### test-subagent-driven-development-integration.sh
+#### test-team-driven-development-integration.sh
 Full workflow execution test (~10-30 minutes):
 - Creates real test project with Node.js setup
 - Creates implementation plan with 2 tasks
-- Executes plan using subagent-driven-development
+- Executes plan using team-driven-development
 - Verifies actual behaviors:
   - Plan read once at start (not per task)
   - Full task text provided in subagent prompts
@@ -141,7 +141,7 @@ RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):
 
 With `--verbose`, you'll see full Claude output:
 ```bash
-./run-skill-tests.sh --verbose --test test-subagent-driven-development.sh
+./run-skill-tests.sh --verbose --test test-team-driven-development.sh
 ```
 
 Without verbose, only failures show output.

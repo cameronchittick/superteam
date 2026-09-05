@@ -14,4 +14,4 @@ Which approach do you want?
 
 ---
 
-subagent-driven-development, please
+team-driven-development, please
