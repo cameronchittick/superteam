@@ -76,6 +76,8 @@ naming and copy rules, platform requirements — one line each, with exact
 values copied verbatim from the spec. Every task's requirements implicitly
 include this section.]
 
+- Use the terms in `CONTEXT.md` for task names, identifiers, file names and tests; do not coin synonyms. A term the plan needs but the glossary lacks goes back to your human partner via superteam:domain-modeling before the plan is finished — the plan never edits `CONTEXT.md`.
+
 ---
 ```
 
