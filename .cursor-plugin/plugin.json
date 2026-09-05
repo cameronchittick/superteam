@@ -2,7 +2,7 @@
   "name": "superteam",
   "displayName": "Superteam",
   "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "6.4.2",
+  "version": "6.4.3",
   "author": {
     "name": "Cameron Chittick"
   },
