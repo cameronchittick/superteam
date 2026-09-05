@@ -6,10 +6,9 @@ Use this template when dispatching an implementer IC into its worktree.
 Agent:
   name: "task-N-impl"            # SendMessage address for fix rounds
   isolation: "worktree"          # commits land on branch worktree-task-N-impl
-  subagent_type: "superteam:ic"  # general-purpose if the plugin agent is not loaded
+  subagent_type: "superteam:implementer"  # general-purpose if the plugin agent is not loaded
   description: "Implement Task N: [task name]"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are implementing Task N: [task name]
 

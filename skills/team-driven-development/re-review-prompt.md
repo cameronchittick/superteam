@@ -10,10 +10,9 @@ that the fix itself broke nothing.
 ```
 Agent:
   name: "task-N-rereview-R"      # no isolation: read-only, runs as a teammate
-  subagent_type: "general-purpose"
+  subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
   description: "Re-review Task N fix round R"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are re-reviewing one task's fix round. A previous review produced
     findings; an implementer has attempted to fix them. Your job is to
@@ -103,8 +102,8 @@ Agent:
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection; scoped
-  re-reviews of small fix diffs take a cheap-to-mid tier
+- `model` — omit; the agent file carries the default, which suits a scoped
+  re-review. Override only with a reason from SKILL.md Model Selection
 - `[BRIEF_FILE]` — the task brief file (same file the implementer worked from)
 - `[FINDINGS]` — the Critical/Important findings and spec gaps from the
   previous review, copied verbatim, one per bullet

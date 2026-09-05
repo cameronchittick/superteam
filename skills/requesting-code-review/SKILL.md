@@ -54,7 +54,7 @@ Whatever the repo documents — `CONTRIBUTING.md`, `CODING_STANDARDS.md`, `CLAUD
 
 **4. Dispatch BOTH reviewers in one message:**
 
-Two parallel `general-purpose` subagents — one filling [standards-reviewer.md](standards-reviewer.md), one filling [spec-reviewer.md](spec-reviewer.md). Same `DESCRIPTION`, `BASE_SHA`, `HEAD_SHA` for both; the Standards one gets the standards files and the baseline, the Spec one gets the spec.
+Two parallel `superteam:reviewer` subagents — one filling [standards-reviewer.md](standards-reviewer.md), one filling [spec-reviewer.md](spec-reviewer.md). Same `DESCRIPTION`, `BASE_SHA`, `HEAD_SHA` for both; the Standards one gets the standards files and the baseline, the Spec one gets the spec. The agent carries its model; override it only with a written reason (the final whole-branch review under superteam:team-driven-development is one: `model: opus`). On a harness without the plugin agent, use its generic subagent with the same prompt.
 
 **5. Aggregate:**
 

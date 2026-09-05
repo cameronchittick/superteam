@@ -10,10 +10,9 @@ more, nothing less) and is well-built (clean, tested, maintainable)
 ```
 Agent:
   name: "task-N-review"          # no isolation: read-only, runs as a teammate
-  subagent_type: "general-purpose"
+  subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
   description: "Review Task N (spec + quality)"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
     You are reviewing one task's implementation: first whether it matches its
     requirements, then whether it is well-built. This is a task-scoped gate,
@@ -193,7 +192,8 @@ Agent:
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
+- `model` — omit; the agent file carries the default. Override only with a
+  reason from SKILL.md Model Selection (opus for a risky diff)
 - `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
   prints the path; same file the implementer worked from)
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from

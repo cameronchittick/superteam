@@ -7,7 +7,7 @@ description: Use when facing 2+ independent tasks that can be worked on without 
 
 ## Overview
 
-You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
+You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never receive your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
 When you have multiple unrelated failures (different test files, different subsystems, different bugs), investigating them sequentially wastes time. Each investigation is independent and can happen in parallel.
 
@@ -65,19 +65,21 @@ Each agent gets:
 
 ### 3. Dispatch in Parallel
 
-Issue all three `Agent` calls in the same response — they run in parallel. Give each a `name` and an explicit `model`:
+Issue all three `Agent` calls in the same response — they run in parallel. Give each a `name` and a roster `subagent_type`:
 
 ```text
-Agent(name: "fix-abort",    model: "sonnet", isolation: "worktree", prompt: "Fix agent-tool-abort.test.ts failures ...")
-Agent(name: "fix-batch",    model: "sonnet", isolation: "worktree", prompt: "Fix batch-completion-behavior.test.ts failures ...")
-Agent(name: "fix-approval", model: "sonnet", isolation: "worktree", prompt: "Fix tool-approval-race-conditions.test.ts failures ...")
-# All three run concurrently.
+Agent(name: "fix-abort",    subagent_type: "superteam:implementer", isolation: "worktree", prompt: "Fix agent-tool-abort.test.ts failures ...")
+Agent(name: "fix-batch",    subagent_type: "superteam:implementer", isolation: "worktree", prompt: "Fix batch-completion-behavior.test.ts failures ...")
+Agent(name: "fix-approval", subagent_type: "superteam:implementer", isolation: "worktree", prompt: "Fix tool-approval-race-conditions.test.ts failures ...")
+# All three run concurrently.  # general-purpose if the plugin agent is not loaded
 ```
 
 Multiple dispatch calls in one response = parallel execution. One per response = sequential.
 
-- **Agents will edit files:** pass `isolation: "worktree"` on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
-- **Agents only investigate:** omit `isolation`. With agent teams enabled, named agents become teammates and can message each other via `SendMessage`.
+Name the agent; never `general-purpose`; override `model` only with a written reason.
+
+- **Agents will edit files:** `subagent_type: "superteam:implementer"` with `isolation: "worktree"` on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
+- **Agents only investigate:** `subagent_type: "superteam:researcher"`, no `isolation`. With agent teams enabled, named agents become teammates and can message each other via `SendMessage`.
 
 Other harnesses: the same pattern with your platform's subagent dispatch; see `../using-superteam/references/`.
 
