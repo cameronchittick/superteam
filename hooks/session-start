@@ -10,6 +10,12 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Read using-superteam content
 using_superteam_content=$(cat "${PLUGIN_ROOT}/skills/using-superteam/SKILL.md" 2>&1 || echo "Error reading using-superteam skill")
 
+# Drop the "## Platform Adaptation" section (up to the next "## " heading).
+# It only lists other-harness reference files, so Claude Code skips it.
+strip_platform_adaptation() {
+    printf '%s\n' "$1" | awk '/^## Platform Adaptation/{skip=1; next} /^## /{skip=0} !skip'
+}
+
 # Escape string for JSON embedding using bash parameter substitution.
 # Each ${s//old/new} is a single C-level pass - orders of magnitude
 # faster than the character-by-character loop this replaces.
@@ -23,8 +29,12 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-using_superteam_escaped=$(escape_for_json "$using_superteam_content")
-session_context="<EXTREMELY_IMPORTANT>\nYou have superteam.\n\n**Below is the full content of your 'superteam:using-superteam' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_superteam_escaped}\n</EXTREMELY_IMPORTANT>"
+build_context() {
+    local escaped
+    escaped=$(escape_for_json "$1")
+    printf '%s' "<EXTREMELY_IMPORTANT>\nYou have superteam.\n\n**Below is the full content of your 'superteam:using-superteam' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${escaped}\n</EXTREMELY_IMPORTANT>"
+}
+session_context=$(build_context "$using_superteam_content")
 
 # Output context injection as JSON.
 # Cursor hooks expect additional_context (snake_case).
@@ -40,6 +50,7 @@ if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
   printf '{\n  "additional_context": "%s"\n}\n' "$session_context" | cat
 elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
   # Claude Code sets CLAUDE_PLUGIN_ROOT without COPILOT_CLI
+  session_context=$(build_context "$(strip_platform_adaptation "$using_superteam_content")")
   printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
 else
   # Copilot CLI (sets COPILOT_CLI=1) or unknown platform — SDK standard format
