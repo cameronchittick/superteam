@@ -58,7 +58,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:subagent-driven-development (recommended) or superteam:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:team-driven-development (recommended) or superteam:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -83,6 +83,10 @@ include this section.]
 
 ````markdown
 ### Task N: [Component Name]
+
+**Files owned:** `exact/path/to/file.py`, `tests/exact/path/to/test.py`
+**Depends on:** none (or: Task 2, Task 3)
+**Model tier:** cheap | standard | most capable
 
 **Files:**
 - Create: `exact/path/to/file.py`
@@ -128,6 +132,16 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
+**The three header lines.** A lead hands each task to an IC in its own
+worktree, so `**Files owned:**` lists every file the task creates or edits —
+no two tasks that can run concurrently may share a file, or their branches
+collide at merge. `**Depends on:**` names the tasks whose output this one
+consumes, which is what decides dispatch order (dependents wait; the rest
+run in parallel). `**Model tier:**` follows the reasoning in
+superteam:team-driven-development's Model Selection — cheap for 1-2 files
+with a complete spec, standard for multi-file integration, most capable for
+design judgment — and drives what each task costs.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
@@ -156,15 +170,15 @@ After saving the plan, offer execution choice:
 
 **"Plan complete and saved to `docs/superteam/plans/<filename>.md`. Two execution options:**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+**1. Team-Driven (recommended)** - I act as lead, dispatch one IC per task in its own worktree, review and merge each
 
 **2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
 **Which approach?"**
 
-**If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superteam:subagent-driven-development
-- Fresh subagent per task + two-stage review
+**If Team-Driven chosen:**
+- **REQUIRED SUB-SKILL:** Use superteam:team-driven-development
+- One IC per task in its own worktree + two-stage review, lead merges
 
 **If Inline Execution chosen:**
 - **REQUIRED SUB-SKILL:** Use superteam:executing-plans
