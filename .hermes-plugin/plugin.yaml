@@ -1,6 +1,6 @@
-name: superpowers
+name: superteam
 version: 6.3.0
-description: Superpowers skills and workflow bootstrap for Hermes Agent
+description: Superteam skills and workflow bootstrap for Hermes Agent
 author: obra
 provides_hooks:
   - pre_llm_call

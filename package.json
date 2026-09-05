@@ -1,9 +1,9 @@
 {
-  "name": "superpowers",
+  "name": "superteam",
   "version": "6.3.0",
-  "description": "Superpowers skills and runtime bootstrap for coding agents",
+  "description": "Superteam skills and runtime bootstrap for coding agents",
   "type": "module",
-  "main": ".opencode/plugins/superpowers.js",
+  "main": ".opencode/plugins/superteam.js",
   "keywords": [
     "pi-package",
     "skills",
@@ -14,7 +14,7 @@
   ],
   "pi": {
     "extensions": [
-      "./.pi/extensions/superpowers.ts"
+      "./.pi/extensions/superteam.ts"
     ],
     "skills": [
       "./skills"
