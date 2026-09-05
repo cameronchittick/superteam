@@ -368,6 +368,12 @@ If the implementer asks questions — before starting or mid-task — answer
 clearly and completely, provide additional context if needed, and don't
 rush it into implementation.
 
+Whatever the status, copy any **Proposed terms** from the report into the
+ledger under a `Proposed terms:` line for that task; do not act on them
+yourself. `CONTEXT.md` is agreed language negotiated with your human
+partner — autonomous agents, the lead included, propose terms and never
+write them.
+
 ### 3. Review the task
 
 Per-task reviews are task-scoped gates. The broad review happens once, at the
@@ -554,7 +560,9 @@ with what it costs if wrong. The list is exhaustive: if the ledger holds a
 ruling, the list holds it. That list is the only place the decisions you
 took on your human partner's behalf reach them — they read it and rework
 whatever you got wrong. A ruling that dies with the workspace was a decision
-made in secret.
+made in secret. Next to it list **Proposed terms** — every term ICs
+proposed, collected from the ledger — so your human partner can decide
+whether to run superteam:domain-modeling; the lead never edits `CONTEXT.md`.
 
 When the final whole-branch review is clean and its fixes are merged,
 delete this plan's workspace (`rm -rf <workspace>`) — the git history is

@@ -121,6 +121,7 @@ Agent:
     - Proper error handling?
     - DRY without premature abstraction?
     - Edge cases handled?
+    - Names or vocabulary that contradict `CONTEXT.md` (if present) — flag, don't fix
 
     **Tests:**
     - Do the new and changed tests verify real behavior, not mocks?

@@ -44,6 +44,12 @@ Agent:
 
     Work from: [directory]
 
+    If `CONTEXT.md` exists (or `CONTEXT-MAP.md` points to one for your area),
+    read it and use its terms in code, tests and commit messages. Never edit
+    `CONTEXT.md`, `CONTEXT-MAP.md` or `docs/adr/`; a term you need that is
+    missing or contradicts the glossary goes under **Proposed terms** in your
+    report (use the closest existing term meanwhile).
+
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
 
@@ -138,6 +144,7 @@ Agent:
       - GREEN: command run and relevant passing output after implementation
     - Files changed
     - Self-review findings (if any)
+    - Proposed terms (or "none")
     - Any issues or concerns
 
     Then report back with ONLY (under 15 lines — the detail lives in the
