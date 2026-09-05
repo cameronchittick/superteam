@@ -17,15 +17,15 @@ Brief (Cameron via lead-b, 2026-09-05): `model: inherit` everywhere is expensive
 | **researcher** | Read-only investigation that returns a conclusion, not file dumps: codebase walks, spike probes, docs/API lookup, one design brief in a design-it-twice pass | `sonnet` — synthesis across files needs more than lookup; pure file-finding stays on the built-in `Explore` (haiku-class, already exists, reuse it) | medium | read-only: `disallowedTools: Edit, Write, NotebookEdit`; Bash allowed for `git log/show`, test runs | subagent, no isolation, parallel-safe | Matt: Explore walk + design-agent briefs (one constraint each); superteam brainstorming Spike path | Edit files, propose commits, spawn agents, write to CONTEXT.md |
 | **implementer** | = today's `ic.md`, renamed. Owns one task's files in a worktree, TDD, commits, reports diff + Proposed terms | `sonnet` default — bounded implementation from a brief; lead overrides per Model Selection: `haiku` when the plan text contains the code (transcription + tests), `opus` for multi-file integration or a fix-loop escalation | medium | all | named subagent + `isolation: worktree` | upstream implementer-prompt + Model Selection; superteam ic.md 6-step body | Touch files outside the brief, edit CONTEXT.md/ADRs, spawn reviewers, merge |
 | **reviewer** | Reads a diff or a document once and returns a verdict with file:line evidence. Seats: per-task (spec+quality, one seat), Standards axis, Spec axis, scoped re-review, spec-document review, plan-document review | `sonnet` default (mid-tier floor: "turn count beats price"); lead overrides to `opus` for the final whole-branch review and for Standards on risky diffs (concurrency, contracts, shared state); `haiku` never (misses subtle findings, costs re-rounds) | high | read-only as researcher; may run one focused test per named doubt | teammate (no isolation), parallel-safe — the two axes run side by side | upstream task-reviewer/re-review/code-reviewer/spec+plan doc reviewers; Matt two-axis split + "no other access, paste it" + word cap | Edit, re-run whole suites, rerank across axes, spawn a second opinion |
-| **grumpy-old-man** | The veteran skeptic. Given a design, plan, candidate list or design-it-twice comparison, returns numbered objections: what is over-engineered, what pages someone at 3am, what was tried before and why it failed, what the deletion test says. Each item gets `kill / keep / shrink`; ends with the one thing he'd cut first | `opus` (or `fable` where available) — judgement is the whole job; a cheap model agrees with the design | high | read-only as researcher | subagent, sequential (one voice, after the approaches exist, before the spec is written) | New (Cameron). Doctrine sources already in superteam: brainstorming YAGNI, Speculative Generality + Middle Man smells (smell-baseline.md), deletion test (codebase-design), TDD "test only at confirmed seams" | Rewrite the design, soften a finding, block (the human decides), edit anything |
+| **skeptic** | The veteran skeptic. Given a design, plan, candidate list or design-it-twice comparison, returns numbered objections: what is over-engineered, what pages someone at 3am, what was tried before and why it failed, what the deletion test says. Each item gets `kill / keep / shrink`; ends with the one thing he'd cut first | `opus` (or `fable` where available) — judgement is the whole job; a cheap model agrees with the design | high | read-only as researcher | subagent, sequential (one voice, after the approaches exist, before the spec is written) | New (Cameron). Doctrine sources already in superteam: brainstorming YAGNI, Speculative Generality + Middle Man smells (smell-baseline.md), deletion test (codebase-design), TDD "test only at confirmed seams" | Rewrite the design, soften a finding, block (the human decides), edit anything |
 | **writer** | Prose deliverables: spec and plan drafts when the lead delegates them, README/docs tasks in a plan, skill text, ADR *drafts* for the human, reports. Follows elements-of-style, "your human partner" voice, exact values verbatim | `sonnet` — structured prose from a brief; `opus` only for skill text (behaviour-shaping content, per writing-skills) | medium | all, but the brief names the files | named subagent + `isolation: worktree` (same shape as implementer, different system prompt: no TDD, self-review checklist instead) | New. Prompt shape from implementer-prompt; checklist from brainstorming "Spec self-review" + writing-plans plan-review categories | Invent values not in the brief, write CONTEXT.md or ADRs (drafts go to the human), touch code |
 | **integrator** | Mechanics after review: merge worktree branches into lane/trunk, resolve textual conflicts, run the full suite, `review-package`, remove worktrees + branches, bump every manifest version, ledger the merge | `sonnet` — conflicts need some judgement; sequential turns dominate cost, not tokens | low | all; runs in the lead's cwd (needs trunk) | subagent, no isolation, **one at a time** (mutates the shared checkout) | New. Steps from team-driven-development "5. Complete the task", finishing-a-development-branch, and this PM's merge flow (diff → merge --no-ff → remove worktree → delete branch → bump → tag task) | Push, rewrite history, resolve a *semantic* conflict silently (report it), edit skill/code content, skip a failing test |
 
 Roles deliberately merged: task-reviewer + standards + spec + re-review + doc reviewers → one `reviewer` (same tools and rules, different prompt file); Explore stays built-in rather than a seventh agent; "fixer" for the fix loop = `implementer` resumed by name; "architect" = the lead in brainstorming, not an agent.
 
-## reviewer vs grumpy-old-man (no overlap by construction)
+## reviewer vs skeptic (no overlap by construction)
 
-| | reviewer | grumpy-old-man |
+| | reviewer | skeptic |
 |---|---|---|
 | When | post-build: a diff exists | pre-build: end of brainstorming, on writing-plans output, on a candidate list |
 | Question | is this diff right? Standards and Spec, file:line | does this deserve to exist? what breaks at 3am, what would you delete, where is the hidden coupling |
@@ -45,13 +45,13 @@ A finding that belongs to the other seat is handed back, not answered: grumpy ne
 | team-driven-development §5 complete task, Finish (merge, worktree cleanup, workspace delete) | lead does it inline | `superteam:integrator`, one dispatch per merge |
 | requesting-code-review §4 (standards + spec) | two `general-purpose` | two `superteam:reviewer` |
 | brainstorming Spike "Investigate", Architectural "Explore project context" when it needs a walk | inline / unspecified | `superteam:researcher` (or built-in `Explore` for pure lookup) |
-| brainstorming Architectural step 4→5 (after approaches, before Present design) | none | `superteam:grumpy-old-man` on the recommended approach — **new gate, offered not forced** (decision 2) |
+| brainstorming Architectural step 4→5 (after approaches, before Present design) | none | `superteam:skeptic` on the recommended approach — **new gate, offered not forced** (decision 2) |
 | brainstorming spec-document-reviewer-prompt | `general-purpose` | `superteam:reviewer` |
 | brainstorming Write design doc (Architectural) | lead writes inline | stays inline by default; `superteam:writer` when the lead delegates (decision 1) |
 | writing-plans plan-document-reviewer-prompt | `general-purpose` | `superteam:reviewer` |
-| writing-plans (before plan review, large plans) | none | `superteam:grumpy-old-man` on the task breakdown, optional |
+| writing-plans (before plan review, large plans) | none | `superteam:skeptic` on the task breakdown, optional |
 | codebase-design "Finding deepening candidates" walk | built-in `Explore` | keep `Explore` for the walk; `superteam:researcher` when the friction questions need synthesis across modules |
-| codebase-design DESIGN-IT-TWICE design agents | `general-purpose` ×3-4 | `superteam:researcher` ×3-4 (one constraint each); then `superteam:grumpy-old-man` on the comparison |
+| codebase-design DESIGN-IT-TWICE design agents | `general-purpose` ×3-4 | `superteam:researcher` ×3-4 (one constraint each); then `superteam:skeptic` on the comparison |
 | dispatching-parallel-agents example + rules | `general-purpose`, `model: "sonnet"` | edit → `superteam:implementer`; investigate → `superteam:researcher`; drop inline model in the example (the agent carries it) |
 | finishing-a-development-branch merge/cleanup steps | lead inline | `superteam:integrator` |
 | using-superteam/references/* (other harnesses) | `general-purpose`/`generalist` mappings | add one row: `superteam:<role>` → the harness's generic agent + that role's prompt file; unchanged behaviour |
@@ -65,15 +65,19 @@ A finding that belongs to the other seat is handed back, not answered: grumpy ne
 
 ## Files on build
 
-- `agents/researcher.md`, `implementer.md` (rename of ic.md, `model: sonnet`), `reviewer.md`, `grumpy-old-man.md`, `writer.md`, `integrator.md`
+- `agents/researcher.md`, `implementer.md` (rename of ic.md, `model: sonnet`), `reviewer.md`, `skeptic.md`, `writer.md`, `integrator.md`
 - Prompt files re-pointed: implementer-prompt, task-reviewer-prompt, re-review-prompt, standards-reviewer, spec-reviewer, spec-document-reviewer-prompt, plan-document-reviewer-prompt, DESIGN-IT-TWICE (subagent_type lines and model placeholder text)
 - SKILL.md edits: team-driven-development (Two kinds of IC, Model Selection wording, §5/Finish → integrator), dispatching-parallel-agents (example + rule), brainstorming (grumpy gate line, researcher line), writing-plans (grumpy optional line), codebase-design (researcher/grumpy lines), requesting-code-review §4, finishing-a-development-branch (integrator), using-superteam references
 - README "What's Inside" agents list; manifests (agents array if `.claude-plugin/plugin.json` lists agents explicitly); tests: a static test that every `subagent_type:` in skills/ names `superteam:<role>` with a matching `agents/<role>.md`, and no agent file says `inherit`
 - Bump 6.7.0 (new agents = minor)
 
+## Backlog (not built)
+
+- `icp-*` agent class (e.g. `icp-tradesman`, `icp-boomer`): a read-only persona agent that reacts as a target customer to give a synthetic opinion on copy, UX and offers; `sonnet`; dispatched on demand from brainstorming or a writer review. Needs the merge-roles written reason before it is added (Cameron via lead, 2026-09-05).
+
 ## Decisions needed
 
 1. **writer** as its own agent (recommended: distinct system prompt is the value) vs fold into implementer with a "prose task" note.
-2. **grumpy-old-man gate** in brainstorming: offered on the Architectural path (recommended) vs mandatory before every spec.
+2. **skeptic gate** in brainstorming: offered on the Architectural path (recommended) vs mandatory before every spec.
 3. **Default models** as tabled (researcher/implementer/writer/integrator sonnet, reviewer sonnet with opus for final, grumpy opus) — confirm, or name `fable` for grumpy.
 4. **integrator** as an agent (recommended: keeps lead context small, one seat mutates trunk) vs keep merge steps inline in the lead.
