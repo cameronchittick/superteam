@@ -11,7 +11,7 @@ Load plan, review critically, execute all tasks, report when complete.
 
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
-**Note:** Tell your human partner that Superteam works much better with access to subagents (Claude Code, Codex CLI, Codex App, Copilot CLI, and Gemini CLI all qualify; see the per-platform tool refs in `../using-superteam/references/`). If subagents are available, use superteam:subagent-driven-development instead of this skill.
+**Scope:** This skill is the single-agent path — for a solo session, or for an IC executing one plan alone. A lead with a team uses superteam:team-driven-development instead. Platform tool names are in `../using-superteam/references/`.
 
 ## The Process
 
@@ -36,6 +36,7 @@ After all tasks complete and verified:
 - Announce: "I'm using the finishing-a-development-branch skill to complete this work."
 - **REQUIRED SUB-SKILL:** Use superteam:finishing-a-development-branch
 - Follow that skill to verify tests, present options, execute choice
+- **Report:** if another session (a lead or PM) briefed you, send it one `SendMessage` with `done`, `blocked`, or `decision needed` on the first line and at most three lines of what and where. No progress streams.
 
 ## When to Stop and Ask for Help
 

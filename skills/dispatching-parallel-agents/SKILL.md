@@ -65,24 +65,32 @@ Each agent gets:
 
 ### 3. Dispatch in Parallel
 
-Issue all three subagent dispatches in the same response — they run in parallel:
+Issue all three `Agent` calls in the same response — they run in parallel. Give each a `name` and an explicit `model`:
 
 ```text
-Subagent (general-purpose): "Fix agent-tool-abort.test.ts failures"
-Subagent (general-purpose): "Fix batch-completion-behavior.test.ts failures"
-Subagent (general-purpose): "Fix tool-approval-race-conditions.test.ts failures"
+Agent(name: "fix-abort",    model: "sonnet", isolation: "worktree", prompt: "Fix agent-tool-abort.test.ts failures ...")
+Agent(name: "fix-batch",    model: "sonnet", isolation: "worktree", prompt: "Fix batch-completion-behavior.test.ts failures ...")
+Agent(name: "fix-approval", model: "sonnet", isolation: "worktree", prompt: "Fix tool-approval-race-conditions.test.ts failures ...")
 # All three run concurrently.
 ```
 
 Multiple dispatch calls in one response = parallel execution. One per response = sequential.
+
+- **Agents will edit files:** pass `isolation: "worktree"` on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
+- **Agents only investigate:** omit `isolation`. With agent teams enabled, named agents become teammates and can message each other via `SendMessage`.
+
+Other harnesses: the same pattern with your platform's subagent dispatch; see `../using-superteam/references/`.
 
 ### 4. Review and Integrate
 
 When agents return:
 - Read each summary
 - Verify fixes don't conflict
+- Worktree-isolated agents: review `git diff <your-branch>..worktree-<name>`, then merge each `worktree-<name>` branch into your branch
 - Run full test suite
 - Integrate all changes
+
+If a summary is incomplete or a fix needs a follow-up, resume the agent by name with `SendMessage` instead of re-dispatching — it keeps its context.
 
 ## Agent Prompt Structure
 
