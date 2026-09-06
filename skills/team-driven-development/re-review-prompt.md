@@ -18,9 +18,9 @@ Agent:
     findings; an implementer has attempted to fix them. Your job is to
     verdict each finding and inspect the fix diff — nothing else.
 
-    ## The Task
+    ## Task Brief
 
-    Read the task brief: [BRIEF_FILE]
+    [TASK_BRIEF — paste the output of scripts/task-brief --print PLAN N verbatim]
 
     ## The Findings Under Verification
 
@@ -28,7 +28,9 @@ Agent:
 
     ## The Fix
 
-    Read the implementer's report (fix reports are appended at the end):
+    Read the implementer's report (fix reports are appended at the end;
+    the lead copied it out of the worktree to [REPORT_FILE] in this
+    checkout before dispatching you):
     [REPORT_FILE]
 
     **Fix base:** [FIX_BASE_SHA] (the head the previous review saw)
@@ -104,10 +106,12 @@ Agent:
 **Placeholders:**
 - `model` — omit; the agent file carries the default, which suits a scoped
   re-review. Override only with a reason from SKILL.md Model Selection
-- `[BRIEF_FILE]` — the task brief file (same file the implementer worked from)
+- `[TASK_BRIEF]` — the same inlined brief text the implementer worked from
+  (`scripts/task-brief --print PLAN_FILE N`)
 - `[FINDINGS]` — the Critical/Important findings and spec gaps from the
   previous review, copied verbatim, one per bullet
-- `[REPORT_FILE]` — the implementer's report file (fix reports appended)
+- `[REPORT_FILE]` — the implementer's report file, copied out of the
+  worktree into this checkout (fix reports appended)
 - `[FIX_BASE_SHA]` — the head the previous review saw
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — the path `scripts/review-package PLAN_FILE FIX_BASE HEAD` printed

@@ -101,6 +101,14 @@ tasks you have already merged, its first step is `git merge <lane>` (your
 lane branch) so it starts from the merged prior work — say so in the
 dispatch. Never dispatch two implementers on the same files at once.
 
+A worktree IC never receives an absolute path into your checkout:
+`.superteam/` is gitignored and absent from the worktree, and the guard
+refuses the shared-checkout path. Anything an IC must read by path is
+either committed before the worktree is created or copied into the
+worktree by you. This is why the dispatch inlines the task brief and
+global constraints as text instead of pointing at a brief file, and why
+the IC's report lives at a path relative to its own cwd.
+
 **Reviewer** — a named agent with NO `isolation`. Review is read-only, so it
 needs no worktree; when agent teams are enabled it runs as a true teammate
 in your working directory, otherwise as a named subagent — the call is the
@@ -214,9 +222,12 @@ a ledger file, not only in todos.
 
 - Each plan owns a workspace: at skill start, run this skill's
   `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored
-  directory (`<repo-root>/.superteam/sdd/<plan-basename>/`), home to
-  every artifact for THIS plan: ledger, briefs, reports, review packages.
-  Another plan's directory is never yours to read or write.
+  directory, `.superteam/sdd/<plan-basename>/` under the repo root, home to
+  every artifact for THIS plan in your own checkout: ledger, review
+  packages, and any file-mode brief you generate for a reviewer. Another
+  plan's directory is never yours to read or write. A worktree implementer
+  never receives a path into this directory (see "Two kinds of IC" above)
+  — it does not exist inside the worktree.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
   line names your plan file, tasks with a `Task <N>: complete` line are DONE
   — do not re-dispatch them; resume at the first task without one. A task
@@ -332,20 +343,21 @@ depends on merged prior tasks, the dispatch says
 "first run `git merge <lane>`".
 
 - **Task brief:** before dispatching an implementer, run this skill's
-  `scripts/task-brief PLAN_FILE N` — it extracts the task's full text to a
-  uniquely named file and prints the path. Compose the dispatch so the
-  brief stays the single source of
-  requirements. Your dispatch should contain: (1) one line on where this
-  task fits in the project; (2) the brief path, introduced as "read this
-  first — it is your requirements, with the exact values to use verbatim";
-  (3) interfaces and decisions from earlier tasks that the brief cannot
-  know; (4) your resolution of any ambiguity you noticed in the brief;
-  (5) the report-file path and report contract. Exact values (numbers,
-  magic strings, signatures, test cases) appear only in the brief. Never
+  `scripts/task-brief --print PLAN_FILE N` and paste its stdout into the
+  dispatch prompt under `## Task Brief`. The dispatch contains the inlined
+  brief and global constraints, never a path into `.superteam/` — a
+  worktree IC cannot read that path (see "Two kinds of IC"). Your dispatch
+  should contain: (1) one line on where this task fits in the project;
+  (2) the inlined `## Task Brief`, which is the requirements, with the
+  exact values to use verbatim; (3) interfaces and decisions from earlier
+  tasks that the brief cannot know; (4) your resolution of any ambiguity
+  you noticed in the brief; (5) the report-file path (relative to the
+  IC's worktree) and report contract. Exact values (numbers, magic
+  strings, signatures, test cases) appear only in the brief text. Never
   make a subagent read the whole plan file.
-- **Report file:** name the implementer's report file after the brief
-  (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
-  the dispatch prompt. The implementer writes the full report there and
+- **Report file:** the implementer writes its report to
+  `.superteam/sdd/<plan-basename>/task-N-report.md` relative to its own
+  cwd (its worktree) — put that relative path in the dispatch prompt. It
   returns only status, commits, a one-line test summary, and concerns.
 - A dispatch prompt describes one task, not the session's history. Do not
   paste accumulated prior-task summaries ("state after Tasks 1-3") into
@@ -368,6 +380,12 @@ depends on merged prior tasks, the dispatch says
 Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 2. Handle the report
+
+First, copy the implementer's report out of the worktree into this plan's
+workspace, so the reviewer (a teammate in your checkout) can read it:
+`cp .claude/worktrees/<name>/.superteam/sdd/<plan-basename>/task-N-report.md <workspace>/task-N-report.md`.
+Do this before dispatching any reviewer, and again after every fix round
+(the fix report is appended to the same worktree-relative file).
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
@@ -412,8 +430,12 @@ needed.
   call. Use the BASE you recorded before dispatching the implementer —
   never `HEAD~1`, which silently truncates multi-commit tasks. Never
   dispatch a task reviewer without a diff file.
-- **Reviewer inputs:** the task reviewer gets three paths — the same brief
-  file, the report file, and the review package — plus the global
+- **Reviewer inputs:** the task reviewer gets the same inlined Task Brief
+  text you gave the implementer (the brief is no longer a file — or, if
+  you'd rather hand it a path, write one with
+  `scripts/task-brief PLAN_FILE N` file mode into this plan's workspace,
+  which the reviewer can read in your checkout), the report file you
+  copied into the workspace, and the review package — plus the global
   constraints that bind the task.
 - The global-constraints block you hand the reviewer is its attention
   lens. Copy the binding requirements verbatim from the plan's Global
@@ -468,26 +490,32 @@ its `name` with the open findings verbatim. Its context is intact: it knows
 the task, the code, and its own choices; it fixes in the same worktree
 branch. No new agent, no new seat.
 If your harness cannot send another message to a live subagent, dispatch a
-fresh implementer carrying the brief path, the report-file path, and the
-findings — the report file is the persistent memory either way.
+fresh implementer carrying the inlined Task Brief, the copy of the report
+you made in this plan's workspace, and the findings — the report file is
+the persistent memory either way.
 
 **Rounds 4-5 — dispatch a fresh implementer on a more capable model** — a
 new `superteam:implementer` call with a new `name`, `isolation: "worktree"`,
 and a `model` at least one tier up, the reason written on the call (per
 Model Selection). Its first step is
 `git merge worktree-<old-name>` so it starts from the prior attempt; it gets
-the brief path, the report-file path, the open findings, and this framing: "A prior implementer attempted this task
-[N] times; you own it now. Read the report file for what was tried." A loop
-that survives three resumes usually means the implementer cannot see its
-own problem — fresh eyes and a capability bump in one move.
+the inlined Task Brief, the open findings, and the prior attempts summarized
+from your copy of the report (a fresh worktree cannot read the old
+worktree's gitignored report file directly), with this framing: "A prior
+implementer attempted this task [N] times; you own it now." It appends its
+own fix report to the same `.superteam/sdd/<plan-basename>/task-N-report.md`
+path relative to its cwd. A loop that survives three resumes usually means
+the implementer cannot see its own problem — fresh eyes and a capability
+bump in one move.
 
 **Every round, either way:** the implementer fixes, re-runs the tests
-covering the amended code, appends its fix report to the same report file,
-and returns the short contract. Before re-dispatching the reviewer, confirm
-the fix report contains the covering tests, the command run, and the
-output; dispatch the re-review once all three are present. Name the
-covering test files in the fix message — a one-line fix does not need the
-whole suite.
+covering the amended code, appends its fix report to the same
+worktree-relative report file, and returns the short contract. Re-copy the
+report out of the worktree (the same `cp` from "2. Handle the report")
+before re-dispatching the reviewer; confirm the fix report contains the
+covering tests, the command run, and the output; dispatch the re-review
+once all three are present. Name the covering test files in the fix
+message — a one-line fix does not need the whole suite.
 
 **The re-review is scoped.** Run `scripts/review-package PLAN_FILE FIX_BASE HEAD`
 where FIX_BASE is the head the previous review saw, and dispatch
@@ -537,6 +565,9 @@ Agent:
   subagent_type: "superteam:integrator"  # general-purpose if the plugin agent is not loaded
   description: "Merge Task 3 into <lane>"
   prompt: |
+    Copy the report out of the worktree first if the lead has not:
+    `cp .claude/worktrees/task-3-impl/.superteam/sdd/<plan-basename>/task-3-report.md <workspace>/task-3-report.md`
+    — `git worktree remove` below deletes it for good.
     Merge worktree-task-3-impl into <lane> in this checkout.
     Files the brief allowed: [list] — confirm `git diff <lane>..worktree-task-3-impl --stat`
     moved nothing else. `git merge --no-ff`, run `<test command>`, then
@@ -640,7 +671,7 @@ You: I'm using Team-Driven Development to execute this plan.
 
 Task 1: Hook installation script
 
-[Run task-brief for Task 1; Agent name=task-1-impl subagent_type=superteam:implementer isolation=worktree with brief + report paths + context]
+[Run task-brief --print for Task 1; Agent name=task-1-impl subagent_type=superteam:implementer isolation=worktree with inlined brief + global constraints + worktree-relative report path + context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
@@ -652,6 +683,7 @@ Implementer: [Later]
   - Self-review: Found I missed --force flag, added it
   - Committed
 
+[Copy the report out of the worktree into this plan's workspace]
 [Run review-package PLAN_FILE BASE worktree-task-1-impl; Agent name=task-1-review subagent_type=superteam:reviewer (no isolation) with the printed path]
 Task reviewer: Spec ✅ - all requirements met, nothing extra.
   Strengths: Good test coverage, clean. Issues: None. Task quality: Approved.
@@ -661,13 +693,14 @@ Task reviewer: Spec ✅ - all requirements met, nothing extra.
 
 Task 2: Recovery modes
 
-[Run task-brief for Task 2; dispatch implementer with brief + report paths + context]
+[Run task-brief --print for Task 2; dispatch implementer with inlined brief + global constraints + worktree-relative report path + context]
 
 Implementer: [No questions]
   - Added verify/repair modes
   - 8/8 tests passing
   - Committed
 
+[Copy the report out of the worktree into this plan's workspace]
 [Run review-package PLAN_FILE BASE HEAD; dispatch task reviewer with the printed path]
 Task reviewer: Spec ❌:
   - Missing: Progress reporting (spec says "report every 100 items")
@@ -676,6 +709,7 @@ Task reviewer: Spec ❌:
 [Fix round 1: SendMessage to task-2-impl with both findings]
 Implementer: Added progress reporting, extracted PROGRESS_INTERVAL constant.
   Re-ran test/recovery.test.js — 10/10 passing. Fix report appended.
+[Re-copy the report out of the worktree]
 
 [Run review-package PLAN_FILE FIX_BASE HEAD; dispatch scoped re-review]
 Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).

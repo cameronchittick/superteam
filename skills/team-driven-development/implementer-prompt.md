@@ -12,14 +12,25 @@ Agent:
   prompt: |
     You are implementing Task N: [task name]
 
-    ## Task Description
+    ## Task Brief
 
-    Read your task brief first: [BRIEF_FILE]
-    It contains the full task text from the plan.
+    [TASK_BRIEF — paste the output of scripts/task-brief --print PLAN N verbatim]
+
+    ## Global Constraints
+
+    [GLOBAL_CONSTRAINTS — copied verbatim from the plan]
 
     ## Context
 
     [Scene-setting: where this fits, dependencies, architectural context]
+
+    ## Paths
+
+    All paths are relative to your cwd (your worktree). Never use the main
+    checkout's absolute path; never `cd` out of your worktree. One simple
+    command per Bash call. If a path in this prompt starts with `/`, it is
+    the lead's mistake — report NEEDS_CONTEXT with the path instead of
+    using it.
 
     ## Before You Begin
 
@@ -41,7 +52,7 @@ Agent:
     5. Self-review (see below)
     6. Report back
 
-    Work from: [directory]
+    Work from your cwd (your worktree).
 
     If `CONTEXT.md` exists (or `CONTEXT-MAP.md` points to one for your area),
     read it and use its terms in code, tests and commit messages. Never edit
@@ -135,7 +146,9 @@ Agent:
 
     ## Report Format
 
-    Write your full report to [REPORT_FILE]:
+    Write your full report to
+    `.superteam/sdd/[PLAN_BASENAME]/task-N-report.md` relative to your cwd
+    (`mkdir -p` first):
     - What you implemented (or what you attempted, if blocked)
     - What you tested and test results
     - **TDD Evidence** (if TDD was required for this task):
@@ -152,7 +165,7 @@ Agent:
     - Commits created (short SHA + subject)
     - One-line test summary (e.g. "14/14 passing, output pristine")
     - Your concerns, if any
-    - The report file path
+    - The report file path, relative to your worktree
 
     If BLOCKED or NEEDS_CONTEXT, put the specifics in the final message
     itself — the controller acts on it directly.
