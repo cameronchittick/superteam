@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# TaskCreated hook for superteam. Gated on task_subject ^Task [0-9]+: --
+# every other task is accepted untouched. Rejects (exit 2) a Task N task
+# whose subject lacks a roster role tag, whose description lacks a
+# "Files owned:" or "Done:" line, or whose Files owned overlap an open
+# (pending/in_progress) task on the same list outside its own Task N family.
+# Task dir: SUPERTEAM_TASKS_DIR, else
+# ~/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-team_name}. Fails open.
+#
+# "Upstream" exemption: the spec exempts a task that lists a file owned by
+# a task it is blockedBy. The TaskCreated payload carries no blockedBy --
+# dependencies are added after creation -- so upstream reduces here to
+# "not open at the same time": a completed owner never blocks creation.
+
+usage() {
+    cat <<'EOF'
+Usage: task-created-check
+TaskCreated hook: rejects (exit 2) a "Task N:" task without a [role] tag,
+a "Files owned:" line and a "Done:" line, or whose Files owned overlap an
+open task outside its Task N family. Reads the TaskCreated JSON payload from stdin.
+Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
+EOF
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+[ "${SUPERTEAM_SKIP_VERIFY_GATE:-}" = "1" ] && exit 0
+
+input="$(cat 2>/dev/null || true)"
+
+# Placeholder for an escaped quote (\") inside a JSON string value. BSD
+# sed's BRE has no alternation, so [^"]* stops at the first escaped quote
+# and truncates the value; swapping \" for a control character that cannot
+# appear in JSON text keeps the whole value, and json_unescape puts it back.
+JSON_ESCQ="$(printf '\001')"
+
+json_field() {
+    printf '%s' "$1" | tr '\n' ' ' | sed "s/\\\\\"/$JSON_ESCQ/g" | \
+        sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+json_unescape() {
+    printf '%s' "$1" | sed -e 's/\\n/\
+/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g' -e "s/$JSON_ESCQ/\"/g"
+}
+
+subject="$(json_unescape "$(json_field "$input" "task_subject")")"
+printf '%s' "$subject" | grep -qE '^Task [0-9]+:' || exit 0
+
+desc="$(json_unescape "$(json_field "$input" "task_description")")"
+family="$(printf '%s' "$subject" | sed -n 's/^\(Task [0-9]*\):.*/\1/p')"
+
+if ! printf '%s' "$subject" | grep -qE '\[(implementer|writer|reviewer|integrator|researcher|skeptic)\]$'; then
+    echo "Task subject must end with a role tag: [implementer] [writer] [reviewer] [integrator] [researcher] [skeptic]" >&2
+    exit 2
+fi
+
+owned="$(printf '%s\n' "$desc" | sed -n 's/^Files owned:[[:space:]]*//p' | head -1)"
+[ -n "$owned" ] || { echo "Task description needs a 'Files owned: <paths>' line" >&2; exit 2; }
+
+printf '%s\n' "$desc" | grep -qE '^Done:[[:space:]]*[^[:space:]]' \
+    || { echo "Task description needs a 'Done: <evidence>' line" >&2; exit 2; }
+
+team="$(json_field "$input" "team_name")"
+dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
+[ -d "$dir" ] || exit 0
+
+for f in "$dir"/*.json; do
+    [ -f "$f" ] || continue
+    other="$(tr '\n' ' ' < "$f")"
+    status="$(json_field "$other" "status")"
+    case "$status" in pending|in_progress) ;; *) continue ;; esac
+    osubj="$(json_unescape "$(json_field "$other" "subject")")"
+    ofam="$(printf '%s' "$osubj" | sed -n 's/^\(Task [0-9]*\):.*/\1/p')"
+    [ -n "$ofam" ] && [ "$ofam" = "$family" ] && continue
+    oowned="$(json_unescape "$(json_field "$other" "description")" | sed -n 's/^Files owned:[[:space:]]*//p' | head -1)"
+    set -f  # no globbing: a Files owned entry like agents/*.md is a literal
+    for p in $(printf '%s' "$owned" | tr ',' ' '); do
+        for q in $(printf '%s' "$oowned" | tr ',' ' '); do
+            if [ "$p" = "$q" ]; then
+                set +f
+                echo "Files owned overlap: '$p' is already owned by open task '$osubj' ($(basename "$f" .json)). Split the files or make this task depend on that one." >&2
+                exit 2
+            fi
+        done
+    done
+    set +f
+done
+
+exit 0

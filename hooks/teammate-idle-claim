@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# TeammateIdle hook for superteam. Role-aware: derives the idle teammate's
+# role from the team config member's agentType ("superteam:<role>") at
+# ${SUPERTEAM_TEAMS_DIR:-~/.claude/teams}/<team_name>/config.json, else
+# SUPERTEAM_ROLE_<NAME> (name upper-cased, "-" -> "_"); if a pending,
+# unowned, unblocked "Task N:" task tagged with that role exists, exits 2
+# with 'claim "<subject>"' so the teammate keeps working. Never names
+# another role's task. Fails open (exit 0) on anything unexpected.
+
+usage() {
+    cat <<'EOF'
+Usage: teammate-idle-claim
+TeammateIdle hook: exits 2 with 'claim "<subject>"' when a pending, unowned,
+unblocked "Task N:" task of the idle teammate's role exists; else exit 0.
+Reads the TeammateIdle JSON payload from stdin.
+Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this hook.
+EOF
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+[ "${SUPERTEAM_SKIP_VERIFY_GATE:-}" = "1" ] && exit 0
+
+input="$(cat 2>/dev/null || true)"
+
+# Placeholder for an escaped quote (\") inside a JSON string value; see the
+# same comment in hooks/task-completed-verify. BSD sed's BRE has no
+# alternation, so [^"]* would truncate a value at its first escaped quote.
+JSON_ESCQ="$(printf '\001')"
+
+json_field() {
+    printf '%s' "$1" | tr '\n' ' ' | sed "s/\\\\\"/$JSON_ESCQ/g" | \
+        sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+json_unescape() {
+    printf '%s' "$1" | sed -e 's/\\n/\
+/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g' -e "s/$JSON_ESCQ/\"/g"
+}
+
+name="$(json_field "$input" "teammate_name")"
+[ -n "$name" ] || exit 0
+
+team="$(json_field "$input" "team_name")"
+cfg="${SUPERTEAM_TEAMS_DIR:-$HOME/.claude/teams}/$team/config.json"
+
+role=""
+if [ -f "$cfg" ]; then
+    # member object for this name -> its agentType; superteam:<role> -> <role>.
+    # [^}]* keeps the match inside one member object.
+    role="$(tr '\n' ' ' < "$cfg" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"'"$name"'"[^}]*"agentType"[[:space:]]*:[[:space:]]*"superteam:\([a-z]*\)".*/\1/p' | head -1)"
+fi
+if [ -z "$role" ]; then
+    envname="SUPERTEAM_ROLE_$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')"
+    role="$(printenv "$envname" 2>/dev/null || true)"
+fi
+case "$role" in
+    implementer|writer|reviewer|integrator|researcher|skeptic) ;;
+    *) exit 0 ;;
+esac
+
+dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
+[ -d "$dir" ] || exit 0
+
+# id -> 0 if that task file is completed (or missing)
+is_done() {
+    local f="$dir/$1.json"
+    [ -f "$f" ] || return 0
+    [ "$(json_field "$(tr '\n' ' ' < "$f")" "status")" = "completed" ]
+}
+
+# Task files are named by numeric id; lowest id wins.
+for f in $(ls "$dir"/*.json 2>/dev/null | sort -t/ -k1 -n); do
+    t="$(tr '\n' ' ' < "$f")"
+    [ "$(json_field "$t" "status")" = "pending" ] || continue
+    [ -z "$(json_field "$t" "owner")" ] || continue
+    subj="$(json_unescape "$(json_field "$t" "subject")")"
+    printf '%s' "$subj" | grep -qE "^Task [0-9]+:.*\[$role\]$" || continue
+    blocked=0
+    for dep in $(printf '%s' "$t" | sed -n 's/.*"blockedBy"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | tr -d '" ' | tr ',' ' '); do
+        is_done "$dep" || { blocked=1; break; }
+    done
+    [ "$blocked" -eq 0 ] || continue
+    echo "claim \"$subj\" — TaskUpdate owner=$name status=in_progress, then do it." >&2
+    exit 2
+done
+
+exit 0
