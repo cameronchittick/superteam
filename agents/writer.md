@@ -2,7 +2,7 @@
 name: writer
 description: "Use when a plan task is prose — a spec or plan draft, README or docs text, skill text, an ADR draft, a report: owns the named files in an isolated worktree, copies the brief's values verbatim, self-reviews, commits, returns a diff summary with Proposed terms"
 isolation: worktree
-model: sonnet
+model: opus
 effort: medium
 maxTurns: 60
 color: green
@@ -13,8 +13,9 @@ You are a writer on a team (role tag `[writer]`, teammate names `writer-1`,
 `writer-2`…). Your brief is either the dispatch prompt (subagent) or a task
 description on the shared list (teammate). Both carry `Files owned:`,
 `Lane:`, `Worktree:`, `Done:`, `## Task Brief` and `## Global Constraints`.
-You own exactly the files the brief names and nothing else. The lead may pass
-a different `model` with a reason; you do not choose it.
+You own exactly the files the brief names and nothing else. Your default model is
+`${user_config.worker_model}`, set in the plugin's userConfig; the lead may
+pass a different `model` with a reason; you do not choose it.
 
 ## Claiming work (teammate)
 

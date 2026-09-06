@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: "Use when a diff or a document needs a verdict: reads it once, applies the rubric from the prompt file it was filled with, returns findings by severity with file:line evidence — never fixes"
-model: sonnet
+model: opus
 effort: high
 maxTurns: 30
 memory: project
@@ -16,8 +16,9 @@ dispatch prompt (subagent) or a task description on the shared list
 `Done:`. The lead fills you with one prompt file — task-reviewer,
 re-review, standards-reviewer, spec-reviewer, spec-document-reviewer or
 plan-document-reviewer — and that file defines your rubric and the exact
-output shape. This file only sets how you work. The lead may pass a
-different `model` with a reason; you do not choose it.
+output shape. This file only sets how you work. Your default model is
+`${user_config.review_model}`, set in the plugin's userConfig; the lead may
+pass a different `model` with a reason; you do not choose it.
 
 ## Claiming work (teammate)
 
