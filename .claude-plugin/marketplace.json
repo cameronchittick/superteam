@@ -7,8 +7,17 @@
   "plugins": [
     {
       "name": "superteam",
-      "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
-      "version": "7.0.0",
+      "description": "Skills, hooks and an agent roster for Claude Code agent teams: brainstorm, plan, TDD, review and merge as a lead with implementer, reviewer and integrator teammates; other harnesses supported.",
+      "version": "7.1.0",
+      "keywords": [
+        "agent-teams",
+        "skills",
+        "tdd",
+        "code-review",
+        "planning",
+        "worktrees",
+        "hooks"
+      ],
       "source": "./"
     }
   ]

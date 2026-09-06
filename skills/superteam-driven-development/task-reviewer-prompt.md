@@ -1,27 +1,35 @@
-# Task Reviewer Prompt Template
+# Task Reviewer Prompt Template — spec axis
 
-Use this template when dispatching a task reviewer teammate. The reviewer
-reads the task's diff once and returns two verdicts: spec compliance and
-code quality.
+Use this template when dispatching the **spec** seat of a task review. The
+reviewer reads the task's diff once and returns one verdict: does the
+implementation match its requirements?
 
-**Purpose:** Verify one task's implementation matches its requirements (nothing
-more, nothing less) and is well-built (clean, tested, maintainable)
+The **standards** seat is a separate teammate filled with
+`task-standards-prompt.md`, running in parallel from the same
+`agents/reviewer.md`. The two axes are never reranked against each other —
+a Critical standards finding does not raise a spec finding's severity, and
+vice versa. Say nothing about code quality here; that seat covers it.
+
+**Purpose:** Verify one task's implementation matches its requirements —
+nothing more, nothing less
 
 ```
 Agent:
-  name: "task-N-review"          # no isolation: read-only, runs as a teammate
+  name: "task-N-review-spec"     # no isolation: read-only, runs as a teammate
   subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
-  description: "Review Task N (spec + quality)"
+  description: "Review Task N (spec axis)"
   model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
-    You are reviewing one task's implementation: first whether it matches its
-    requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-branch review happens separately after
-    all tasks are complete.
+    You are reviewing one task's implementation on ONE axis: does it match
+    its requirements? A second reviewer holds the standards axis in
+    parallel — leave code quality, smells and repo standards to that seat and
+    never rerank across the two. This is a task-scoped gate, not a merge
+    review — a broad whole-branch review happens separately after all tasks
+    are complete.
 
     ## Claiming Your Task
 
-    Team mode: you claimed `Task N: review [reviewer]`; the description's
+    Team mode: you claimed `Task N: review spec [reviewer]`; the description's
     `Reviews:` line names the branch. Fallback mode: if `TaskUpdate` is
     available, set owner=<your name>, status=in_progress before starting;
     status=completed only after your verdict is written.
@@ -103,7 +111,7 @@ Agent:
     Re-running the suite to regenerate what you failed to read is not
     verification; illegibility of the evidence is not invalidation of it.
 
-    ## Part 1: Spec Compliance
+    ## Spec Compliance — your whole job
 
     Compare the diff against What Was Requested:
 
@@ -124,28 +132,10 @@ Agent:
     unchanged code or spans tasks), report it as a ⚠️ item instead of
     broadening your search.
 
-    ## Part 2: Code Quality
-
-    **Code quality:**
-    - Clean separation of concerns?
-    - Proper error handling?
-    - DRY without premature abstraction?
-    - Edge cases handled?
-    - Names or vocabulary that contradict `CONTEXT.md` (if present) — flag, don't fix
-    - Baseline smells per superteam:requesting-code-review's `smell-baseline.md` — each is a labelled judgement call ("possible Feature Envy"), a documented repo standard overrides it, skip what tooling enforces
-
-    **Tests:**
-    - Do the new and changed tests verify real behavior, not mocks?
-    - Are the task's edge cases covered?
-
-    **Structure:**
-    - Does each file have one clear responsibility with a well-defined interface?
-    - Are units decomposed so they can be understood and tested independently?
-    - Is the implementation following the file structure from the plan?
-    - Deletion test: would deleting this unit concentrate complexity, or just move it? A shallow module (interface nearly as complex as its implementation) is a finding.
-    - Did this change create new files that are already large, or
-      significantly grow existing files? (Don't flag pre-existing file
-      sizes — focus on what this change contributed.)
+    **Tests are in scope only as requirements.** Whether the task's stated
+    behavior is covered at all is a spec question and yours to answer.
+    Whether the tests are well-built — mocks, structure, smells — belongs to
+    the standards seat. Do not duplicate it.
 
     Your report should point at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
@@ -197,14 +187,19 @@ Agent:
 
     ### Assessment
 
-    **Task quality:** [Approved | Needs fixes]
+    **Spec verdict:** [Approved | Needs fixes]
 
     **Reasoning:** [1-2 sentence technical assessment]
+
+    Rank findings within this axis only. The standards seat ranks its own;
+    the lead aggregates the two under `## Spec` and `## Standards` without
+    merging the rankings.
 ```
 
 **Placeholders:**
-- `model` — omit; the agent file carries the default. Override only with a
-  reason from SKILL.md Model Selection (opus for a risky diff)
+- `model` — omit; the reviewer already defaults to `opus`, so a risky diff
+  has no tier left to climb. Raise `effort` instead and say why, per SKILL.md
+  Model Selection ("Override up")
 - `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
   prints the path; same file the implementer worked from)
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
@@ -220,4 +215,7 @@ Agent:
   path it wrote; the package never enters the controller's context)
 
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
-(Critical/Important/Minor), Task quality verdict
+(Critical/Important/Minor), Spec verdict
+
+**Paired seat:** `task-standards-prompt.md` fills the standards reviewer for
+the same task, from the same `agents/reviewer.md`, at the same time.

@@ -84,7 +84,7 @@ export CLAUDE_CODE_ENABLE_TODO_TOOLS=1
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 ```
 
-- Or ask Claude to run `superteam:setup`, which merges the same two vars into the `env` block of your `~/.claude/settings.json` and shows you the diff. A plugin cannot set them for you: a plugin's own `settings.json` supports only the `agent` and `subagentStatusLine` keys.
+- Or ask Claude to run `superteam:setup-superteam`, which merges the same two vars into the `env` block of your `~/.claude/settings.json` and shows you the diff. A plugin cannot set them for you: a plugin's own `settings.json` supports only the `agent` and `subagentStatusLine` keys.
 
 Also recommended, in your Claude Code settings:
 
@@ -288,7 +288,11 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps.
 
-4. **superteam-driven-development** or **executing-plans** - Activates with plan. Dispatches one implementer IC per task, in its own worktree, with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+4. **superteam-driven-development** or **executing-plans** - Activates with plan. Dispatches one implementer IC per task, in its own worktree, with a two-axis per-task review, or executes in batches with human checkpoints.
+
+   Per-task review is two reviewer seats running in parallel off the same diff: `Task N: review spec` judges the change against the plan task and the spec, `Task N: review standards` judges it against the repo's standards files and the smell baseline, citing file + rule. Merge waits on both, and the two axes are never reranked against each other.
+
+   Every implement task's description carries a `Standards:` line — the repo's standards files (`CONTRIBUTING.md`, `CODING_STANDARDS.md`, `CLAUDE.md`, `AGENTS.md`, plus any the plan names), resolved once per plan. The implementer reads them first, and the standards reviewer judges against the same list.
 
 5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
 
@@ -334,29 +338,40 @@ Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) b
 
 Named roles the skills dispatch as `superteam:<name>`; each carries its own model so nothing inherits the session's.
 
-- **implementer** — owns one plan task's files in an isolated worktree, TDD, commits, reports a diff summary — sonnet
-- **researcher** — read-only investigation that returns a conclusion with file:line evidence, or one design-it-twice brief — sonnet
-- **reviewer** — reads a diff or document once and returns a verdict by severity; the prompt file it is filled with sets the rubric — sonnet
+- **implementer** — owns one plan task's files in an isolated worktree, TDD, commits, reports a diff summary — opus
+- **researcher** — investigation that returns a conclusion with file:line evidence, or one design-it-twice brief; never edits an existing file, and may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`) — sonnet
+- **reviewer** — reads a diff or document once and returns a verdict by severity; the prompt file it is filled with sets the rubric — opus
 - **skeptic** — pre-build veteran skeptic: numbered kill/keep/shrink verdicts on a spec, plan or approach list — opus
-- **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) in an isolated worktree, self-review instead of TDD — sonnet
+- **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) in an isolated worktree, self-review instead of TDD — opus
 - **integrator** — merges a reviewed branch, runs the full suite, removes the worktree, bumps manifests when told — sonnet
+
+The plugin's `worker_model` and `review_model` userConfig keys name the
+intended knob for the three `opus` seats, but Claude Code does not substitute
+`${user_config.*}` in agent frontmatter (verified 2.1.263), so the model is
+set directly in `agents/*.md`.
+
+A role's `skills:` frontmatter preloads those skills on a **subagent** spawn
+only; a teammate spawn does not load them, so teammates invoke each with the
+`Skill` tool (verified 2026-09-06).
 
 ### Agent-team hooks
 
-Three hooks are bundled and wired into `hooks/hooks.json`, so they run
-automatically on Claude Code — no `settings.json` changes needed. All
-three gate only on a task subject matching `Task N: <title>` (the format
+Four hooks are bundled and wired into `hooks/hooks.json`, so they run
+automatically on Claude Code — no `settings.json` changes needed. The three
+task hooks gate only on a task subject matching `Task N: <title>` (the format
 [superteam-driven-development](skills/superteam-driven-development/SKILL.md)'s
 shared task list uses); every other task list — including a PM's own
 coordination list — is untouched. `SUPERTEAM_SKIP_VERIFY_GATE=1` bypasses
-all three.
+all four.
 
 - **`task-created-check`** (`TaskCreated`) — rejects a new task (exit 2,
   reason fed back) when its subject lacks a `[role]` tag from the agent
-  roster, or its description lacks a `Files owned:` line or a `Done:`
+  roster, its step is not one of `implement`, `merge`, `fix <r>`,
+  `review spec [r]` or `review standards [r]` (a bare `review` names no
+  axis), or its description lacks a `Files owned:` line or a `Done:`
   line; also rejects when its `Files owned:` overlaps a pending or
   in-progress task on the same list that isn't in the same `Task N:`
-  family and isn't upstream of it.
+  family and isn't named on its `Depends on:` line.
 - **`teammate-idle-claim`** (`TeammateIdle`) — when a teammate goes idle,
   looks for a pending, unowned, unblocked task matching its role (read from
   the team config member's `agentType`, `superteam:<role>`, and falling back
@@ -370,6 +385,33 @@ all three.
   file (see
   [verification-before-completion](skills/verification-before-completion/SKILL.md#evidence-line)
   for the exact format).
+- **`bash-guard`** (`PreToolUse`, matcher `Bash`) — denies four commands that
+  destroy work nobody asked to destroy: `tmux kill-server`, `git checkout .`,
+  `git reset --hard`, and `rm -rf` reaching outside the working directory.
+  Everything else passes in silence, and it fails open. A forbidden command
+  counts only in command position — at the start of a line or right after a
+  separator — so quoting one in text (an `echo`, a `grep` pattern, a heredoc
+  writing a report) is allowed. A backtick is not a separator here, which
+  means backtick-quoted prose passes and a backtick command substitution
+  passes with it; the mirror is that a heredoc line *beginning* with one of
+  these commands is still denied, so put a word or a backtick in front of it.
+  It reads the command
+  as text rather than running it — `cd /tmp && rm -rf ./x` reads as a relative
+  target and a symlink out of the worktree is not resolved — so it is a
+  guardrail against the common destructive typo, not a sandbox.
+
+A monitor ships too, in `monitors/monitors.json`:
+
+- **`stuck-tasks`** — names any task left `in_progress` with no update for
+  `SUPERTEAM_STUCK_MINUTES` (default 20) minutes, once per task until its
+  file changes.
+
+### Tests
+
+`bin/superteam-test` runs the whole suite — hooks, manifests, skill and agent
+checks — and reports anything whose prerequisite is missing (`timeout`, `yq`,
+`dot`) as SKIP rather than FAIL. Run a single suite directly with
+`bash tests/<area>/<file>.sh`.
 
 ## Philosophy
 

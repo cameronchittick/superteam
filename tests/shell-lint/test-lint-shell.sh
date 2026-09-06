@@ -83,7 +83,7 @@ make_fixture_repo() {
   git init -q -b main "$repo"
   configure_git_identity "$repo"
 
-  mkdir -p "$repo/hooks"
+  mkdir -p "$repo/hooks" "$repo/bin"
   cat >"$repo/tracked.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "tracked"
@@ -91,6 +91,12 @@ EOF
   cat >"$repo/hooks/session-start" <<'EOF'
 #!/bin/sh
 echo "extensionless"
+EOF
+  # bin/ ships extensionless executables too (bin/superteam-test), and they
+  # are shell like everything else in hooks/.
+  cat >"$repo/bin/superteam-test" <<'EOF'
+#!/usr/bin/env bash
+echo "bin executable"
 EOF
   cat >"$repo/README.md" <<'EOF'
 # Fixture
@@ -104,11 +110,12 @@ EOF
 echo "untracked"
 EOF
 
-  git -C "$repo" add tracked.sh hooks/session-start README.md
+  git -C "$repo" add tracked.sh hooks/session-start bin/superteam-test README.md
   git -C "$repo" commit -q -m "fixture"
 
   printf '\necho "changed"\n' >>"$repo/tracked.sh"
   printf '\necho "changed extensionless"\n' >>"$repo/hooks/session-start"
+  printf '\necho "changed bin executable"\n' >>"$repo/bin/superteam-test"
 }
 
 run_lint_shell() {
@@ -144,13 +151,14 @@ else
 fi
 
 tool_log="$(cat "$log")"
-assert_contains "$output" "Linting 3 shell files" "reports changed shell file count"
+assert_contains "$output" "Linting 4 shell files" "reports changed shell file count"
 assert_not_contains "$tool_log" "shfmt:" "does not run shfmt in lint mode"
 assert_contains "$tool_log" "shellcheck:" "runs ShellCheck"
 assert_contains "$tool_log" "<--severity=warning>" "uses warning severity as the baseline"
 assert_contains "$tool_log" "<--external-sources>" "allows ShellCheck to follow sourced files"
 assert_contains "$tool_log" "<--source-path=SCRIPTDIR>" "resolves ShellCheck sources relative to each script"
 assert_contains "$tool_log" "<hooks/session-start>" "includes changed extensionless shell shebang file"
+assert_contains "$tool_log" "<bin/superteam-test>" "includes changed extensionless bin/ executable"
 assert_contains "$tool_log" "<tracked.sh>" "includes changed tracked .sh file"
 assert_contains "$tool_log" "<untracked.sh>" "includes untracked shell files by default"
 assert_not_contains "$tool_log" "README.md" "ignores Markdown with shell snippets"
@@ -168,6 +176,7 @@ assert_contains "$tool_log" "<-w>" "uses shfmt write mode with --format"
 assert_contains "$tool_log" "shellcheck:" "runs ShellCheck after --format"
 assert_contains "$tool_log" "<--severity=warning>" "keeps warning severity after --format"
 assert_contains "$tool_log" "<hooks/session-start>" "--all includes tracked extensionless shell shebang file"
+assert_contains "$tool_log" "<bin/superteam-test>" "--all includes tracked extensionless bin/ executable"
 assert_contains "$tool_log" "<tracked.sh>" "--all includes tracked .sh file"
 assert_not_contains "$tool_log" "untracked.sh" "--all ignores untracked shell files"
 

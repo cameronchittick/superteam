@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # TaskCreated hook for superteam. Gated on task_subject ^Task [0-9]+: --
 # every other task is accepted untouched. Rejects (exit 2) a Task N task
-# whose subject lacks a roster role tag, whose description lacks a
+# whose subject lacks a roster role tag, whose subject's step is not one of
+# implement / merge / fix <R> / review spec [R] / review standards [R] (a
+# bare "review" names no axis), whose description lacks a
 # "Files owned:" or "Done:" line, or whose Files owned overlap an open
 # (pending/in_progress) task on the same list outside its own Task N family.
 # Task dir: SUPERTEAM_TASKS_DIR, else
@@ -9,15 +11,18 @@
 #
 # "Upstream" exemption: the spec exempts a task that lists a file owned by
 # a task it is blockedBy. The TaskCreated payload carries no blockedBy --
-# dependencies are added after creation -- so upstream reduces here to
-# "not open at the same time": a completed owner never blocks creation.
+# dependencies are added after creation -- so the description carries the
+# edge instead: a "Depends on: Task M, Task K" line naming the overlapping
+# open task's family serializes the two and the overlap is accepted. An
+# overlap with no such edge is still rejected, naming the open task. A
+# completed owner never blocks creation either.
 
 usage() {
     cat <<'EOF'
 Usage: task-created-check
-TaskCreated hook: rejects (exit 2) a "Task N:" task without a [role] tag,
-a "Files owned:" line and a "Done:" line, or whose Files owned overlap an
-open task outside its Task N family. Reads the TaskCreated JSON payload from stdin.
+TaskCreated hook: rejects (exit 2) a "Task N:" task without a [role] tag, a known
+step (implement/merge/fix R/review spec|standards [R]), a "Files owned:" line or a
+"Done:" line, or whose Files owned overlap an open task with no "Depends on:" edge.
 Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
 EOF
 }
@@ -55,11 +60,25 @@ if ! printf '%s' "$subject" | grep -qE '\[(implementer|writer|reviewer|integrato
     exit 2
 fi
 
+# The step between "Task N:" and the role tag. Review is two axes from the
+# same reviewer.md, so a bare "review" is ambiguous and rejected by name.
+step="$(printf '%s' "$subject" | sed -e 's/^Task [0-9]*:[[:space:]]*//' -e 's/[[:space:]]*\[[a-z]*\]$//')"
+if ! printf '%s' "$step" | grep -qE '^(implement|merge|fix [0-9]+|review (spec|standards)( [0-9]+)?)$'; then
+    if printf '%s' "$step" | grep -qE '^review( [0-9]+)?$'; then
+        echo "review needs an axis: spec or standards — 'Task N: review spec [reviewer]' or 'Task N: review standards [reviewer]'" >&2
+    else
+        echo "Task subject step must be one of: implement, merge, fix <R>, review spec [R], review standards [R] (got '$step')" >&2
+    fi
+    exit 2
+fi
+
 owned="$(printf '%s\n' "$desc" | sed -n 's/^Files owned:[[:space:]]*//p' | head -1)"
 [ -n "$owned" ] || { echo "Task description needs a 'Files owned: <paths>' line" >&2; exit 2; }
 
 printf '%s\n' "$desc" | grep -qE '^Done:[[:space:]]*[^[:space:]]' \
     || { echo "Task description needs a 'Done: <evidence>' line" >&2; exit 2; }
+
+deps="$(printf '%s\n' "$desc" | sed -n 's/^Depends on:[[:space:]]*//p' | head -1)"
 
 team="$(json_field "$input" "team_name")"
 dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
@@ -73,6 +92,12 @@ for f in "$dir"/*.json; do
     osubj="$(json_unescape "$(json_field "$other" "subject")")"
     ofam="$(printf '%s' "$osubj" | sed -n 's/^\(Task [0-9]*\):.*/\1/p')"
     [ -n "$ofam" ] && [ "$ofam" = "$family" ] && continue
+    # a Depends on: edge naming that task's family serializes the overlap
+    if [ -n "$ofam" ] && [ -n "$deps" ] && \
+        printf ',%s,' "$(printf '%s' "$deps" | tr -d ' ')" | \
+        grep -q ",$(printf '%s' "$ofam" | tr -d ' '),"; then
+        continue
+    fi
     oowned="$(json_unescape "$(json_field "$other" "description")" | sed -n 's/^Files owned:[[:space:]]*//p' | head -1)"
     set -f  # no globbing: a Files owned entry like agents/*.md is a literal
     for p in $(printf '%s' "$owned" | tr ',' ' '); do

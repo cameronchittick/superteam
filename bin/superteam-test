@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+# Runs every superteam test suite in one command. On PATH as a bare
+# `superteam-test` while the plugin is enabled (plugins-reference.md, "File
+# locations reference": bin/).
+#
+# One PASS/FAIL/SKIP line per suite, failing output echoed underneath, and a
+# non-zero exit if anything failed. A suite whose prerequisite is missing is
+# named as SKIP with the reason - never silently dropped, never a FAIL.
+#
+# Prerequisites are declared per suite in SUITES below rather than sniffed out
+# of the scripts, so what gets skipped is readable in one place.
+
+set -u
+
+usage() {
+    cat <<'EOF'
+Usage: superteam-test [--list] [--help]
+Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
+Exits non-zero if any suite fails; a suite whose prerequisite is missing
+(timeout, yq, dot, python3, node) is reported as SKIP, not FAIL.
+--list prints the suite names without running them.
+EOF
+}
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# "<path>|<prerequisite>" - prerequisite is empty or a comma-separated list of
+# commands that must be on PATH. A directory with a run-tests.sh is entered
+# through it, because that runner owns the order of its own test-*.sh files.
+#
+# Excluded on purpose:
+#   tests/claude-code/test-helpers.sh    - a helper, not a suite
+#   tests/claude-code/run-skill-tests.sh - a runner over the above
+#   tests/claude-code/test-superteam-driven-development-integration.sh - needs timeout, drives a live session
+#   tests/explicit-skill-requests/       - drives live Claude sessions, not a static suite
+#   tests/brainstorm-server/*.test.js    - node runtime, run with npm test in that directory
+#   tests/hermes/*.py                    - python/pytest runtime
+#   tests/pi/*.mjs                       - pi extension runtime
+# The three runtime exclusions are out of a bash runner's scope; everything
+# else that is runnable bash is listed below.
+SUITES="
+tests/hooks/test-team-hooks.sh|python3
+tests/hooks/test-session-start.sh|node
+tests/hooks/test-bash-guard.sh|python3
+tests/hooks/test-task-monitor.sh|python3
+tests/claude-code/test-agent-roster.sh|
+tests/claude-code/test-dispatch-template.sh|
+tests/claude-code/test-sdd-workspace.sh|
+tests/claude-code/test-superteam-driven-development.sh|timeout
+tests/claude-code/test-worktree-native-preference.sh|timeout
+tests/claude-code/test-worktree-path-policy.sh|
+tests/codex/test-marketplace-manifest.sh|python3
+tests/codex/test-package-codex-plugin.sh|python3
+tests/devin/test-devin-plugin.sh|python3
+tests/kimi/run-tests.sh|python3
+tests/version-bump/test-bump-version.sh|yq
+tests/shell-lint/test-lint-shell.sh|
+tests/antigravity/run-tests.sh|
+tests/opencode/run-tests.sh|node
+tests/systematic-debugging/test-find-polluter.sh|
+tests/writing-skills/test-render-graphs.sh|node,dot
+"
+
+case "${1:-}" in
+    --help)
+        usage
+        exit 0
+        ;;
+    --list)
+        printf '%s\n' "$SUITES" | while IFS='|' read -r suite _; do
+            [ -n "$suite" ] && echo "$suite"
+        done
+        echo "claude plugin validate ."
+        exit 0
+        ;;
+    "") ;;
+    *)
+        echo "superteam-test: unknown option '$1'" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+
+failed=0
+skipped=0
+passed=0
+
+# Why a prerequisite is missing, or empty when it is satisfied.
+missing_reason() {
+    case "$1" in
+        "") return 0 ;;
+        *)
+            local cmd
+            for cmd in $(printf '%s' "$1" | tr ',' ' '); do
+                command -v "$cmd" >/dev/null 2>&1 || { echo "needs $cmd"; return 0; }
+            done
+            ;;
+    esac
+}
+
+report() {
+    printf '%s %s\n' "$1" "$2"
+}
+
+run_suite() {
+    local suite="$1" prereq="$2" reason output
+
+    reason="$(missing_reason "$prereq")"
+    if [ -n "$reason" ]; then
+        report SKIP "$suite ($reason)"
+        skipped=$((skipped + 1))
+        return
+    fi
+
+    if output="$(cd "$ROOT" && bash "$ROOT/$suite" 2>&1)"; then
+        report PASS "$suite"
+        passed=$((passed + 1))
+    else
+        report FAIL "$suite"
+        printf '%s\n' "$output" | sed 's/^/    /'
+        failed=$((failed + 1))
+    fi
+}
+
+# A here-string keeps the loop in this shell, so the counters survive it.
+while IFS='|' read -r suite prereq; do
+    [ -n "$suite" ] || continue
+    run_suite "$suite" "$prereq"
+done <<EOF
+$SUITES
+EOF
+
+if command -v claude >/dev/null 2>&1; then
+    if validate_output="$(cd "$ROOT" && claude plugin validate . 2>&1)"; then
+        report PASS "claude plugin validate ."
+        passed=$((passed + 1))
+    else
+        report FAIL "claude plugin validate ."
+        printf '%s\n' "$validate_output" | sed 's/^/    /'
+        failed=$((failed + 1))
+    fi
+else
+    report SKIP "claude plugin validate . (needs claude)"
+    skipped=$((skipped + 1))
+fi
+
+echo
+echo "$passed passed, $failed failed, $skipped skipped"
+[ "$failed" -eq 0 ] || exit 1

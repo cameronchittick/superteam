@@ -2,12 +2,14 @@
 # Extract one task's full text from an implementation plan.
 #
 # Usage: task-brief --print PLAN_FILE TASK_NUMBER
-#        task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]
+#        task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review-spec|review-standards|merge [LANE]
 #        task-brief PLAN_FILE TASK_NUMBER [OUTFILE]
 #
 # --taskcreate emits a ready-to-paste TaskCreate subject (line 1) and
 # description (from line 3) for one node of the task graph: the implement,
-# review or merge task for plan task N. The subject's [role] tag carries the
+# review-spec, review-standards or merge task for plan task N. Review is two
+# axes from the same reviewer.md, run in parallel and never reranked against
+# each other, so there is no single "review" kind. The subject's [role] tag carries the
 # role and the pool's model is set at spawn, so the body has no Role:/Model:
 # line.
 #
@@ -28,7 +30,7 @@ set -euo pipefail
 if [ "${1:-}" = "--taskcreate" ]; then
   shift
   if [ $# -lt 3 ] || [ $# -gt 4 ]; then
-    echo "usage: task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]" >&2
+    echo "usage: task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review-spec|review-standards|merge [LANE]" >&2
     exit 2
   fi
   plan=$1
@@ -41,8 +43,12 @@ if [ "${1:-}" = "--taskcreate" ]; then
   fi
   [ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
   case "$kind" in
-    implement|review|merge) ;;
-    *) echo "kind must be implement, review or merge" >&2; exit 2 ;;
+    implement|review-spec|review-standards|merge) ;;
+    review)
+      echo "usage: task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review-spec|review-standards|merge [LANE]" >&2
+      echo "review is two axes: review-spec (vs the plan task and spec) and review-standards (vs the repo's standards files)" >&2
+      exit 3 ;;
+    *) echo "kind must be implement, review-spec, review-standards or merge" >&2; exit 2 ;;
   esac
 
   brief=$(awk -v n="$n" '
@@ -66,6 +72,8 @@ if [ "${1:-}" = "--taskcreate" ]; then
   ' "$plan")
 
   owned=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Files owned:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  deps=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Depends on:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  [ -n "$deps" ] || deps=none
   tier=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Model tier:\*\*[[:space:]]*//p' | head -1)
   role=implementer
   if printf '%s' "$tier" | grep -qw prose; then
@@ -76,16 +84,47 @@ if [ "${1:-}" = "--taskcreate" ]; then
   base=$(basename "$plan" .md)
   wt="task-${n}-impl"
 
+  # The repo's standards files, resolved once per plan: the well-known names
+  # that exist at the repo root, plus every path on a "**Standards:**" line in
+  # the plan header. The implementer and the standards review axis both read
+  # this list; the spec axis never does. Cached in the plan's workspace so
+  # every task of one plan cites the same files (recomputed if absent).
+  cache_dir=$("$(cd "$(dirname "$0")" && pwd)/sdd-workspace" "$plan" 2>/dev/null || true)
+  standards=""
+  if [ -n "$cache_dir" ] && [ -f "$cache_dir/standards" ]; then
+    standards=$(cat "$cache_dir/standards")
+  fi
+  if [ -z "$standards" ]; then
+    root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    for s in CONTRIBUTING.md CODING_STANDARDS.md CLAUDE.md AGENTS.md; do
+      [ -f "$root/$s" ] || continue
+      standards="${standards:+$standards, }$s"
+    done
+    plan_standards=$(sed -n 's/^\*\*Standards:\*\*[[:space:]]*//p' "$plan" | head -1 | tr -d '`' | tr ',' ' ')
+    for s in $plan_standards; do
+      case ", $standards, " in *", $s, "*) continue ;; esac
+      standards="${standards:+$standards, }$s"
+    done
+    [ -n "$standards" ] || standards=none
+    [ -n "$cache_dir" ] && printf '%s\n' "$standards" > "$cache_dir/standards" 2>/dev/null || true
+  fi
+
   case "$kind" in
     implement)
       echo "Subject: Task ${n}: implement [${role}]"
       echo
       ;;
-    review)
-      echo "Subject: Task ${n}: review [reviewer]"
+    review-spec)
+      echo "Subject: Task ${n}: review spec [reviewer]"
       echo
       echo "Reviews: worktree-${wt}"
       echo "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md"
+      ;;
+    review-standards)
+      echo "Subject: Task ${n}: review standards [reviewer]"
+      echo
+      echo "Reviews: worktree-${wt}"
+      echo "Rubric: skills/superteam-driven-development/task-standards-prompt.md"
       ;;
     merge)
       echo "Subject: Task ${n}: merge [integrator]"
@@ -97,10 +136,15 @@ if [ "${1:-}" = "--taskcreate" ]; then
   echo "Lane: ${lane}"
   echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
   echo "Files owned: ${owned}"
+  echo "Depends on: ${deps}"
   case "$kind" in
-    implement) echo "Done: report at .superteam/sdd/${base}/task-${n}-report.md with a \`Tests:\` line" ;;
-    review)    echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review.md with a \`Verified:\` line" ;;
-    merge)     echo "Done: merge sha of worktree-${wt} into ${lane} with a \`Tests:\` line from the full suite" ;;
+    implement|review-standards) echo "Standards: ${standards}" ;;
+  esac
+  case "$kind" in
+    implement)        echo "Done: report at .superteam/sdd/${base}/task-${n}-report.md with a \`Tests:\` line" ;;
+    review-spec)      echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review-spec.md with a \`Verified:\` line" ;;
+    review-standards) echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review-standards.md with a \`Verified:\` line" ;;
+    merge)            echo "Done: merge sha of worktree-${wt} into ${lane} with a \`Tests:\` line from the full suite" ;;
   esac
   echo "## Task Brief"
   printf '%s\n' "$brief"
@@ -117,7 +161,7 @@ fi
 
 if [ $# -lt 2 ] || [ $# -gt 3 ] || { [ "$print_mode" = true ] && [ $# -ne 2 ]; }; then
   echo "usage: task-brief --print PLAN_FILE TASK_NUMBER" >&2
-  echo "       task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]" >&2
+  echo "       task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review-spec|review-standards|merge [LANE]" >&2
   echo "       task-brief PLAN_FILE TASK_NUMBER [OUTFILE]" >&2
   exit 2
 fi

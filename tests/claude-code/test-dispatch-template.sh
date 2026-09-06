@@ -107,8 +107,10 @@ PLAN
     if printf '%s\n' "$tc" | grep -q '^Files owned: src/a.py, src/b.py$'; then pass "--taskcreate copies Files owned without backticks"; else fail "--taskcreate copies Files owned without backticks"; fi
     if printf '%s\n' "$tc" | grep -q '^Plan: plan.md   Spec: docs/spec.md$'; then pass "--taskcreate body has the Plan/Spec line"; else fail "--taskcreate body has the Plan/Spec line"; fi
     if printf '%s\n' "$tc" | grep -qE '^(Role|Model):'; then fail "--taskcreate body has no Role:/Model: line"; else pass "--taskcreate body has no Role:/Model: line"; fi
-    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review lane/x)"
-    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: worktree-task-1-impl$'; then pass "--taskcreate review subject and Reviews: line"; else fail "--taskcreate review subject and Reviews: line"; fi
+    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-spec lane/x)"
+    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review spec \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: worktree-task-1-impl$' && printf '%s\n' "$tr" | grep -q '^Rubric: skills/superteam-driven-development/task-reviewer-prompt.md$'; then pass "--taskcreate review-spec subject, Reviews: and Rubric: lines"; else fail "--taskcreate review-spec subject, Reviews: and Rubric: lines"; fi
+    ts="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-standards lane/x)"
+    if printf '%s\n' "$ts" | grep -q '^Subject: Task 1: review standards \[reviewer\]$' && printf '%s\n' "$ts" | grep -q '^Rubric: skills/superteam-driven-development/task-standards-prompt.md$' && printf '%s\n' "$ts" | grep -q '^Standards: '; then pass "--taskcreate review-standards subject, Rubric: and Standards: lines"; else fail "--taskcreate review-standards subject, Rubric: and Standards: lines"; fi
     tm="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 merge lane/x)"
     if printf '%s\n' "$tm" | grep -q '^Subject: Task 1: merge \[integrator\]$' && printf '%s\n' "$tm" | grep -q '^Merge: worktree-task-1-impl → lane/x$'; then pass "--taskcreate merge subject and Merge: line"; else fail "--taskcreate merge subject and Merge: line"; fi
     if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 bogus lane/x) >/dev/null 2>&1; then fail "--taskcreate rejects unknown kind"; else pass "--taskcreate rejects unknown kind"; fi
@@ -188,6 +190,52 @@ PLAN
         pass "implementer-prompt.md mentions mkdir -p"
     else
         fail "implementer-prompt.md mentions mkdir -p"
+    fi
+
+    # (e) TDD is always on in implementer-prompt.md: no conditional
+    #     qualifier survives, and the skill is named with its prefix
+    local prompt="$TDD_DIR/implementer-prompt.md" qualifier hits
+    hits=""
+    for qualifier in "if task says to" "if required" "if TDD was required"; do
+        hits+="$(grep -nF "$qualifier" "$prompt" || true)"
+    done
+    if [[ -z "$hits" ]]; then
+        pass "implementer-prompt.md makes TDD unconditional"
+    else
+        fail "implementer-prompt.md makes TDD unconditional"
+        printf '%s\n' "$hits" | sed 's/^/    /'
+    fi
+
+    if grep -q 'superteam:test-driven-development' "$prompt"; then
+        pass "implementer-prompt.md names superteam:test-driven-development"
+    else
+        fail "implementer-prompt.md names superteam:test-driven-development"
+    fi
+
+    # (f) the same cadence as implementer.md: Standards read first, focused
+    #     file while iterating, full suite once before the commit
+    if grep -q '`Standards:`' "$prompt" && grep -q 'before writing' "$prompt"; then
+        pass "implementer-prompt.md reads the Standards: files before writing"
+    else
+        fail "implementer-prompt.md reads the Standards: files before writing"
+    fi
+
+    if grep -q 'focused test' "$prompt" && grep -q 'full suite once' "$prompt"; then
+        pass "implementer-prompt.md runs the focused file, then the full suite once"
+    else
+        fail "implementer-prompt.md runs the focused file, then the full suite once"
+    fi
+
+    # (g) the numbered job list puts the failing test before the code. A list
+    #     that says "implement" first tells the IC to write code, then tests.
+    local test_first_line implement_line
+    test_first_line="$(grep -n 'Work test-first' "$prompt" | head -1 | cut -d: -f1)"
+    implement_line="$(grep -nE '^ *[0-9]+\. *Implement ' "$prompt" | head -1 | cut -d: -f1)"
+    if [[ -n "$test_first_line" && ( -z "$implement_line" || "$test_first_line" -lt "$implement_line" ) ]]; then
+        pass "implementer-prompt.md orders test-first before implement"
+    else
+        fail "implementer-prompt.md orders test-first before implement"
+        echo "    test-first at line ${test_first_line:-<none>}, implement at line ${implement_line:-<none>}"
     fi
 
     echo ""

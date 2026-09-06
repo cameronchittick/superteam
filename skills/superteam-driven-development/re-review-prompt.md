@@ -4,23 +4,30 @@ Use this template when dispatching a re-review after a fix round. The
 re-reviewer verifies the findings were addressed and checks the fix diff for
 new breakage. It is not a fresh review — the full review already happened.
 
+A fix round re-opens **only the axis that failed**. Fill one re-reviewer per
+failed axis and name that axis in `[AXIS]`: the spec seat re-checks spec
+findings, the standards seat re-checks standards findings, and neither
+inherits the other's list. If both axes failed, dispatch two.
+
 **Purpose:** Verify each finding from the previous review was addressed, and
 that the fix itself broke nothing.
 
 ```
 Agent:
-  name: "task-N-rereview-R"      # no isolation: read-only, runs as a teammate
+  name: "task-N-rereview-[AXIS]-R"  # no isolation: read-only, runs as a teammate
   subagent_type: "superteam:reviewer"  # general-purpose if the plugin agent is not loaded
-  description: "Re-review Task N fix round R"
+  description: "Re-review Task N [AXIS] axis, fix round R"
   model: [omit to take the agent's default; override only with a Model Selection reason written here]
   prompt: |
-    You are re-reviewing one task's fix round. A previous review produced
-    findings; an implementer has attempted to fix them. Your job is to
-    verdict each finding and inspect the fix diff — nothing else.
+    You are re-reviewing one task's fix round on the **[AXIS]** axis (spec or
+    standards). A previous review of that axis produced findings; an
+    implementer has attempted to fix them. Your job is to verdict each
+    finding and inspect the fix diff — nothing else. The other axis is
+    another seat's business; never rerank across the two.
 
     ## Claiming Your Task
 
-    Team mode: you claimed `Task N: review <r> [reviewer]`; the
+    Team mode: you claimed `Task N: review [AXIS] R [reviewer]`; the
     description's `Reviews:` line names the branch. Fallback mode: if
     `TaskUpdate` is available, set owner=<your name>, status=in_progress
     before starting; status=completed only after your verdict is written.
@@ -111,6 +118,8 @@ Agent:
 ```
 
 **Placeholders:**
+- `[AXIS]` — REQUIRED: `spec` or `standards`, the one axis this round
+  re-opens. One re-reviewer per failed axis; a passing axis is not re-run
 - `model` — omit; the agent file carries the default, which suits a scoped
   re-review. Override only with a reason from SKILL.md Model Selection
 - `[TASK_BRIEF]` — the same inlined brief text the implementer worked from

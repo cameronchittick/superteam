@@ -177,6 +177,220 @@ main() {
         grep -q 'never as a teammate' "$AGENTS/$role.md" && pass "agents/$role.md scopes haiku to subagent dispatch" || fail "agents/$role.md scopes haiku to subagent dispatch"
     done
 
+    # (k3) roster model defaults: implementer/writer default to the
+    #      worker model and reviewer to the review model (both opus, either
+    #      literal or as the userConfig placeholder); researcher and
+    #      integrator stay sonnet; skeptic stays opus
+    local model_line
+    for role in implementer writer; do
+        model_line="$(grep '^model:' "$AGENTS/$role.md" || true)"
+        if [[ "$model_line" == 'model: opus' || "$model_line" == 'model: ${user_config.worker_model}' ]]; then
+            pass "agents/$role.md defaults to the worker model (opus)"
+        else
+            fail "agents/$role.md defaults to the worker model (opus)"
+            echo "    model line: ${model_line:-<none>}"
+        fi
+    done
+    model_line="$(grep '^model:' "$AGENTS/reviewer.md" || true)"
+    if [[ "$model_line" == 'model: opus' || "$model_line" == 'model: ${user_config.review_model}' ]]; then
+        pass "agents/reviewer.md defaults to the review model (opus)"
+    else
+        fail "agents/reviewer.md defaults to the review model (opus)"
+        echo "    model line: ${model_line:-<none>}"
+    fi
+    for role in researcher integrator; do
+        if [[ "$(grep '^model:' "$AGENTS/$role.md" || true)" == 'model: sonnet' ]]; then
+            pass "agents/$role.md stays sonnet"
+        else
+            fail "agents/$role.md stays sonnet"
+        fi
+    done
+    if [[ "$(grep '^model:' "$AGENTS/skeptic.md" || true)" == 'model: opus' ]]; then
+        pass "agents/skeptic.md stays opus"
+    else
+        fail "agents/skeptic.md stays opus"
+    fi
+
+    # (k4) the userConfig keys exist in the plugin manifest with opus
+    #      defaults, and implementer/writer/reviewer name their key
+    local manifest="$REPO_ROOT/.claude-plugin/plugin.json"
+    local key
+    for key in worker_model review_model; do
+        if grep -A5 "\"$key\"" "$manifest" 2>/dev/null | grep -q '"default": *"opus"'; then
+            pass "plugin.json declares userConfig $key with default opus"
+        else
+            fail "plugin.json declares userConfig $key with default opus"
+        fi
+    done
+    for role in implementer writer; do
+        grep -qF 'user_config.worker_model' "$AGENTS/$role.md" && pass "agents/$role.md names user_config.worker_model" || fail "agents/$role.md names user_config.worker_model"
+    done
+    grep -qF 'user_config.review_model' "$AGENTS/reviewer.md" && pass "agents/reviewer.md names user_config.review_model" || fail "agents/reviewer.md names user_config.review_model"
+
+    # (k5) skills preload: each role's `skills:` frontmatter names exactly
+    #      the skills its work needs, plugin-scoped
+    local want skills_line
+    for entry in \
+        "implementer:superteam:test-driven-development, superteam:verification-before-completion" \
+        "writer:superteam:test-driven-development, superteam:verification-before-completion" \
+        "reviewer:superteam:requesting-code-review" \
+        "integrator:superteam:finishing-a-development-branch"; do
+        role="${entry%%:*}"
+        want="${entry#*:}"
+        skills_line="$(grep '^skills:' "$AGENTS/$role.md" || true)"
+        if [[ "$skills_line" == "skills: $want" ]]; then
+            pass "agents/$role.md preloads: $want"
+        else
+            fail "agents/$role.md preloads: $want"
+            echo "    skills line: ${skills_line:-<none>}"
+        fi
+    done
+
+    # (k6) the false "the skills field is ignored" claim is gone from every
+    #      agent that preloads, and each says to invoke them by hand if the
+    #      teammate spawn did not preload them
+    local ignored
+    ignored="$(grep -ln 'skills` field is ignored' "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md "$AGENTS"/integrator.md "$AGENTS"/researcher.md 2>/dev/null || true)"
+    if [[ -z "$ignored" ]]; then
+        pass "no preloading agent claims the skills field is ignored"
+    else
+        fail "no preloading agent claims the skills field is ignored"
+        echo "    found in: $ignored"
+    fi
+    for role in implementer writer reviewer integrator researcher; do
+        if grep -qF 'invoke each skill named in `skills:` with `Skill`' "$AGENTS/$role.md"; then
+            pass "agents/$role.md falls back to invoking the skills by hand"
+        else
+            fail "agents/$role.md falls back to invoking the skills by hand"
+        fi
+    done
+
+    # (k6b) the hedge is gone: a teammate spawn does NOT preload `skills:`
+    #       (lead probe 2026-09-06)
+    local hedged
+    hedged="$(grep -ln 'may not preload' "$AGENTS"/*.md 2>/dev/null || true)"
+    if [[ -z "$hedged" ]]; then
+        pass "no agent file hedges about teammate skill preloading"
+    else
+        fail "no agent file hedges about teammate skill preloading"
+        echo "    found in: $hedged"
+    fi
+    for role in implementer writer reviewer integrator skeptic researcher; do
+        if grep -q 'a teammate spawn does not' "$AGENTS/$role.md"; then
+            pass "agents/$role.md states that a teammate spawn does not preload skills"
+        else
+            fail "agents/$role.md states that a teammate spawn does not preload skills"
+        fi
+    done
+
+    # (k7) implementer.md and writer.md read every Standards: file before
+    #      writing anything
+    for role in implementer writer; do
+        if grep -qE '^([0-9]+\.|[[:space:]]*\([a-g]\)).*`Standards:`' "$AGENTS/$role.md" \
+            && grep -q 'before writing' "$AGENTS/$role.md"; then
+            pass "agents/$role.md reads the Standards: files before writing"
+        else
+            fail "agents/$role.md reads the Standards: files before writing"
+        fi
+    done
+
+    # (k8) implementer.md carries one work cadence, in order: TDD at the
+    #      seam, typecheck, focused test file while iterating, full suite
+    #      once before the commit, review seats as the gate
+    local cadence_ok=1 prev=0 pos phrase
+    for phrase in 'superteam:test-driven-development' 'typecheck' 'focused test file' 'full suite once' 'review seats'; do
+        pos="$(grep -nF "$phrase" "$AGENTS/implementer.md" | head -1 | cut -d: -f1)"
+        if [[ -z "$pos" ]]; then
+            echo "    implementer.md missing: $phrase"
+            cadence_ok=0
+        elif [[ "$pos" -lt "$prev" ]]; then
+            echo "    implementer.md out of order at: $phrase (line $pos after line $prev)"
+            cadence_ok=0
+        else
+            prev="$pos"
+        fi
+    done
+    if [[ "$cadence_ok" -eq 1 ]]; then
+        pass "implementer.md states the work cadence in order"
+    else
+        fail "implementer.md states the work cadence in order"
+    fi
+
+    # (k9) never self-review as the gate: the review seats are
+    for role in implementer writer; do
+        if grep -q 'superteam:requesting-code-review' "$AGENTS/$role.md"; then
+            pass "agents/$role.md names the superteam:requesting-code-review rubrics"
+        else
+            fail "agents/$role.md names the superteam:requesting-code-review rubrics"
+        fi
+    done
+
+    # (k10) every skill reference in agent text is superteam:-prefixed. A
+    #       bare name is a skill that will not resolve.
+    local bare skill
+    bare=""
+    for skill in test-driven-development verification-before-completion \
+        requesting-code-review finishing-a-development-branch systematic-debugging; do
+        # A hit not preceded by "superteam:" or "skills/" is a bare name.
+        bare+="$(grep -rn "$skill" "$AGENTS"/*.md 2>/dev/null \
+            | grep -v "superteam:$skill" \
+            | grep -v "skills/$skill" || true)"
+    done
+    if [[ -z "$bare" ]]; then
+        pass "every skill reference in agents/ is superteam:-prefixed"
+    else
+        fail "every skill reference in agents/ is superteam:-prefixed"
+        printf '%s\n' "$bare" | sed 's/^/    /'
+    fi
+
+    # (k11) no agent file — skeptic included — still claims the skills
+    #       field is ignored
+    local ignored_any
+    ignored_any="$(grep -ln 'skills` field is ignored' "$AGENTS"/*.md 2>/dev/null || true)"
+    if [[ -z "$ignored_any" ]]; then
+        pass "no agent file claims the skills field is ignored"
+    else
+        fail "no agent file claims the skills field is ignored"
+        echo "    found in: $ignored_any"
+    fi
+
+    # (k12) the researcher runs in the background as a subagent, cites
+    #       primary sources, and persists findings to exactly one new file
+    local r="$AGENTS/researcher.md"
+    grep -q '^background: true$' "$r" \
+        && pass "agents/researcher.md sets background: true" \
+        || fail "agents/researcher.md sets background: true"
+    local denied
+    denied="$(grep '^disallowedTools:' "$r" || true)"
+    if [[ "$denied" == *Edit* && "$denied" == *NotebookEdit* && "$denied" != *Write* ]]; then
+        pass "agents/researcher.md denies Edit and NotebookEdit but allows Write"
+    else
+        fail "agents/researcher.md denies Edit and NotebookEdit but allows Write"
+        echo "    disallowedTools: ${denied:-<none>}"
+    fi
+    # The description must not still call the researcher read-only: it may
+    # write exactly one findings file.
+    if grep '^description:' "$r" | grep -qF 'read-only'; then
+        fail "agents/researcher.md description does not say read-only"
+    else
+        pass "agents/researcher.md description does not say read-only"
+    fi
+    grep '^description:' "$r" | grep -qF 'findings file' \
+        && pass "agents/researcher.md description names its one findings file" \
+        || fail "agents/researcher.md description names its one findings file"
+    local phrase
+    for phrase in 'docs/superteam/research/' 'Primary sources only' 'URL + section' 'file:line'; do
+        grep -qF "$phrase" "$r" \
+            && pass "agents/researcher.md states: $phrase" \
+            || fail "agents/researcher.md states: $phrase"
+    done
+    grep -qF 'exactly one' "$r" \
+        && pass "agents/researcher.md caps the findings file at exactly one" \
+        || fail "agents/researcher.md caps the findings file at exactly one"
+    grep -qF '`Lead:`' "$r" \
+        && pass "agents/researcher.md reports to the name on the Lead: line" \
+        || fail "agents/researcher.md reports to the name on the Lead: line"
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it
