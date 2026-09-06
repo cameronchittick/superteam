@@ -162,6 +162,21 @@ main() {
         grep -q '^memory: project' "$AGENTS/$role.md" && pass "agents/$role.md has memory: project" || fail "agents/$role.md has memory: project"
     done
 
+    # (k2) waiting on the lead never leaves a task in_progress: a turn that
+    #      ends holding one re-fires the completion gate
+    for role in implementer writer reviewer integrator researcher skeptic; do
+        if sed -n '/^## Claiming work (teammate)/,/^## /p' "$AGENTS/$role.md" | grep -q 'status: pending'; then
+            pass "agents/$role.md claiming section has the waiting rule"
+        else
+            fail "agents/$role.md claiming section has the waiting rule"
+        fi
+        grep -q '\.declined/' "$AGENTS/$role.md" && pass "agents/$role.md documents declining a task" || fail "agents/$role.md documents declining a task"
+    done
+    grep -q 'Never spin' "$AGENTS/integrator.md" && pass "agents/integrator.md says never spin" || fail "agents/integrator.md says never spin"
+    for role in implementer writer; do
+        grep -q 'never as a teammate' "$AGENTS/$role.md" && pass "agents/$role.md scopes haiku to subagent dispatch" || fail "agents/$role.md scopes haiku to subagent dispatch"
+    done
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it

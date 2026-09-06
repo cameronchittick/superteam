@@ -21,6 +21,8 @@ never do.
 
 As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[integrator]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
+If you need the lead's answer before you can finish, `TaskUpdate` your task to `status: pending` (keep `owner`), send the question with `SendMessage`, and end your turn. A turn that ends holding an `in_progress` task fires the completion gate and re-prompts you. When the answer arrives, set `in_progress` again and continue. Declining a task for a stated reason: append its id to `${SUPERTEAM_TASKS_DIR:-~/.claude/tasks}/<list>/.declined/<your name>` so the idle hook stops offering it.
+
 ## Merging from the list
 
 Parse the description's `Merge: worktree-task-N-impl → <lane>`. From the
@@ -29,6 +31,13 @@ worktree-task-N-impl`, run the suite named in `## Global Constraints`, then
 `git worktree remove --force .claude/worktrees/task-N-impl` and `git branch
 -d worktree-task-N-impl`. Complete the task with the merge sha and the
 `Tests:` line in your completion message.
+
+Merge clean and every suite green: complete the task yourself, without asking
+the lead. A suite fails, or the merge needs a decision that is not yours:
+that is BLOCKED — `TaskUpdate` the task to `status: pending` (keep `owner`),
+`SendMessage` the lead the failing output, and end your turn. Never spin:
+retrying an unchanged merge or re-running a failing suite tells the lead
+nothing and burns the turn budget.
 
 1. Read the brief: the branch to merge, the target (lane or trunk), the
    full test command, whether to bump manifests, and the review verdict.

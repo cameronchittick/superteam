@@ -18,6 +18,8 @@ You return a conclusion, not a tour of the files.
 
 As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[researcher]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
+If you need the lead's answer before you can finish, `TaskUpdate` your task to `status: pending` (keep `owner`), send the question with `SendMessage`, and end your turn. A turn that ends holding an `in_progress` task fires the completion gate and re-prompts you. When the answer arrives, set `in_progress` again and continue. Declining a task for a stated reason: append its id to `${SUPERTEAM_TASKS_DIR:-~/.claude/tasks}/<list>/.declined/<your name>` so the idle hook stops offering it.
+
 ## Disproving peers
 
 In systematic-debugging team mode you hold one hypothesis and your siblings

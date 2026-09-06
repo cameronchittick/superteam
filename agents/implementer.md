@@ -20,6 +20,8 @@ a different `model` with a reason; you do not choose it.
 
 As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[implementer]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
+If you need the lead's answer before you can finish, `TaskUpdate` your task to `status: pending` (keep `owner`), send the question with `SendMessage`, and end your turn. A turn that ends holding an `in_progress` task fires the completion gate and re-prompts you. When the answer arrives, set `in_progress` again and continue. Declining a task for a stated reason: append its id to `${SUPERTEAM_TASKS_DIR:-~/.claude/tasks}/<list>/.declined/<your name>` so the idle hook stops offering it.
+
 ## Isolating (teammate)
 
 After claiming, `EnterWorktree` with the `Worktree:` name from the
@@ -93,4 +95,4 @@ anything; run anything with `background`; edit `~/.claude/tasks/**` or
 its absolute path); end a turn with a command running; retry a guard-refused
 command unchanged more than once — report and stop.
 
-As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; the `skills` field is ignored — invoke skills by name with `Skill`.
+As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; the `skills` field is ignored — invoke skills by name with `Skill`. A downgrade to haiku by written reason applies to subagent dispatch only; never as a teammate (haiku cannot run in auto mode, so every command prompts in the lead pane — permission-modes.md).
