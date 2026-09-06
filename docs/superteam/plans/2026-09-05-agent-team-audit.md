@@ -1,190 +1,239 @@
-# Audit: Superteam workflow skills/agents vs. agent-teams, tools-reference, hooks, env-vars docs
+# Audit: agent-team features vs. superteam 7.0.0
 
-Read in full: agent-teams.md, hooks.md (relevant sections), env-vars.md (relevant vars), tools-reference.md (full, incl. "Task tool availability" and "Agent tool behavior").
-
-Mechanism key: (a) shared task list, (b) blockedBy deps, (c) self-claim, (d) teammate↔teammate SendMessage, (e) idle vs completion notification, (f) plan mode + auto-approval, (g) TaskCreated/TaskCompleted/TeammateIdle hooks, (h) subagent-definition-as-teammate semantics, (i) in-process vs split-pane, (j) no background subagents/no nested teams, (k) Task tool availability gating, (l) named Agent+isolation:worktree still a teammate.
-
----
-
-## skills/superteam-driven-development/SKILL.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (a) shared task list | contradicts (by omission — see Contradictions) | `SKILL.md:232-240` builds its own ledger (`<workspace>/progress.md`, `Task <N>: complete` lines) with zero reference to `TaskCreate/TaskList/TaskUpdate`. |
-| (b) blockedBy deps | ignores | No `blockedBy`/dependency API used anywhere; task ordering is inferred by the lead from the plan's prose "Depends on" field (not present in this file, see writing-plans). |
-| (c) self-claim | contradicts by design | `SKILL.md:194-207` (Process diagram) and the whole Task Loop assume the **lead dispatches every task explicitly**; no teammate ever self-claims the next task. This is an intentional architecture choice, not an oversight — flagged as a Decision below. |
-| (d) teammate↔teammate SendMessage | uses (partially) | `SKILL.md:127-128`: "A reviewer may `SendMessage` the implementer by name to ask what a change was for." One explicit non-lead-mediated message path. |
-| (e) idle vs completion notification | uses, correctly | `SKILL.md:322-324`: "an IC's result arrives as a completion notification (subagent) or idle notification (teammate) — never poll for it." Matches `agent-teams.md:301-304` and `tools-reference.md:99` exactly. |
-| (f) plan mode + auto-approval | n/a | Never invoked; ICs work from an inlined brief, not their own plan-mode pass. |
-| (g) hooks | ignores | Zero mention of `TaskCreated`/`TaskCompleted`/`TeammateIdle` anywhere in the 733-line file, despite the file already enforcing quality gates (fix loop, breaker) that these hooks could back. |
-| (h) subagent-def-as-teammate | uses (implicitly), partial | Roster agents (`agents/*.md`) are named subagent definitions dispatched via `subagent_type: "superteam:<role>"` — exactly the pattern `agent-teams.md:263-279` describes. But the skill never discusses the **body-append-vs-replace** distinction (in-process appends the agent file's body to the default prompt; split-pane replaces it) or that `skills:` fields (none set here) are ignored for teammates. |
-| (i) in-process vs split-pane | ignores | No mention that Task-tool availability, and body handling, differ between the two display modes (`tools-reference.md:526`). Skill assumes one uniform teammate behavior. |
-| (j) no background subagents/no nested teams | uses, aligned | `SKILL.md:369-373` (implementer "never dispatches subagents... not helpers, and never a reviewer") and reviewer/re-review templates repeat the "You Do Not Dispatch Subagents" rule — functionally matches `agent-teams.md:473-474`, though justified by roster architecture rather than citing the platform limitation. |
-| (k) Task tool availability gating | ignores | No reference to `CLAUDE_CODE_ENABLE_TODO_TOOLS`, the Sonnet 5/Opus 4.8/Fable 5/Mythos 5 opt-out list (`tools-reference.md:515`), or `CLAUDE_CODE_TASK_LIST_ID`. The plan-file ledger is used unconditionally, even on models/sessions that do have the Task tools. This is the crux of task #2. |
-| (l) named Agent+isolation:worktree as teammate | uses, correctly | `SKILL.md:113-116`: "Reviewer — a named agent with NO isolation... when agent teams are enabled it runs as a true teammate in your working directory, otherwise as a named subagent — the call is the same either way." Matches `agent-teams.md:227` precisely. Implementer/writer are never stated this way, but the same rule applies to them since `isolation` is orthogonal to team-vs-subagent status (`tools-reference.md:31` confirms `isolation: worktree` is a "pinned working directory" concept independent of Agent-tool teammate spawning) — SKILL.md never states this explicitly for implementer/writer, which is a **gap**, not a contradiction. |
+Date: 2026-09-06. Harness: Claude Code 2.1.263. Superteam: 7.0.0 (per
+`docs/superteam/specs/2026-09-05-universal-agent-team-design.md` and
+`docs/superteam/plans/2026-09-05-universal-agent-team-system.md`). Sources
+fetched 2026-09-06 05:21 UTC with `curl -fsSL <url> -o .superteam/src/<name>.md`
+into this worktree's gitignored scratch dir; every fetch succeeded and every
+file had at least one heading (Step 1 of the task brief). "Used where"
+below reflects the state of `lane/7.0.0` at fetch time — the tasks this
+plan is landing (implementer/reviewer/hook work not yet merged) are called
+out explicitly where relevant.
 
 ---
 
-## skills/superteam-driven-development/implementer-prompt.md
+## agent-teams.md
 
-| Mechanism | Verdict |
-|---|---|
-| (a)(b)(c)(f)(g)(k) | n/a — this is a dispatch template, not policy; it inherits SKILL.md's choices |
-| (d) | ignores — only says "ask questions now" / escalate to controller, never mentions messaging another IC |
-| (e) | contradicts SKILL.md's nuance — `implementer-prompt.md:162-171` and the parallel line in `agents/implementer.md:60` unconditionally frame the failure mode as "reaches the lead as repeated idle notices," with no subagent/teammate branch. See Contradictions. |
-| (h)/(i)/(l) | n/a at this layer |
-| (j) | uses — "You Do Not Dispatch Subagents" section (`implementer-prompt.md:69-79`) restates the no-nested-teams rule for the IC's own scope |
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Two display modes, in-process (default) vs. split-pane | `source: https://code.claude.com/docs/en/agent-teams.md#choose-a-display-mode` | Not configured by superteam; `references/claude-code-tools.md` (Task 6, this plan) documents both modes' behavioral differences for skill authors, but no skill sets `teammateMode` itself — left to the operator. |
+| Model precedence for teammates (spawn prompt > definition `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > lead) | `source: https://code.claude.com/docs/en/agent-teams.md#specify-teammates-and-models` | Documented in `references/claude-code-tools.md` "Model precedence" (Task 6); agent roster files (`agents/*.md`) each set an explicit `model`, so they hit tier 2 rather than falling through to the lead. |
+| Team config / mailboxes / task list under `~/.claude/teams/` and `~/.claude/tasks/` | `source: https://code.claude.com/docs/en/agent-teams.md#architecture` | Documented in `references/claude-code-tools.md` "Team files" (Task 6): never hand-edit, discover peers via `config.json`. `skills/superteam-driven-development/SKILL.md` uses the shared task list as its live ledger when `TaskCreate` is present. |
+| Assign and claim tasks (self-claim from a shared list) | `source: https://code.claude.com/docs/en/agent-teams.md#assign-and-claim-tasks` | `skills/superteam-driven-development/SKILL.md`: reviewer and other in-process teammates self-claim via `TaskList`/`TaskUpdate`; worktree subagents cannot (see Findings, bug). `skills/dispatching-parallel-agents/SKILL.md` "Team mode" section (Task 5, this plan) also self-claims one pool of one role. |
+| Shut down teammates (`shutdown_request`) | `source: https://code.claude.com/docs/en/agent-teams.md#shut-down-teammates` | `skills/finishing-a-development-branch/SKILL.md` "Team teardown" (Task 5, this plan): sends `{"type":"shutdown_request","reason":"role pool empty"}` to each idle teammate of an empty role. |
+| Enforce quality gates with hooks | `source: https://code.claude.com/docs/en/agent-teams.md#enforce-quality-gates-with-hooks` | `hooks/task-completed-verify` (bundled, wired in `hooks/hooks.json`) plus `task-created-check` and `teammate-idle-claim` (Task 1, landing on this lane) implement exactly this pattern. |
+| Use case: parallel code review / competing hypotheses | `source: https://code.claude.com/docs/en/agent-teams.md#use-case-examples`, `source: https://code.claude.com/docs/en/agent-teams.md#investigate-with-competing-hypotheses` | `skills/requesting-code-review/SKILL.md` "Team mode" (`review-spec`/`review-standards`/`lens-<name>`) and `skills/systematic-debugging/SKILL.md` "Team mode" (`hyp-N` researchers), both Task 5 of this plan, are direct implementations of these two documented use cases. |
 
-## skills/superteam-driven-development/task-reviewer-prompt.md
+## sub-agents.md
 
-| Mechanism | Verdict |
-|---|---|
-| (d) | n/a — template doesn't instruct the reviewer to message anyone (the SendMessage-implementer allowance lives only in SKILL.md prose, not in this template or in `agents/reviewer.md`) — **inconsistency**, see Contradictions |
-| (e) | n/a — reviewer has no long-running command it would report on mid-turn in this template |
-| (j) | uses — "You Do Not Dispatch Subagents" (`task-reviewer-prompt.md:56-63`) |
-| others | n/a |
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Supported frontmatter (`tools`, `disallowedTools`, `model`, `effort`, `isolation`, ...) | `source: https://code.claude.com/docs/en/sub-agents.md#supported-frontmatter-fields` | Every `agents/*.md` roster file sets `model`; `researcher`/`reviewer`/`skeptic` also set `disallowedTools: Edit, Write, NotebookEdit`; `implementer`/`writer` set `isolation: worktree`; none currently set `effort` (left to inherit). |
+| Choose a model (per-subagent order) | `source: https://code.claude.com/docs/en/sub-agents.md#choose-a-model` | `references/claude-code-tools.md` "Model precedence" (Task 6) restates this order for teammates specifically. |
+| Run subagents in foreground or background | `source: https://code.claude.com/docs/en/sub-agents.md#run-subagents-in-foreground-or-background` | Not used — superteam always runs ICs in the foreground of the lead's turn; no skill dispatches a background subagent. |
+| Subagent output scanning | `source: https://code.claude.com/docs/en/sub-agents.md#subagent-output-scanning` | Not used/mentioned by any skill; superteam relies on the returned report text alone, not on the platform's automatic scan. |
+| Fork the current conversation | `source: https://code.claude.com/docs/en/sub-agents.md#fork-the-current-conversation` | Not used by superteam — `superteam:*` agents are always non-fork, task-scoped dispatches; forking would carry the lead's whole context, which contradicts "precisely crafted context" in `skills/requesting-code-review/SKILL.md` and `skills/dispatching-parallel-agents/SKILL.md`. |
 
-## skills/superteam-driven-development/re-review-prompt.md
+## plugins-reference.md
 
-Same shape as task-reviewer-prompt.md: (j) uses (`re-review-prompt.md:49-56`); all others n/a for a scoped review template.
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Skills component | `source: https://code.claude.com/docs/en/plugins-reference.md#skills` | `skills/*/SKILL.md` — superteam's entire library. |
+| Agents component | `source: https://code.claude.com/docs/en/plugins-reference.md#agents` | `agents/*.md` — the roster (`implementer`, `writer`, `reviewer`, `integrator`, `researcher`, `skeptic`). |
+| Hooks component | `source: https://code.claude.com/docs/en/plugins-reference.md#hooks` | `hooks/hooks.json` wires `SessionStart` and `TaskCompleted`; `task-created-check`/`teammate-idle-claim` land with Task 1 of this plan. |
+| Plugin manifest schema | `source: https://code.claude.com/docs/en/plugins-reference.md#plugin-manifest-schema`, `source: https://code.claude.com/docs/en/plugins-reference.md#complete-schema` | `.claude-plugin/plugin.json` sets `name`, `description`, `version` (currently `6.10.0` on this branch — the lead bumps it to `7.0.0` at Finish), `author`, `license`, `keywords`. Nine manifests total are bumped at Finish per the plan's "Finish (lead)" step. |
+
+## tools-reference.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Agent tool behavior (single result vs. teammate messages) | `source: https://code.claude.com/docs/en/tools-reference.md#agent-tool-behavior` | `skills/superteam-driven-development/SKILL.md`: "an IC's result arrives as a completion notification (subagent) or idle notification (teammate) — never poll for it," directly reflecting this doc's "returns a single text result" vs. "reports back through team messages" split. |
+| Task tool availability gating | `source: https://code.claude.com/docs/en/tools-reference.md#task-tool-availability` | `skills/superteam-driven-development/SKILL.md` Setup branches on whether `TaskCreate` is in the lead's tool list before choosing the live-ledger vs. plan-file path; `skills/using-superteam/SKILL.md` "Step 0" (Task 6) states the same gate for every skill that dispatches more than one agent. |
+
+## hooks.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| `TaskCreated` event | `source: https://code.claude.com/docs/en/hooks.md#taskcreated` | `hooks/task-created-check` (Task 1, landing on this lane): rejects a task missing a `[role]` tag, `Files owned:`, or `Done:` line, or one whose `Files owned:` overlaps another in-flight task. |
+| `TaskCompleted` event | `source: https://code.claude.com/docs/en/hooks.md#taskcompleted` | `hooks/task-completed-verify`, already bundled and wired in `hooks/hooks.json`: refuses completion without a `Verified:`/`Evidence:`/`Tests:` line. |
+| `TeammateIdle` event | `source: https://code.claude.com/docs/en/hooks.md#teammateidle` | `hooks/teammate-idle-claim` (Task 1, landing on this lane): on idle, claims a pending unblocked task matching the teammate's role, or exits 0. |
+
+## env-vars.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| `CLAUDE_CODE_ENABLE_TODO_TOOLS` (opts newer model families into Task tools) | `source: https://code.claude.com/docs/en/env-vars.md#variables` | Required by `README.md` "Agent teams" section (Task 6) alongside the export block; gates `skills/using-superteam/SKILL.md` Step 0's team-mode detect line. |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (enables agent teams) | `source: https://code.claude.com/docs/en/env-vars.md#variables` | Same as above — both env vars are required together, per the same README section and Step 0 detect line. |
+| `CLAUDE_CODE_TASK_LIST_ID` (share a task list across sessions) | `source: https://code.claude.com/docs/en/env-vars.md#variables` | Documented in `references/claude-code-tools.md` "Availability gate" (Task 6), fixed to say it names the on-disk task directory (verified 2.1.263) rather than the earlier, inaccurate pilot note. Not itself set by any skill — an operator/cross-session concern. |
+
+## settings-reference.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| `subagentPromptCacheTtl` | `source: https://code.claude.com/docs/en/settings-reference.md#subagentpromptcachettl` | Recommended at `"1h"` in `README.md` "Agent teams" (Task 6), so repeated per-task dispatches reuse the cached prompt prefix. |
+| `teammateMode` | `source: https://code.claude.com/docs/en/settings-reference.md#teammatemode` | Documented (not set) in `references/claude-code-tools.md` "teammateMode" (Task 6): behavioral differences between `in-process` and `tmux` that skill authors and the lead need to know, especially that a split-pane teammate's environment doesn't inherit from the lead process. |
+| `permissions.allow` | `source: https://code.claude.com/docs/en/settings-reference.md#permissionsallow` | The Lead loop's Setup step (per the design spec) writes a pre-approved command allow-list to `.claude/settings.local.json` here rather than to the committed `.claude/settings.json`, so a team's routine commands don't stall on approval prompts. |
+
+## cross-session-messaging.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Message another session | `source: https://code.claude.com/docs/en/cross-session-messaging.md#message-another-session` | Not used inside a single agent team — teammates message each other via the in-team mailbox (`agent-teams.md#architecture`), a different mechanism. Cross-session messaging is called out only as the "cross-session peer PM" tier in `skills/using-superteam/SKILL.md` Step 0 (Task 6) — for a second repo or a second lead, not for team-internal coordination. |
+| See which sessions Claude can reach | `source: https://code.claude.com/docs/en/cross-session-messaging.md#see-which-sessions-claude-can-reach` | Not used — no superteam skill currently coordinates across separate Claude Code sessions/repos; this is future scope if the cross-session-peer tier from Step 0 gets built out. |
+| Restrict cross-session messaging | `source: https://code.claude.com/docs/en/cross-session-messaging.md#restrict-cross-session-messaging` | Not used — no skill sets messaging restrictions; out of scope for a single-repo plugin. |
+
+## worktrees.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| How Claude Code enforces isolation (file edits, cwd, git redirects, command shape) | `source: https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation` | `skills/using-git-worktrees/SKILL.md` and every worktree-scoped IC prompt in `skills/superteam-driven-development/implementer-prompt.md` rely on this enforcement directly; this audit hit the "command shape" check itself mid-task (a compound `bash -c` with `&&` was refused and had to be split into separate commands). |
+| Isolate subagents with worktrees | `source: https://code.claude.com/docs/en/worktrees.md#isolate-subagents-with-worktrees` | `agents/implementer.md` and `agents/writer.md` set `isolation: worktree`; `skills/dispatching-parallel-agents/SKILL.md` dispatches with `isolation: "worktree"` explicitly for any agent that edits files. |
+| Clean up worktrees | `source: https://code.claude.com/docs/en/worktrees.md#clean-up-worktrees` | `skills/finishing-a-development-branch/SKILL.md` Step 6 ("Cleanup Workspace") implements this, including the harness-auto-remove case and the refused-removal escalation path. |
+
+## interactive-mode.md
+
+| Feature | Cite | Used where / why not |
+|---|---|---|
+| Task list (native `/tasks` list backing `TaskCreate`/`TaskList`/`TaskUpdate`/`TaskGet`) | `source: https://code.claude.com/docs/en/interactive-mode.md#task-list` | `skills/superteam-driven-development/SKILL.md` uses this as the live ledger (its "Ledger" section) whenever `TaskCreate` is in the lead's tool list; `skills/executing-plans/SKILL.md`'s "mark as in_progress / mark as completed" language echoes this same tool's status vocabulary without naming it (see Findings). |
 
 ---
 
-## skills/dispatching-parallel-agents/SKILL.md
+## Findings
 
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (a) shared task list | n/a | Skill is about ad hoc parallel Agent dispatch outside any plan/lead ledger context; no task list of any kind is used, ledger or native. |
-| (c) self-claim | n/a | Fixed roster of independent problems assigned up front, not claimed. |
-| (d) SendMessage | uses | `SKILL.md:105`: "resume the agent by name with `SendMessage` instead of re-dispatching." Correct per `tools-reference.md:49` (SendMessage resumes a subagent by name) and matches teammate messaging too. |
-| (e) idle vs completion | ignores | No distinction drawn between "Agent calls return, wait for them" language (`SKILL.md:98-99`, "When agents return") and the fact that under agent teams this becomes idle notifications, not a synchronous return. Written as if always synchronous/blocking, which is only true for non-team subagents. |
-| (i) in-process vs split-pane | n/a | Not discussed; skill predates/ignores agent-teams entirely. |
-| (j) nested teams | n/a | Not stated but not violated either — agents dispatched here are `superteam:implementer`/`superteam:researcher`, whose own agent files forbid sub-dispatch. |
-| (l) named+worktree as teammate | ignores | `SKILL.md:71-75` dispatches named, worktree-isolated implementers exactly like SDD but never notes that with agent teams enabled these become teammates (with idle-notification semantics, not a blocking return) — the skill's mental model ("Multiple dispatch calls in one response = parallel execution... When agents return") reads as classic subagent-only semantics. |
+### 1. Subagent Task-tools bug (2.1.263)
 
----
+A subagent never receives the Task tools, whatever its `tools:` allowlist
+says. Repro: an agent file with
 
-## skills/writing-plans/SKILL.md
+```yaml
+tools: Read, TaskList, TaskUpdate, TaskCreate, TaskGet
+```
 
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (a) shared task list | ignores | Plan's "Depends on:" field (`SKILL.md:90, 141`) is free text for a human/lead to read, never wired to `TaskCreate`/`addBlockedBy`. |
-| (b) blockedBy | ignores | Same — dependency info is prose, not a task-graph edge. This is the natural place `addBlockedBy` would slot in if SDD adopted the native task list. |
-| (c)(d)(e)(f)(g)(h)(i)(j)(k)(l) | n/a | This skill only produces the planning document; it doesn't dispatch agents. |
+dispatched as a plain `superteam:implementer`-style worktree subagent
+(`isolation: worktree`, no teammate `name` recognized as a live teammate)
+under a fresh `claude -p` invocation in a git repo with
+`CLAUDE_CODE_ENABLE_TODO_TOOLS=1 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`
+set — the observed tool list at runtime is `Read` only; `ToolSearch
+select:TaskList` inside that subagent returns no match. This contradicts
+`source: https://code.claude.com/docs/en/tools-reference.md#agent-tool-behavior`,
+which describes tool resolution purely in terms of `tools`/`disallowedTools`
+with no carve-out for the Task tools. Consequence, already reflected in
+`skills/superteam-driven-development/SKILL.md`: self-claim only works for
+in-process teammates; worktree subagents are always claimed and completed
+by the lead on their behalf.
 
----
+### 2. Effort inheritance differs between subagents and teammates
 
-## skills/executing-plans/SKILL.md
+`source: https://code.claude.com/docs/en/sub-agents.md#supported-frontmatter-fields`
+documents `effort` as an honoured per-subagent override ("Effort level when
+this subagent is active. Overrides the session effort level. Default:
+inherits from session"). `source:
+https://code.claude.com/docs/en/agent-teams.md#specify-teammates-and-models`
+states the opposite for the same field's owner: "Teammates inherit the
+lead's effort level" and later follow `/effort` for the rest of the
+session — a teammate's own definition-level `effort` is not honoured the
+way a subagent's is. No `agents/*.md` file currently sets `effort`, so this
+divergence is latent rather than triggered today, but it means adding
+`effort` to, say, `agents/skeptic.md` (opus, deliberately higher-effort)
+would do nothing once that agent runs as a teammate instead of a subagent.
 
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (a) shared task list | contradicts by omission | `SKILL.md:23-31`: "Mark as in_progress... Mark as completed" — this is exactly `TaskUpdate` status-workflow language (`TaskUpdate` tool description: "Status progresses: pending → in_progress → completed") but the skill never names the tool; on a model where Task tools are absent by default (Sonnet 5, Opus 4.8, Fable 5, Mythos 5+) this instruction has nothing to act on unless the session opted in, and the skill doesn't say so. |
-| (b)-(l) | n/a | Single-agent path explicitly out of scope for teams ("A lead with a team uses superteam:superteam-driven-development instead," `SKILL.md:14`); no dispatch, no teammates. |
+### 3. EnterWorktree pins only the caller in split-pane mode, not in-process
 
----
-
-## skills/finishing-a-development-branch/SKILL.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (l) named Agent as teammate | uses, correctly (implicit) | `SKILL.md:91-98` dispatches `superteam:integrator` with no `isolation`, matching the Reviewer/Integrator pattern elsewhere — same teammate-or-subagent duality applies and isn't restated, consistent with SKILL.md's convention of stating it once (in SDD) and reusing the pattern silently. |
-| (g) hooks | n/a | Nothing here would naturally hook `TaskCompleted`; the test-verification gate (Step 1) is inline, not task-list-mediated. |
-| others | n/a | Everything else in this skill is plain git mechanics, no team semantics. |
-
----
-
-## skills/using-git-worktrees/SKILL.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (l) named Agent+isolation:worktree | uses, correctly | `SKILL.md:57`: "pass `isolation: 'worktree'` on the `Agent` tool call. Claude Code creates the worktree at `.claude/worktrees/<name>`... Git commands aimed at the main checkout are blocked inside it." Matches `tools-reference.md:31` (EnterWorktree entry) and `agent-teams.md` isolation-orthogonal-to-teammate reading. Correctly separates "isolating a teammate (you are PM/lead)" from "isolating yourself." |
-| (i) in-process vs split-pane | n/a | Worktree mechanics are independent of display mode. |
-| (j) | n/a | Not a dispatch skill. |
-| others | n/a |
-
----
-
-## skills/using-superteam/SKILL.md (+ references/)
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (a)-(l) | n/a | This is the meta bootstrap skill (skill-invocation discipline); it never touches agent-teams mechanics. `references/*.md` are per-harness tool-name mappings (Codex/Pi/Antigravity/Hermes) for platforms that predate/lack agent teams — correctly out of scope for this audit's mechanisms; not reviewed line-by-line since none of (a)-(l) apply to non-Claude-Code harnesses. |
-
----
-
-## agents/implementer.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (d) SendMessage | uses, lead-only | `implementer.md:37-38`: "SendMessage the lead by name and wait for the answer" — never messages another IC directly (asymmetric with SKILL.md's reviewer→implementer allowance). |
-| (e) idle vs completion | contradicts SKILL.md's own nuance | `implementer.md:60`: "an early 'waiting for tests' reply reaches the lead as repeated idle notices" — stated unconditionally. Idle notices are a **teammate**-only concept (`agent-teams.md:303`, `hooks.md:2592` TeammateIdle); when agent teams are disabled, this same Agent call is an ordinary subagent, which returns exactly once and has no idle-notice mechanism at all (`tools-reference.md:99`: subagent "returns a single text result... parent doesn't see intermediate... only that final result"). The rule is right for the teammate case and inapplicable/unverifiable for the subagent case, but the file doesn't branch on it the way `SKILL.md:322-324` does. |
-| (j) no nested teams | uses | `implementer.md:35, 62-65`: "Do not spawn subagents or reviewers" / "Never:... spawn reviewers." |
-| (h) subagent-def-as-teammate | uses (unaware) | Frontmatter `isolation: worktree`, `model: sonnet`, `effort: medium`, no `tools:`/`disallowedTools:` — under `agent-teams.md:275`, a teammate spawned from this definition would inherit every subagent tool plus `SendMessage` (+ Task tools if the session has them), which the body's "you do not spawn subagents" instruction constrains behaviorally rather than via the `tools` field. Consistent, but relies entirely on prose discipline rather than the `tools:` allowlist — worth noting since `disallowedTools` is used by researcher/reviewer/skeptic but not implementer/writer/integrator. |
-| (k) | n/a — file doesn't address Task tool gating |
-| (l) | n/a — isolation is set here, teammate-vs-subagent framing lives in SKILL.md only |
-
-## agents/writer.md
-
-Identical structure and identical finding to implementer.md for (d), (e) (`writer.md:64`, same unconditional "idle notices" phrasing), (j) (`writer.md:38, 66-69`), (h).
-
-## agents/integrator.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (e) | contradicts SKILL.md's nuance, same pattern | `integrator.md:48`: same unconditional "idle notices" line. Integrator has **no** `isolation` field, so when agent teams are disabled it is unambiguously an ordinary subagent — making the "idle notices" phrasing here the least defensible of the three (no worktree isolation to even suggest team-only usage). |
-| (d) | uses, lead-only | `integrator.md:40-41`. |
-| (j) | n/a | Integrator doesn't do multi-step exploratory work that would tempt sub-dispatch; no explicit "never spawn" line, but none needed given its narrow merge-only scope. |
-| (k)/(l) | n/a | No `isolation`; teammate-vs-subagent duality applies identically to reviewer per SKILL.md's stated rule, just never restated here. |
-
-## agents/researcher.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (d) | uses, lead-only | `researcher.md:25-26`. |
-| (e) | n/a | No long-running command pattern like implementer/writer/integrator; file doesn't make the idle-notice claim at all — internally consistent by omission. |
-| (h) | uses | `disallowedTools: Edit, Write, NotebookEdit` (`researcher.md:6`) — this is the pattern `tools-reference.md:107-112` and `agent-teams.md:275` describe cleanly (disallowedTools removes the listed tools from the inherited set; SendMessage/Task tools still flow through since they're not in the exclusion list). |
-| (j) | uses | `researcher.md:24`: "Do not spawn agents." |
-
-## agents/reviewer.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (d) | contradicts SKILL.md | `reviewer.md:31-32` says only "SendMessage the lead by name" — no mention of the implementer-messaging allowance SKILL.md grants at `SKILL.md:127-128`. A reviewer following only its own agent file would not know it may contact the implementer. |
-| (h) | uses | Same `disallowedTools` pattern as researcher. |
-| (j) | uses | `reviewer.md:39`: "spawn a second opinion" listed under Never. |
-| (e) | n/a | No long-running-command claim in this file. |
-
-## agents/skeptic.md
-
-| Mechanism | Verdict | Evidence |
-|---|---|---|
-| (d) | uses, lead-only | `skeptic.md:34-35`. |
-| (h) | uses | `disallowedTools: Edit, Write, NotebookEdit` (`skeptic.md:6`). |
-| (j) | uses | `skeptic.md:32, 47`. |
-| others | n/a — skeptic never touches diffs/tasks/tests, so (e)/(k)/(l) don't arise |
+An in-process teammate shares the lead session's process working
+directory: when it calls `EnterWorktree`, the lead's own cwd (and every
+other in-process teammate's) moves too — observed directly in a dogfood
+run where three implementers dispatched as in-process teammates each
+called `EnterWorktree` and all three sets of edits landed in whichever
+worktree the last call created. A split-pane teammate (`teammateMode:
+"tmux"`) is its own OS process, so its `EnterWorktree` pins only itself;
+the lead's cwd is unaffected. Neither `source:
+https://code.claude.com/docs/en/worktrees.md#how-claude-code-enforces-isolation`
+nor `source: https://code.claude.com/docs/en/agent-teams.md#architecture`
+states this in-process-vs-split-pane distinction explicitly — it is
+documented here as an internally-verified gap, which is why
+`references/claude-code-tools.md` (Task 6, this plan) calls it out under
+"teammateMode" and why the design in
+`docs/superteam/specs/2026-09-05-universal-agent-team-design.md` treats
+worktree-isolating ICs as teammates that isolate *themselves*, never as
+worktree subagents, whenever self-claim is required.
 
 ---
 
-## Contradictions that must change
+## Dogfood findings (2026-09-05, 2.1.263)
 
-1. **"Idle notices" stated unconditionally in agent files, but idle notifications are teammate-only.** `agents/implementer.md:60`, `agents/writer.md:64`, `agents/integrator.md:48` all assert that an early "waiting" reply "reaches the lead as repeated idle notices" with no branch on whether agent teams are enabled. Per `agent-teams.md:303` and `tools-reference.md:99`, a non-team subagent returns exactly one result and has no idle-notice channel — the claim as written is simply false when `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is unset (the default). `SKILL.md:322-324` already gets this right ("completion notification (subagent) or idle notification (teammate)") — the three agent files should match that phrasing instead of asserting one universal mechanism.
-2. **Reviewer→implementer SendMessage is documented in one place and contradicted by silence in two others.** `skills/superteam-driven-development/SKILL.md:127-128` grants reviewers permission to message the implementer directly; `agents/reviewer.md:31-32` and `skills/superteam-driven-development/task-reviewer-prompt.md` (no SendMessage guidance at all) don't carry that permission forward. A reviewer teammate spawned from `agents/reviewer.md` alone would not discover this allowance.
-3. **The ledger's own bookkeeping vocabulary ("mark as in_progress," "mark as completed") echoes the native `TaskUpdate` status workflow verbatim** (`skills/executing-plans/SKILL.md:23-31` vs. `TaskUpdate` tool description) without ever naming the tool, on a codebase where the task list is frequently unavailable by default (Sonnet 5/Opus 4.8/Fable 5/Mythos 5, `tools-reference.md:515`). This isn't a factual contradiction in the docs but it is an internal contradiction of intent: the skill is written as if a task list obviously exists, then implements its own instead.
+- `TaskCompleted` fires not only when a task is explicitly marked completed
+  via `TaskUpdate`, but also when an agent-team teammate finishes its turn
+  while still holding an in-progress task
+  (`source: https://code.claude.com/docs/en/hooks.md#taskcompleted`). A gate
+  hook that `exit 2`s in that second case re-prompts the same teammate in a
+  loop — observed for roughly 30 rounds before the fix. Shipped fix: a
+  once-per-state marker in the hook plus a "set the task back to pending and
+  end the turn idle" protocol for a genuinely blocked teammate, instead of
+  retrying the same refused completion.
+- A split-pane teammate spawned with an explicit `tools:` allowlist gets only
+  the tools that list names — no `ToolSearch`, no Task tools, no
+  `SendMessage` unless the allowlist says so — while a `disallowedTools`
+  agent keeps everything else in its pool
+  (`source: https://code.claude.com/docs/en/sub-agents.md#available-tools`).
+  7.0.0's allowlisted agents (`agents/*.md` with `tools:` set) now name the
+  team tools explicitly so a split-pane teammate isn't silently cut off from
+  them.
+- Haiku cannot run in auto mode
+  (`source: https://code.claude.com/docs/en/permission-modes.md#eliminate-prompts-with-auto-mode`):
+  a haiku teammate prompts on every command instead, and that prompt lands in
+  the lead's pane. Never spawn a haiku teammate under this design.
+- A teammate's permission prompt appears only in the lead session's pane, and
+  only a human can answer it there; a teammate stopped mid-command leaves its
+  prompt standing until dismissed, stalling the lead
+  (`source: https://code.claude.com/docs/en/agent-teams.md#permissions`). The
+  lead loop must check its own pane for these, not assume a teammate resolves
+  its own prompts.
+- `source: observed` — a split-pane teammate reads the repo's
+  `.claude/settings.local.json` allow list like any Claude Code process, but
+  a compound command (`a && b`) does not match a bare `Bash(a)` rule, and the
+  tmux pane's `PATH` is the bare system `PATH` — no `timeout`/`gtimeout` —
+  so a test suite that shells out to either fails in a teammate pane even
+  though it passes for the lead or in a plain worktree subagent.
+- `source: observed` — `SendMessage` from a teammate to the lead succeeds
+  ("sent to inbox") but is not surfaced to the lead mid-turn; a busy lead
+  only sees it once its own turn ends, so the lead loop must end turns often
+  or read task descriptions directly for verdicts rather than assuming a
+  message will interrupt it.
+- `source: observed` — in-process teammates share the session's process
+  working directory, so one teammate's `EnterWorktree` moves the lead and
+  every other in-process teammate's cwd too; a split-pane teammate is its own
+  OS process, so its `EnterWorktree` pins only itself. (Already covered as
+  Finding 3 above; repeated here because it is also a dogfood-run
+  observation, not only a spec-review conclusion.)
+- `source: observed` — the 6.10.0 completion gate looked up
+  `task-<task_id>-report.md` by the task-list ID and truncated task
+  descriptions at an escaped quote inside `json_field`; 7.0.0's gate instead
+  takes `N` from the task's subject (`Task N: ...`) and fixes the
+  `json_field` parser so an escaped quote in the description no longer cuts
+  it short.
 
-## Gaps worth filling additively (ranked)
+---
 
-1. **Task tool availability gating is never checked or mentioned anywhere in the ten files.** SDD's plan-file ledger is the right fallback for models that lack Task tools by default, but the skill should detect/state when the session *does* have them (`CLAUDE_CODE_ENABLE_TODO_TOOLS=1`, `--allowedTools TaskCreate`, non-listed models, background/cloud sessions per `tools-reference.md:524`) and use the native list as the primary ledger there, falling back to the plan-file only when Task tools are absent. This is task #2 on the shared list.
-2. **No TaskCreated/TaskCompleted/TeammateIdle hook examples anywhere**, despite SDD already having exactly the quality-gate logic (`fix loop`, `breaker`, self-review checklist) these hooks are designed to enforce mechanically instead of by prose discipline alone. Task #4.
-3. **blockedBy dependency graph unused.** `writing-plans`' "Depends on:" field is prose the lead reads by eye; wiring it to `TaskUpdate`'s `addBlockedBy`/`addBlocks` (when Task tools are present) would let Claude Code auto-unblock dependent tasks (`agent-teams.md:246`) instead of the lead tracking it manually.
-4. **In-process vs. split-pane divergence is invisible to every skill.** Task tool availability, model effort inheritance timing (pre/post v2.1.186), and system-prompt body handling (append vs. replace) all differ by display mode (`agent-teams.md:165, 277`; `tools-reference.md:526`). None of the ten files acknowledge that a user running `teammateMode: "tmux"` gets materially different IC behavior than the (default) in-process mode.
-5. **Self-claim is unused by design but never stated as a deliberate choice.** Worth one line in SDD's "Two kinds of IC" section explaining why the lead retains full dispatch control rather than letting ICs self-claim from a shared list — otherwise a future editor may "fix" this as an oversight.
-6. **Plan mode for teammates (auto-approval) is never offered as an option**, e.g. for a risky task where the lead might want the implementer to plan first. Given SDD's "four things stop you" list already treats "a plan so broken every path forward is a guess" as a stop condition, offering plan-mode ICs for exploratory/high-risk tasks (with the lead's plan-mode auto-approval) is a natural, additive option — not a replacement for the brief-driven flow.
-7. **`disallowedTools` inconsistency across the roster.** researcher/reviewer/skeptic declare `disallowedTools: Edit, Write, NotebookEdit`; implementer/writer/integrator declare neither `tools` nor `disallowedTools`, relying purely on prose ("never spawn subagents," "never edit outside the brief") to constrain a mutation-capable role. Since teammate spawning from a named definition applies the `tools`/`disallowedTools` fields mechanically (`agent-teams.md:275`), the write-capable roles get no tool-level backstop at all — worth a decision on whether that's acceptable given worktree isolation already limits blast radius.
+## Anchor check
 
-## Decisions Cameron must make
+```
+$ fail=0
+$ grep -o 'source: https://code.claude.com/docs/en/[a-z-]*\.md#[a-z0-9-]*' docs/superteam/plans/2026-09-05-agent-team-audit.md | sort -u | while read -r _ url; do
+    f=".superteam/src/$(basename "${url%%#*}")"; a="${url##*#}"
+    if grep -E '^#+ ' "$f" | sed -E 's/^#+ //; s/[^A-Za-z0-9 -]//g' | tr 'A-Z ' 'a-z-' | grep -qx "$a"; then continue; fi
+    if grep -q "id=\"$a\"" "$f"; then continue; fi
+    echo "MISSING $url"; fail=1
+  done
+$ echo "anchor check done"
+anchor check done
+```
 
-1. **Should the SDD plan-file ledger be replaced, or dual-tracked, with the native shared task list when Task tools are present?** (Task #2.) The plan-file ledger survives compaction and works on every model; the native list gets automatic dependency unblocking, hook enforcement, and cross-session sharing via `CLAUDE_CODE_TASK_LIST_ID`. A hybrid (native list as source of truth when available, plan-file as the compaction-proof mirror always written) is possible but adds complexity — this is a real fork, not a bug fix.
-2. **Should implementer/writer/reviewer ever self-claim from a shared list, or must the lead always explicitly dispatch?** Current design is 100% lead-directed by choice. Adopting self-claim would change the core "PM briefs each IC precisely" principle SKILL.md states as load-bearing (`SKILL.md:14`) — worth an explicit yes/no rather than a silent drift either way.
-3. **Should TaskCompleted/TeammateIdle hooks become a required part of the SDD flow (auto-run tests before a task can be marked complete) or stay purely opt-in documentation?** (Task #4.) Making them required changes SDD from "lead enforces via review loop" to "harness enforces via hook," which shifts trust and failure modes (e.g., a hook that fails silently on a misconfigured test command could block completion the lead has no visibility into).
-4. **Should the write-capable roster agents (implementer, writer, integrator) gain an explicit `tools`/`disallowedTools` allowlist**, now that we know the field is applied mechanically at teammate-spawn time, or is worktree isolation considered sufficient containment on its own?
-5. **Should reviewer→implementer SendMessage be formalized in `agents/reviewer.md` and the task-reviewer template** (making it a first-class, documented capability) or removed from `SKILL.md:127-128` to keep all cross-IC communication lead-mediated, matching every other role's "SendMessage the lead only" rule?
+`permission-modes.md` sets some anchors as an explicit `<h2 id="...">` rather
+than a plain `#`/`##` line (e.g. `#eliminate-prompts-with-auto-mode`, whose
+visible heading text is "Eliminate *permission* prompts with auto mode" —
+the id itself omits "permission"), so the loop above falls back to matching
+a literal `id="<anchor>"` attribute when the heading-text transform misses.
+
+Actual run produced no `MISSING` lines, over 37 unique citations.
+
+Tests: anchor check — 0 MISSING of 37 citations.
