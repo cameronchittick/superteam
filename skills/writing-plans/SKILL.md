@@ -144,6 +144,13 @@ superteam:superteam-driven-development's Model Selection — cheap for 1-2 files
 with a complete spec, standard for multi-file integration, most capable for
 design judgment — and drives what each task costs.
 
+**Depends on: format.** Write it as `Depends on: Task 2, Task 3` or
+`Depends on: none` — always task numbers, one line, in the header where
+it already sits. On Claude Code, superteam-driven-development's live
+ledger parses this line and wires each dependency into `addBlockedBy` on
+the shared task list, so the exact format is what makes a task
+machine-mappable, not just human-readable.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:

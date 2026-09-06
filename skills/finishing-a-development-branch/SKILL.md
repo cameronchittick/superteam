@@ -11,6 +11,8 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
 
+Before this step: on the live ledger, confirm `TaskList` shows every plan task completed; on the fallback ledger, scan the plan file for the same.
+
 ## Step 1: Verify Tests
 
 Run the project's full test suite (`npm test` / `cargo test` / `pytest` / `go test ./...`).

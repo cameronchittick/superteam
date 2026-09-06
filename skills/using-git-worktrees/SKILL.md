@@ -59,6 +59,8 @@ The user has asked for an isolated workspace (Step 0 consent). Use your harness'
 
 A worktree is a fresh checkout, so gitignored files (`.env`, installed deps) are absent. Add a `.worktreeinclude` file at the project root listing files to copy into every new worktree.
 
+An `Agent` call with `isolation: "worktree"` always yields a background subagent, never a teammate, even with agent teams enabled — it will not carry the Task tools.
+
 **Other harnesses:** look for a tool with a name like `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you have one, use it.
 
 Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
