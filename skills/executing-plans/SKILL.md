@@ -30,6 +30,8 @@ For each task:
 3. Run verifications as specified
 4. Mark as completed
 
+On Claude Code, with the Task tools present (see `../using-superteam/references/`), use `TaskUpdate` for both marks; otherwise the checkbox in the plan file is the record. This is still the single-agent path either way — no shared task list to coordinate with.
+
 ### Step 3: Complete Development
 
 After all tasks complete and verified:
