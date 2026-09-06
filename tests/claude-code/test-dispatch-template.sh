@@ -68,7 +68,16 @@ main() {
     cat > "$repo/plan.md" <<'PLAN'
 # Plan
 
+**Spec:** `docs/spec.md`
+
+## Global Constraints
+- Keep it simple.
+
 ## Task 1: First thing
+
+**Files owned:** `src/a.py`, `src/b.py`
+**Depends on:** none
+**Model tier:** standard
 
 Do the first thing.
 PLAN
@@ -87,6 +96,43 @@ PLAN
     else
         fail "task-brief --print creates no .superteam workspace"
     fi
+
+    # (c2) task-brief --taskcreate emits a TaskCreate subject line and body
+    local tc tr tm line
+    tc="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 implement lane/x)"
+    if printf '%s\n' "$tc" | sed -n 1p | grep -q '^Subject: Task 1: implement \[implementer\]$'; then pass "--taskcreate implement subject carries role tag"; else fail "--taskcreate implement subject carries role tag"; fi
+    for line in '^Lane: lane/x$' '^Worktree: task-1-impl' '^Files owned: ' '^Done: report at \.superteam/sdd/' '^## Task Brief$' '^## Global Constraints$'; do
+        if printf '%s\n' "$tc" | grep -q "$line"; then pass "--taskcreate body has $line"; else fail "--taskcreate body has $line"; fi
+    done
+    if printf '%s\n' "$tc" | grep -q '^Files owned: src/a.py, src/b.py$'; then pass "--taskcreate copies Files owned without backticks"; else fail "--taskcreate copies Files owned without backticks"; fi
+    if printf '%s\n' "$tc" | grep -q '^Plan: plan.md   Spec: docs/spec.md$'; then pass "--taskcreate body has the Plan/Spec line"; else fail "--taskcreate body has the Plan/Spec line"; fi
+    if printf '%s\n' "$tc" | grep -qE '^(Role|Model):'; then fail "--taskcreate body has no Role:/Model: line"; else pass "--taskcreate body has no Role:/Model: line"; fi
+    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review lane/x)"
+    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: worktree-task-1-impl$'; then pass "--taskcreate review subject and Reviews: line"; else fail "--taskcreate review subject and Reviews: line"; fi
+    tm="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 merge lane/x)"
+    if printf '%s\n' "$tm" | grep -q '^Subject: Task 1: merge \[integrator\]$' && printf '%s\n' "$tm" | grep -q '^Merge: worktree-task-1-impl → lane/x$'; then pass "--taskcreate merge subject and Merge: line"; else fail "--taskcreate merge subject and Merge: line"; fi
+    if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 bogus lane/x) >/dev/null 2>&1; then fail "--taskcreate rejects unknown kind"; else pass "--taskcreate rejects unknown kind"; fi
+    if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 9 implement lane/x) >/dev/null 2>&1; then fail "--taskcreate rejects a missing task number"; else pass "--taskcreate rejects a missing task number"; fi
+
+    # (c3) a prose task's Model tier makes the implement role [writer]
+    cat > "$repo/prose-plan.md" <<'PLAN'
+# Plan
+
+## Global Constraints
+- Prose only.
+
+## Task 1: Write the docs
+
+**Files owned:** `README.md`
+**Depends on:** none
+**Model tier:** prose
+
+Write it.
+PLAN
+    local tw
+    tw="$(cd "$repo" && "$TASK_BRIEF" --taskcreate prose-plan.md 1 implement lane/x)"
+    if printf '%s\n' "$tw" | grep -q '^Subject: Task 1: implement \[writer\]$'; then pass "--taskcreate prose Model tier gives the [writer] role"; else fail "--taskcreate prose Model tier gives the [writer] role"; fi
+    if printf '%s\n' "$tw" | grep -q '^Plan: prose-plan.md   Spec: none$'; then pass "--taskcreate Spec falls back to none"; else fail "--taskcreate Spec falls back to none"; fi
 
     # (d) implementer-prompt.md mentions mkdir -p (report dir must be created)
     if grep -q "mkdir -p" "$TDD_DIR/implementer-prompt.md"; then
