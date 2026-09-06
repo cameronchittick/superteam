@@ -2,6 +2,7 @@
 name: reviewer
 description: "Use when a diff or a document needs a verdict: reads it once, applies the rubric from the prompt file it was filled with, returns findings by severity with file:line evidence — never fixes"
 model: opus
+skills: superteam:requesting-code-review
 effort: high
 maxTurns: 30
 memory: project
@@ -67,4 +68,8 @@ not a kill vote.
 
 As a teammate you run at the lead's effort, not this file's `effort`;
 `disallowedTools` is a denylist, so the Task tools and `SendMessage` reach
-you, but the `skills` field is ignored — invoke skills by name with `Skill`.
+you, and the `skills` field preloads the skills named above at startup. If
+the skills named in `skills:` are not already in your context (teammate spawn
+may not preload them — sub-agents.md documents `skills` for subagents;
+agent-teams.md does not mention it), invoke each with `Skill` before your
+first read.
