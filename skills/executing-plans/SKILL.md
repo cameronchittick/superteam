@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
+description: Fallback for harnesses without agent teams; on Claude Code use superteam-driven-development. Use when you have a written implementation plan to execute alone with review checkpoints
 ---
 
 # Executing Plans

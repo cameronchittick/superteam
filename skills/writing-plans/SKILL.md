@@ -58,7 +58,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:superteam-driven-development (recommended) or superteam:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:superteam-driven-development to implement this plan task-by-task. On a harness without agent teams, superteam:executing-plans is the fallback. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -137,8 +137,10 @@ git commit -m "feat: add specific feature"
 **The three header lines.** A lead hands each task to an IC in its own
 worktree, so `**Files owned:**` lists every file the task creates or edits —
 no two tasks that can run concurrently may share a file, or their branches
-collide at merge. When two tasks must share a file, the later one lists the
-earlier one in `Depends on:` — that line becomes a `blockedBy` edge on the
+collide at merge. `Files owned:` plus the `Interfaces:` block are the task's
+seam — the boundary its implementer tests at. When two tasks must share a
+file, the later one lists the earlier one in `Depends on:` — that line
+becomes a `blockedBy` edge on the
 task list and is what lets the `task-created-check` hook accept the overlap;
 an overlap with no edge is rejected at creation (agent-teams.md, Avoid file
 conflicts). `**Depends on:**` names the tasks whose output this one
@@ -186,20 +188,11 @@ On demand, or for large plans, dispatch `superteam:skeptic` on the task breakdow
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving the plan, hand it off:
 
-**"Plan complete and saved to `docs/superteam/plans/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `docs/superteam/plans/<filename>.md`. Next:
+superteam:superteam-driven-development (REQUIRED SUB-SKILL). On a harness
+without agent teams, superteam:executing-plans is the fallback."**
 
-**1. Team-Driven (recommended)** - I act as lead, dispatch one IC per task in its own worktree, review and merge each
-
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?"**
-
-**If Team-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superteam:superteam-driven-development
-- One IC per task in its own worktree + two-stage review, lead merges
-
-**If Inline Execution chosen:**
-- **REQUIRED SUB-SKILL:** Use superteam:executing-plans
-- Batch execution with checkpoints for review
+You act as lead: one IC per task in its own worktree, a task review after
+each, and the integrator merges.
