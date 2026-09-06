@@ -1,9 +1,9 @@
 ---
-name: team-driven-development
+name: superteam-driven-development
 description: Use when executing an implementation plan as the lead (PM) of a team — one implementer IC per task in its own worktree, a reviewer per task, an integrator merges
 ---
 
-# Team-Driven Development
+# Superteam-Driven Development
 
 You are the lead (PM). Execute the plan by dispatching one fresh implementer
 IC per task into its own worktree, a task review (spec compliance + code
@@ -41,7 +41,7 @@ digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
     "Tasks mostly independent?" [shape=diamond];
     "Stay in this session?" [shape=diamond];
-    "team-driven-development" [shape=box];
+    "superteam-driven-development" [shape=box];
     "executing-plans" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
@@ -49,7 +49,7 @@ digraph when_to_use {
     "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
     "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
     "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
-    "Stay in this session?" -> "team-driven-development" [label="yes"];
+    "Stay in this session?" -> "superteam-driven-development" [label="yes"];
     "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
 }
 ```
@@ -663,7 +663,7 @@ Use superteam:finishing-a-development-branch.
 ## Example Workflow
 
 ```
-You: I'm using Team-Driven Development to execute this plan.
+You: I'm using Superteam-Driven Development to execute this plan.
 
 [Setup: lane branch verified]
 [Read plan file once: docs/superteam/plans/feature-plan.md]

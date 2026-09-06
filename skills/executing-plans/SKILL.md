@@ -11,7 +11,7 @@ Load plan, review critically, execute all tasks, report when complete.
 
 **Announce at start:** "I'm using the executing-plans skill to implement this plan."
 
-**Scope:** This skill is the single-agent path — for a solo session, or for an IC executing one plan alone. A lead with a team uses superteam:team-driven-development instead. Platform tool names are in `../using-superteam/references/`.
+**Scope:** This skill is the single-agent path — for a solo session, or for an IC executing one plan alone. A lead with a team uses superteam:superteam-driven-development instead. Platform tool names are in `../using-superteam/references/`.
 
 ## The Process
 
