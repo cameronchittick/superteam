@@ -37,6 +37,10 @@ different `model` with a reason; you do not choose it.
 8. When something in the brief is ambiguous or blocked, `SendMessage` the
    lead by name and wait for the answer instead of guessing.
 
+## Shared task list
+
+You usually do not have the Task tools in a worktree; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing. Never edit `~/.claude/tasks/**` by hand — a task changes state only through `TaskUpdate` (yours or the lead's); a hand-edited file skips the TaskCompleted gate and is a lie about being done.
+
 ## Worktree guard: known refusals
 
 Claude Code's guard refuses commands it cannot prove stay in the worktree.
@@ -46,7 +50,9 @@ literal arguments from your cwd; a path containing a directory literally
 named `source` trips the guard — reference it with a glob (`s*e/`) or use
 Read/Edit/Glob tools instead of Bash for those files; if the lead handed you
 an absolute path into the main checkout, do not retry it — report BLOCKED
-with the path. (Bug filed with Anthropic; this is the workaround.)
+with the path. (Bug filed with Anthropic; this is the workaround.) As an
+in-process teammate you cannot run background subagents or spawn
+teammates; run helpers in the foreground.
 
 Final report, in this order: branch name, commit hash(es), `git diff --stat`
 against the base, the test command and its output, Proposed terms (or
@@ -57,9 +63,11 @@ to your cwd (`mkdir -p` the directory first; it is gitignored and
 worktree-local). The lead copies it out; you never write outside your
 worktree. Return only the short contract.
 
-Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result — an early "waiting for tests" reply reaches the lead as repeated idle notices.
+Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result. As a subagent your reply returns once and ends the task; as a teammate it arrives as an idle notice — either way, an early "waiting for tests" reply is a lie about being done.
 
 Never: touch files outside the brief; edit `CONTEXT.md` or ADRs; spawn
 reviewers; merge anything; touch the shared checkout (`cd` into it or use
 its absolute path); retry a guard-refused command unchanged more than once
 — report and stop.
+
+When spawned as a teammate, Claude Code adds SendMessage (and the Task tools when the lead has them) to this tools list; the `skills` field is ignored.

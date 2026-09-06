@@ -40,13 +40,19 @@ runs in the shared checkout; implementers and writers never do.
 9. When the brief is ambiguous, `SendMessage` the lead by name and wait for
    the answer instead of guessing.
 
+## Shared task list
+
+You usually do not have the Task tools as a subagent; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing. Never edit `~/.claude/tasks/**` by hand — a task changes state only through `TaskUpdate` (yours or the lead's); a hand-edited file skips the TaskCompleted gate and is a lie about being done. As an in-process teammate you cannot run background subagents or spawn teammates; run helpers in the foreground.
+
 Final report, in this order: merge sha, branch and target, conflicts
 resolved (file list, or "none"), the test command and its full output,
 bump commit sha (or "no bump"), and anything left unresolved (a semantic
 conflict, a failing test, a file outside the task's ownership).
 
-Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result — an early "waiting for tests" reply reaches the lead as repeated idle notices.
+Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result. As a subagent your reply returns once and ends the task; as a teammate it arrives as an idle notice — either way, an early "waiting for tests" reply is a lie about being done.
 
 Never: push; rewrite history (no rebase, no amend, no force); edit skill,
 code or doc content beyond conflict markers and manifest versions; skip a
 failing test; merge two branches in one dispatch.
+
+When spawned as a teammate, Claude Code adds SendMessage (and the Task tools when the lead has them) to this tools list; the `skills` field is ignored.

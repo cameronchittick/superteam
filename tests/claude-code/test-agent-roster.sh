@@ -68,6 +68,52 @@ main() {
         printf '%s\n' "$ic" | sed 's/^/    /'
     fi
 
+    # (e) every roster agent claims and completes its own task on the
+    #     shared task list
+    local missing_task=0 role
+    for role in "${ROSTER[@]}"; do
+        if ! grep -qE "task list|TaskUpdate" "$AGENTS/$role.md"; then
+            echo "    $role.md missing 'task list' or 'TaskUpdate'"
+            missing_task=$((missing_task + 1))
+        fi
+    done
+    if [[ "$missing_task" -eq 0 ]]; then
+        pass "every roster agent mentions the shared task list"
+    else
+        fail "every roster agent mentions the shared task list ($missing_task missing)"
+    fi
+
+    # (f) the false "repeated idle notices" claim is gone
+    local idle
+    idle="$(grep -rln "repeated idle notices" "$AGENTS"/*.md 2>/dev/null || true)"
+    if [[ -z "$idle" ]]; then
+        pass "no agent file claims 'repeated idle notices'"
+    else
+        fail "no agent file claims 'repeated idle notices'"
+        echo "    found in: $idle"
+    fi
+
+    # (g) reviewer may SendMessage the implementer for a clarifying question
+    if grep -q "SendMessage" "$AGENTS/reviewer.md"; then
+        pass "agents/reviewer.md mentions SendMessage"
+    else
+        fail "agents/reviewer.md mentions SendMessage"
+    fi
+
+    # (h) implementer/writer/integrator warn against hand-editing task files
+    local missing_hand=0 role
+    for role in implementer writer integrator; do
+        if ! grep -qF '~/.claude/tasks' "$AGENTS/$role.md"; then
+            echo "    $role.md missing '~/.claude/tasks'"
+            missing_hand=$((missing_hand + 1))
+        fi
+    done
+    if [[ "$missing_hand" -eq 0 ]]; then
+        pass "implementer/writer/integrator warn against hand-editing ~/.claude/tasks"
+    else
+        fail "implementer/writer/integrator warn against hand-editing ~/.claude/tasks ($missing_hand missing)"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."
