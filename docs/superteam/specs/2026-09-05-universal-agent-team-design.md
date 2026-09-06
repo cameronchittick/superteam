@@ -104,7 +104,9 @@ Claim rule (identical text in every agent body): `TaskList` → pick the
 first task that is pending, has no unresolved `blockedBy`, has no owner,
 and whose subject carries your role tag → `TaskUpdate` owner=<your name>,
 status=in_progress → do it → complete only with the Done evidence
-written. Never claim another role's task. An explicit assignment from the
+written and appended to the task description as a `Verified:` line via
+`TaskUpdate` (that line is what the TaskCompleted gate reads; a report file
+inside a worktree is invisible to it). Never claim another role's task. An explicit assignment from the
 lead (task already owned by you, or a message naming a task) wins over the
 scan. If nothing matches, end the turn; the idle notification is the
 report channel and the TeammateIdle hook re-prompts you when a task of your
