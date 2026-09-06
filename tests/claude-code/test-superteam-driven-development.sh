@@ -49,7 +49,7 @@ fi
 # The team-mode sections other skills point at, and the strings that carry
 # the task graph, the pre-approval rule, teardown, and the lead's limits.
 SKILL_TEXT="$(cat "$SKILL_DIR/SKILL.md")"
-for s in "## Modes" "## Task graph" "## Role pool" "## Monitor loop" "## Restart" "## Fallback" "task-brief --taskcreate" "Task N: implement" "Task N: review" "Task N: merge" "settings.local.json" "shutdown_request" "never implements"; do
+for s in "## Modes" "## Task graph" "## Role pool" "## Monitor loop" "## Restart" "## Fallback" "task-brief --taskcreate" "Task N: implement" "Task N: review" "Task N: merge" "settings.local.json" "shutdown_request" "never implements" "pending permission dialog" "Never spawn a haiku teammate" "Verified:"; do
     if assert_contains "$SKILL_TEXT" "$s" "SKILL.md has $s"; then
         : # pass
     else
