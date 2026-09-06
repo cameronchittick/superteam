@@ -65,9 +65,9 @@ claude -p "The plan looks good. What are my options for executing it?" \
 echo "Done."
 
 # Turn 5: THE CRITICAL TEST
-echo ">>> Turn 5: Requesting team-driven-development..."
+echo ">>> Turn 5: Requesting superteam-driven-development..."
 FINAL_LOG="$OUTPUT_DIR/turn5.json"
-claude -p "team-driven-development, please" \
+claude -p "superteam-driven-development, please" \
     --continue \
     --plugin-dir "$PLUGIN_DIR" \
     --dangerously-skip-permissions \
@@ -80,7 +80,7 @@ echo ""
 echo "=== Results ==="
 
 # Check final turn
-SKILL_PATTERN='"skill":"([^"]*:)?team-driven-development"'
+SKILL_PATTERN='"skill":"([^"]*:)?superteam-driven-development"'
 if grep -q '"name":"Skill"' "$FINAL_LOG" && grep -qE "$SKILL_PATTERN" "$FINAL_LOG"; then
     echo "PASS: Skill was triggered"
     TRIGGERED=true

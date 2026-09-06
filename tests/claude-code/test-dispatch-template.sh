@@ -8,7 +8,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TDD_DIR="$REPO_ROOT/skills/team-driven-development"
+TDD_DIR="$REPO_ROOT/skills/superteam-driven-development"
 TASK_BRIEF="$TDD_DIR/scripts/task-brief"
 
 FAILURES=0

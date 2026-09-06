@@ -48,7 +48,7 @@ This determines which menu to show and how cleanup works:
 The base branch is the repo's trunk as named by the plan, the brief, or the
 branch's upstream — never assume `main`. In a lead/IC workflow the lane
 branch merges into that trunk here; IC worktree branches merge into the lane
-under superteam:team-driven-development, not this skill. If the base is not
+under superteam:superteam-driven-development, not this skill. If the base is not
 already known, ask: "This branch split from <your best guess> - is that
 correct?" Confirm before merging: merging into the wrong base is expensive
 to undo.

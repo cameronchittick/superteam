@@ -8,4 +8,4 @@ Two execution options:
 Which approach do you want to use for implementation?
 
 [Your response]:
-team-driven-development, please
+superteam-driven-development, please

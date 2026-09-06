@@ -26,7 +26,7 @@ fi
 VERBOSE=false
 SPECIFIC_TEST=""
 TIMEOUT=900  # Per-test-file budget; must exceed the file's worst case
-             # (test-team-driven-development.sh: 9 prompts x 90s each)
+             # (test-superteam-driven-development.sh: 9 prompts x 90s each)
 RUN_INTEGRATION=false
 
 while [[ $# -gt 0 ]]; do
@@ -58,10 +58,10 @@ while [[ $# -gt 0 ]]; do
             echo "  --help, -h           Show this help"
             echo ""
             echo "Tests:"
-            echo "  test-team-driven-development.sh  Test skill loading and requirements"
+            echo "  test-superteam-driven-development.sh  Test skill loading and requirements"
             echo ""
             echo "Integration Tests (use --integration):"
-            echo "  test-team-driven-development-integration.sh  Full workflow execution"
+            echo "  test-superteam-driven-development-integration.sh  Full workflow execution"
             exit 0
             ;;
         *)
@@ -78,12 +78,12 @@ tests=(
     "test-sdd-workspace.sh"
     "test-agent-roster.sh"
     "test-dispatch-template.sh"
-    "test-team-driven-development.sh"
+    "test-superteam-driven-development.sh"
 )
 
 # Integration tests (slow, full execution)
 integration_tests=(
-    "test-team-driven-development-integration.sh"
+    "test-superteam-driven-development-integration.sh"
 )
 
 # Add integration tests if requested

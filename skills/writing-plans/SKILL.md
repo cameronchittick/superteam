@@ -58,7 +58,7 @@ independently testable deliverable.
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:team-driven-development (recommended) or superteam:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superteam:superteam-driven-development (recommended) or superteam:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -140,7 +140,7 @@ no two tasks that can run concurrently may share a file, or their branches
 collide at merge. `**Depends on:**` names the tasks whose output this one
 consumes, which is what decides dispatch order (dependents wait; the rest
 run in parallel). `**Model tier:**` follows the reasoning in
-superteam:team-driven-development's Model Selection — cheap for 1-2 files
+superteam:superteam-driven-development's Model Selection — cheap for 1-2 files
 with a complete spec, standard for multi-file integration, most capable for
 design judgment — and drives what each task costs.
 
@@ -181,7 +181,7 @@ After saving the plan, offer execution choice:
 **Which approach?"**
 
 **If Team-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use superteam:team-driven-development
+- **REQUIRED SUB-SKILL:** Use superteam:superteam-driven-development
 - One IC per task in its own worktree + two-stage review, lead merges
 
 **If Inline Execution chosen:**
