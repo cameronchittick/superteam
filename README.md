@@ -391,7 +391,9 @@ all four.
   Everything else passes in silence, and it fails open. A forbidden command
   counts only in command position — at the start of a line or right after a
   separator — so quoting one in text (an `echo`, a `grep` pattern, a heredoc
-  writing a report) is allowed. It reads the command
+  writing a report) is allowed. A backtick is not a separator here, which
+  means backtick-quoted prose passes and a backtick command substitution
+  passes with it. It reads the command
   as text rather than running it — `cd /tmp && rm -rf ./x` reads as a relative
   target and a symlink out of the worktree is not resolved — so it is a
   guardrail against the common destructive typo, not a sandbox.

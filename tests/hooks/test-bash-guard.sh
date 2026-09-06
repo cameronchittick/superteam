@@ -142,6 +142,17 @@ assert_denied "sudo does not hide tmux kill-server" "sudo tmux kill-server"
 assert_denied "a command on the second line of a script is denied" \
     'cd /tmp
 git reset --hard'
+assert_denied "\$( command substitution is command position" \
+    'echo $(git reset --hard)'
+
+# A backtick is NOT command position: backtick-quoted prose in a Markdown
+# heredoc is how review reports are written, and a backtick-substituted
+# destructive command is not the typo this guardrail exists for.
+assert_allowed "a heredoc quoting commands in backticks is allowed" \
+    'cat > report.md <<EOF
+The guard denies `git reset --hard` and `tmux kill-server` in command position.
+It also denies `rm -rf ../x`.
+EOF'
 
 echo "Bash guard: the rm walk stops at a glued separator"
 

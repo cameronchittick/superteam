@@ -11,11 +11,11 @@
 # Known blind spots, stated plainly: this reads the command as text, it does
 # not run it. "cd /tmp && rm -rf ./x" reads as a relative target and is
 # allowed, and a symlink pointing out of the worktree is not resolved, because
-# the $PWD containment test is a literal prefix comparison. A backtick counts
-# as command position, because to the shell it is command substitution, so a
-# Markdown heredoc that wraps one of these commands in backticks is still
-# denied - quote it some other way. It is a guardrail against the common
-# destructive typo, not a sandbox.
+# the $PWD containment test is a literal prefix comparison. A backtick does
+# not count as command position either, so `git reset --hard` inside backticks
+# runs unstopped - the cost of letting a review report quote the command it is
+# reporting on. It is a guardrail against the common destructive typo, not a
+# sandbox.
 #
 # Deny is returned as the PreToolUse permissionDecision payload on stdout with
 # exit 0 (hooks.md, "PreToolUse decision control").
@@ -86,10 +86,13 @@ EOF
 norm="$(printf '%s' "$command_text" | tr '\t' ' ' | tr -s ' ')"
 
 # A forbidden command only counts in command position: at the start of a line
-# or right after a separator (; & && | || $( `), past any leading whitespace
-# and any sudo/env/command prefix. Quoting one in prose - a heredoc writing a
-# report, an echo, a grep pattern - is writing about it, not running it.
-cmdpos='(^|[;&|]|\$\(|`)[[:space:]]*((sudo|env|command)[[:space:]]+)*'
+# or right after a separator (; & && | || $(), past any leading whitespace and
+# any sudo/env/command prefix. Quoting one in prose - a heredoc writing a
+# report, an echo, a grep pattern - is writing about it, not running it. A
+# backtick is deliberately not in the list: backtick-quoted prose in a Markdown
+# heredoc is how reports get written, and a backtick-substituted destructive
+# command is not the typo this guardrail exists for.
+cmdpos='(^|[;&|]|\$\()[[:space:]]*((sudo|env|command)[[:space:]]+)*'
 
 if printf '%s' "$norm" | grep -qE "${cmdpos}tmux +kill-server([^[:alnum:]_.-]|\$)"; then
     deny "tmux kill-server tears down every teammate's pane, not just yours. Kill your own session by name instead."
