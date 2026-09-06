@@ -257,13 +257,109 @@ main() {
         fail "no preloading agent claims the skills field is ignored"
         echo "    found in: $ignored"
     fi
+    # The pattern accepts the Task 2 wording and the Task 11 wording, because
+    # researcher.md is Task 13's file and still carries the older sentence.
     for role in implementer writer reviewer integrator researcher; do
-        if grep -q 'invoke each with `Skill`' "$AGENTS/$role.md"; then
+        if grep -qE 'invoke each (skill named in `skills:` )?with `Skill`' "$AGENTS/$role.md"; then
             pass "agents/$role.md falls back to invoking the skills by hand"
         else
             fail "agents/$role.md falls back to invoking the skills by hand"
         fi
     done
+
+    # (k6b) the hedge is gone: a teammate spawn does NOT preload `skills:`
+    #       (lead probe 2026-09-06). researcher.md is excluded — Task 13's.
+    local hedged
+    hedged="$(grep -ln 'may not preload' \
+        "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md \
+        "$AGENTS"/integrator.md "$AGENTS"/skeptic.md 2>/dev/null || true)"
+    if [[ -z "$hedged" ]]; then
+        pass "no agent file hedges about teammate skill preloading"
+    else
+        fail "no agent file hedges about teammate skill preloading"
+        echo "    found in: $hedged"
+    fi
+    for role in implementer writer reviewer integrator skeptic; do
+        if grep -q 'a teammate spawn does not' "$AGENTS/$role.md"; then
+            pass "agents/$role.md states that a teammate spawn does not preload skills"
+        else
+            fail "agents/$role.md states that a teammate spawn does not preload skills"
+        fi
+    done
+
+    # (k7) implementer.md and writer.md read every Standards: file before
+    #      writing anything
+    for role in implementer writer; do
+        if grep -qE '^([0-9]+\.|[[:space:]]*\([a-g]\)).*`Standards:`' "$AGENTS/$role.md" \
+            && grep -q 'before writing' "$AGENTS/$role.md"; then
+            pass "agents/$role.md reads the Standards: files before writing"
+        else
+            fail "agents/$role.md reads the Standards: files before writing"
+        fi
+    done
+
+    # (k8) implementer.md carries one work cadence, in order: TDD at the
+    #      seam, typecheck, focused test file while iterating, full suite
+    #      once before the commit, review seats as the gate
+    local cadence_ok=1 prev=0 pos phrase
+    for phrase in 'superteam:test-driven-development' 'typecheck' 'focused test file' 'full suite once' 'review seats'; do
+        pos="$(grep -nF "$phrase" "$AGENTS/implementer.md" | head -1 | cut -d: -f1)"
+        if [[ -z "$pos" ]]; then
+            echo "    implementer.md missing: $phrase"
+            cadence_ok=0
+        elif [[ "$pos" -lt "$prev" ]]; then
+            echo "    implementer.md out of order at: $phrase (line $pos after line $prev)"
+            cadence_ok=0
+        else
+            prev="$pos"
+        fi
+    done
+    if [[ "$cadence_ok" -eq 1 ]]; then
+        pass "implementer.md states the work cadence in order"
+    else
+        fail "implementer.md states the work cadence in order"
+    fi
+
+    # (k9) never self-review as the gate: the review seats are
+    for role in implementer writer; do
+        if grep -q 'superteam:requesting-code-review' "$AGENTS/$role.md"; then
+            pass "agents/$role.md names the superteam:requesting-code-review rubrics"
+        else
+            fail "agents/$role.md names the superteam:requesting-code-review rubrics"
+        fi
+    done
+
+    # (k10) every skill reference in agent text is superteam:-prefixed. A
+    #       bare name is a skill that will not resolve. researcher.md is
+    #       excluded here because Task 13 owns it and asserts the same rule.
+    local bare skill
+    bare=""
+    for skill in test-driven-development verification-before-completion \
+        requesting-code-review finishing-a-development-branch systematic-debugging; do
+        # A hit not preceded by "superteam:" or "skills/" is a bare name.
+        bare+="$(grep -rn "$skill" \
+            "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md \
+            "$AGENTS"/integrator.md "$AGENTS"/skeptic.md 2>/dev/null \
+            | grep -v "superteam:$skill" \
+            | grep -v "skills/$skill" || true)"
+    done
+    if [[ -z "$bare" ]]; then
+        pass "every skill reference in agents/ is superteam:-prefixed"
+    else
+        fail "every skill reference in agents/ is superteam:-prefixed"
+        printf '%s\n' "$bare" | sed 's/^/    /'
+    fi
+
+    # (k11) no agent file — skeptic included — still claims the skills
+    #       field is ignored
+    local ignored_any
+    ignored_any="$(grep -ln 'skills` field is ignored' "$AGENTS"/*.md 2>/dev/null || true)"
+    if [[ -z "$ignored_any" ]]; then
+        pass "no agent file claims the skills field is ignored"
+    else
+        fail "no agent file claims the skills field is ignored"
+        echo "    found in: $ignored_any"
+    fi
 
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template

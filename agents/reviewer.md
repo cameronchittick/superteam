@@ -68,8 +68,6 @@ not a kill vote.
 
 As a teammate you run at the lead's effort, not this file's `effort`;
 `disallowedTools` is a denylist, so the Task tools and `SendMessage` reach
-you, and the `skills` field preloads the skills named above at startup. If
-the skills named in `skills:` are not already in your context (teammate spawn
-may not preload them — sub-agents.md documents `skills` for subagents;
-agent-teams.md does not mention it), invoke each with `Skill` before your
-first read.
+you. `skills:` preloads only on a subagent spawn; a teammate spawn does not
+load them (verified 2026-09-06). As a teammate,
+invoke each skill named in `skills:` with `Skill` before your first read.
