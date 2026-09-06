@@ -260,9 +260,9 @@ assert_command_output \
 
 teamenv_missing_home="$(make_home claude-code-team-env-missing)"
 assert_command_output \
-    "Claude Code points at superteam:setup when the team env vars are unset" \
+    "Claude Code points at superteam:setup-superteam when the team env vars are unset" \
     "nested" \
-    "superteam:setup" \
+    "superteam:setup-superteam" \
     "" \
     "$teamenv_missing_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
@@ -273,7 +273,7 @@ assert_command_output \
     "Claude Code stays quiet about setup once both team env vars are set" \
     "nested" \
     "" \
-    "superteam:setup" \
+    "superteam:setup-superteam" \
     "$teamenv_set_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 \
