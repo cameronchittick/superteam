@@ -257,10 +257,8 @@ main() {
         fail "no preloading agent claims the skills field is ignored"
         echo "    found in: $ignored"
     fi
-    # The pattern accepts the Task 2 wording and the Task 11 wording, because
-    # researcher.md is Task 13's file and still carries the older sentence.
     for role in implementer writer reviewer integrator researcher; do
-        if grep -qE 'invoke each (skill named in `skills:` )?with `Skill`' "$AGENTS/$role.md"; then
+        if grep -qF 'invoke each skill named in `skills:` with `Skill`' "$AGENTS/$role.md"; then
             pass "agents/$role.md falls back to invoking the skills by hand"
         else
             fail "agents/$role.md falls back to invoking the skills by hand"
@@ -268,18 +266,16 @@ main() {
     done
 
     # (k6b) the hedge is gone: a teammate spawn does NOT preload `skills:`
-    #       (lead probe 2026-09-06). researcher.md is excluded — Task 13's.
+    #       (lead probe 2026-09-06)
     local hedged
-    hedged="$(grep -ln 'may not preload' \
-        "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md \
-        "$AGENTS"/integrator.md "$AGENTS"/skeptic.md 2>/dev/null || true)"
+    hedged="$(grep -ln 'may not preload' "$AGENTS"/*.md 2>/dev/null || true)"
     if [[ -z "$hedged" ]]; then
         pass "no agent file hedges about teammate skill preloading"
     else
         fail "no agent file hedges about teammate skill preloading"
         echo "    found in: $hedged"
     fi
-    for role in implementer writer reviewer integrator skeptic; do
+    for role in implementer writer reviewer integrator skeptic researcher; do
         if grep -q 'a teammate spawn does not' "$AGENTS/$role.md"; then
             pass "agents/$role.md states that a teammate spawn does not preload skills"
         else
@@ -330,16 +326,13 @@ main() {
     done
 
     # (k10) every skill reference in agent text is superteam:-prefixed. A
-    #       bare name is a skill that will not resolve. researcher.md is
-    #       excluded here because Task 13 owns it and asserts the same rule.
+    #       bare name is a skill that will not resolve.
     local bare skill
     bare=""
     for skill in test-driven-development verification-before-completion \
         requesting-code-review finishing-a-development-branch systematic-debugging; do
         # A hit not preceded by "superteam:" or "skills/" is a bare name.
-        bare+="$(grep -rn "$skill" \
-            "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md \
-            "$AGENTS"/integrator.md "$AGENTS"/skeptic.md 2>/dev/null \
+        bare+="$(grep -rn "$skill" "$AGENTS"/*.md 2>/dev/null \
             | grep -v "superteam:$skill" \
             | grep -v "skills/$skill" || true)"
     done
@@ -360,6 +353,33 @@ main() {
         fail "no agent file claims the skills field is ignored"
         echo "    found in: $ignored_any"
     fi
+
+    # (k12) the researcher runs in the background as a subagent, cites
+    #       primary sources, and persists findings to exactly one new file
+    local r="$AGENTS/researcher.md"
+    grep -q '^background: true$' "$r" \
+        && pass "agents/researcher.md sets background: true" \
+        || fail "agents/researcher.md sets background: true"
+    local denied
+    denied="$(grep '^disallowedTools:' "$r" || true)"
+    if [[ "$denied" == *Edit* && "$denied" == *NotebookEdit* && "$denied" != *Write* ]]; then
+        pass "agents/researcher.md denies Edit and NotebookEdit but allows Write"
+    else
+        fail "agents/researcher.md denies Edit and NotebookEdit but allows Write"
+        echo "    disallowedTools: ${denied:-<none>}"
+    fi
+    local phrase
+    for phrase in 'docs/superteam/research/' 'primary' 'URL + section' 'file:line'; do
+        grep -qF "$phrase" "$r" \
+            && pass "agents/researcher.md states: $phrase" \
+            || fail "agents/researcher.md states: $phrase"
+    done
+    grep -qF 'exactly one' "$r" \
+        && pass "agents/researcher.md caps the findings file at exactly one" \
+        || fail "agents/researcher.md caps the findings file at exactly one"
+    grep -qF '`Lead:`' "$r" \
+        && pass "agents/researcher.md reports to the name on the Lead: line" \
+        || fail "agents/researcher.md reports to the name on the Lead: line"
 
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
