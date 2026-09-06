@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 VERIFY_HOOK="$REPO_ROOT/hooks/task-completed-verify"
-IDLE_HOOK="$REPO_ROOT/hooks/teammate-idle-claim"
+HOOKS_JSON="$REPO_ROOT/hooks/hooks.json"
 
 FAILURES=0
 TEST_ROOT="$(mktemp -d)"
@@ -49,15 +49,15 @@ assert_exit() {
 echo "Team hooks: task-completed-verify"
 
 assert_exit \
-    "description with Verified: line allows completion" \
+    "SDD subject with Verified: line allows completion" \
     0 \
-    '{"task_id":"4","task_subject":"x","task_description":"did stuff\nVerified: ran tests, all pass"}' \
+    '{"task_id":"4","task_subject":"Task 4: x","task_description":"did stuff\nVerified: ran tests, all pass"}' \
     -- "$VERIFY_HOOK"
 
 assert_exit \
-    "description with no evidence blocks completion" \
+    "SDD subject with no evidence blocks completion" \
     2 \
-    '{"task_id":"4","task_subject":"x","task_description":"no evidence here"}' \
+    '{"task_id":"4","task_subject":"Task 4: x","task_description":"no evidence here"}' \
     -- "$VERIFY_HOOK"
 
 report_home="$TEST_ROOT/report-home"
@@ -69,13 +69,13 @@ EOF
 assert_exit \
     "report file with Tests: line allows completion" \
     0 \
-    "$(printf '{"task_id":"4","task_subject":"x","task_description":"no evidence","cwd":"%s"}' "$report_home")" \
+    "$(printf '{"task_id":"4","task_subject":"Task 4: x","task_description":"no evidence","cwd":"%s"}' "$report_home")" \
     -- "$VERIFY_HOOK"
 
 assert_exit \
     "SUPERTEAM_SKIP_VERIFY_GATE=1 bypasses the gate" \
     0 \
-    '{"task_id":"4","task_subject":"x","task_description":"no evidence"}' \
+    '{"task_id":"4","task_subject":"Task 4: x","task_description":"no evidence"}' \
     SUPERTEAM_SKIP_VERIFY_GATE=1 \
     -- "$VERIFY_HOOK"
 
@@ -83,6 +83,30 @@ assert_exit \
     "malformed JSON exits 0 (fail open, never crashes)" \
     0 \
     'not json at all {{{' \
+    -- "$VERIFY_HOOK"
+
+assert_exit \
+    "non-SDD subject without evidence is never gated" \
+    0 \
+    '{"task_id":"1","task_subject":"Track the launch checklist","task_description":"no evidence here"}' \
+    -- "$VERIFY_HOOK"
+
+assert_exit \
+    "SDD subject (Task 3: foo) without evidence blocks completion" \
+    2 \
+    '{"task_id":"3","task_subject":"Task 3: foo","task_description":"no evidence here"}' \
+    -- "$VERIFY_HOOK"
+
+assert_exit \
+    "non-SDD subject with .superteam/sdd/ in description is still gated (2)" \
+    2 \
+    '{"task_id":"7","task_subject":"Coordinate work","task_description":"see .superteam/sdd/plan/task-7-report.md"}' \
+    -- "$VERIFY_HOOK"
+
+assert_exit \
+    "SDD subject with Verified: in description allows completion" \
+    0 \
+    '{"task_id":"3","task_subject":"Task 3: foo","task_description":"Verified: ran the suite"}' \
     -- "$VERIFY_HOOK"
 
 help_output="$("$VERIFY_HOOK" --help)"
@@ -93,58 +117,17 @@ else
     fail "task-completed-verify --help prints 5 lines (got $help_lines)"
 fi
 
-echo "Team hooks: teammate-idle-claim"
+echo "Team hooks: hooks.json wiring"
 
-idle_home="$TEST_ROOT/idle-home"
-mkdir -p "$idle_home/.claude/tasks/session-testteam"
-cat > "$idle_home/.claude/tasks/session-testteam/1.json" <<'EOF'
-{
-  "id": "1",
-  "subject": "Do thing",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": []
-}
-EOF
-
-assert_exit \
-    "idle with an unowned pending unblocked task blocks going idle" \
-    2 \
-    '{"teammate_name":"researcher","team_name":"session-testteam"}' \
-    HOME="$idle_home" \
-    -- "$IDLE_HOOK"
-
-cat > "$idle_home/.claude/tasks/session-testteam/1.json" <<'EOF'
-{
-  "id": "1",
-  "subject": "Do thing",
-  "status": "pending",
-  "blocks": [],
-  "blockedBy": [],
-  "owner": "researcher"
-}
-EOF
-
-assert_exit \
-    "idle with all tasks owned allows going idle" \
-    0 \
-    '{"teammate_name":"researcher","team_name":"session-testteam"}' \
-    HOME="$idle_home" \
-    -- "$IDLE_HOOK"
-
-assert_exit \
-    "idle fails open when teammate_name is absent" \
-    0 \
-    '{"team_name":"session-testteam"}' \
-    HOME="$idle_home" \
-    -- "$IDLE_HOOK"
-
-idle_help_output="$("$IDLE_HOOK" --help)"
-idle_help_lines="$(printf '%s\n' "$idle_help_output" | wc -l | tr -d ' ')"
-if [ "$idle_help_lines" -eq 5 ]; then
-    pass "teammate-idle-claim --help prints 5 lines"
+if python3 -c "
+import json, sys
+with open('$HOOKS_JSON') as f:
+    data = json.load(f)
+sys.exit(0 if 'TaskCompleted' in data.get('hooks', {}) else 1)
+" 2>/dev/null; then
+    pass "hooks.json is valid JSON and wires TaskCompleted"
 else
-    fail "teammate-idle-claim --help prints 5 lines (got $idle_help_lines)"
+    fail "hooks.json is valid JSON and wires TaskCompleted"
 fi
 
 if [[ "$FAILURES" -gt 0 ]]; then

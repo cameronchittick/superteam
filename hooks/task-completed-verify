@@ -1,7 +1,19 @@
 #!/usr/bin/env bash
-# TaskCompleted hook for superteam plugin (opt-in, not wired in hooks.json).
+# TaskCompleted hook for superteam plugin. Wired into hooks/hooks.json, so
+# it runs automatically on every TaskCompleted event -- both triggers the
+# docs name (a TaskUpdate call marking a task completed, and a teammate
+# finishing its turn with in-progress tasks) send the same payload shape,
+# so no special-casing is needed between them.
 #
-# Refuses task completion (exit 2) unless there is verification evidence:
+# Scope: only gates SDD (superteam-driven-development) tasks, never a
+# PM's own coordination list or any other task list. A task counts as SDD
+# when task_subject matches ^Task [0-9]+: (the subject format
+# superteam-driven-development's Ledger section prescribes) or
+# task_description contains ".superteam/sdd/". Everything else: exit 0
+# immediately, no gate at all.
+#
+# For an SDD task, refuses completion (exit 2) unless there is
+# verification evidence:
 #   (a) task_description contains a line starting with "Verified:" or
 #       "Evidence:", or
 #   (b) the completing agent's report file at
@@ -13,8 +25,9 @@
 # optional task_description, teammate_name, team_name, plus the common
 # fields cwd and transcript_path.
 #
-# Never exits non-zero for malformed/unparseable input -- only exit 2 when
-# we can positively identify a task with no evidence.
+# Never exits non-zero for malformed/unparseable input, and never exits
+# non-zero for a non-SDD task -- only exit 2 when we can positively
+# identify an SDD task with no evidence.
 
 usage() {
     cat <<'EOF'
@@ -63,7 +76,15 @@ if [ -z "$task_id" ]; then
     exit 0
 fi
 
+task_subject="$(json_unescape "$(json_field "$input" "task_subject")")"
 task_description="$(json_unescape "$(json_field "$input" "task_description")")"
+
+# Not an SDD task -- never gate a PM's own coordination list or any other
+# task list. Only superteam-driven-development tasks are scoped here.
+if ! printf '%s' "$task_subject" | grep -qE '^Task [0-9]+:' \
+    && ! printf '%s' "$task_description" | grep -qF '.superteam/sdd/'; then
+    exit 0
+fi
 
 if printf '%s\n' "$task_description" | grep -qE '^(Verified|Evidence):'; then
     exit 0

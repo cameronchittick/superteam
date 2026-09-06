@@ -314,57 +314,23 @@ Named roles the skills dispatch as `superteam:<name>`; each carries its own mode
 - **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) in an isolated worktree, self-review instead of TDD — sonnet
 - **integrator** — merges a reviewed branch, runs the full suite, removes the worktree, bumps manifests when told — sonnet
 
-### Agent-team hooks (opt-in)
+### Agent-team hooks
 
-Two hooks in `hooks/` support running Superteam with [Claude Code agent
-teams](https://docs.claude.com/en/docs/claude-code/agent-teams). They ship
-in the plugin but are **not** wired into `hooks/hooks.json` — enable them
-yourself in `settings.json` if you want them:
+`hooks/task-completed-verify` is bundled and wired into `hooks/hooks.json`
+as a `TaskCompleted` hook, so it runs automatically on Claude Code — no
+`settings.json` changes needed. It only gates
+[superteam-driven-development](skills/superteam-driven-development/SKILL.md)
+tasks: a task whose subject matches `Task N: <title>` (the format that
+skill's shared task list uses), or whose description contains
+`.superteam/sdd/`. Every other task list — including a PM's own
+coordination list — completes untouched.
 
-- **task-completed-verify** — a `TaskCompleted` gate. Refuses to complete a
-  task (exit 2, fed back to the model) unless it finds verification
-  evidence: a `Verified:` or `Evidence:` line in the task description, or a
-  `Tests:`/`Verified:`/`Evidence:` line in that task's report file. Set
-  `SUPERTEAM_SKIP_VERIFY_GATE=1` to bypass it.
-- **teammate-idle-claim** — a `TeammateIdle` nudge. If the shared task list
-  still has a pending, unowned, unblocked task when a teammate goes idle, it
-  exits 2 so the teammate claims the next task instead of stopping.
-
-Enable them by pointing `settings.json` at the installed hook scripts
-(the plugin cache path includes the installed version, so check
-`ls ~/.claude/plugins/cache/cameronchittick/superteam/` for yours):
-
-```json
-{
-  "hooks": {
-    "TaskCompleted": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/plugins/cache/cameronchittick/superteam/<version>/hooks/task-completed-verify"
-          }
-        ]
-      }
-    ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/plugins/cache/cameronchittick/superteam/<version>/hooks/teammate-idle-claim"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-`${CLAUDE_PLUGIN_ROOT}` only resolves for hooks a plugin declares itself
-(like the bundled `SessionStart` hook in `hooks/hooks.json`); a hook you add
-to your own `settings.json` runs outside the plugin's declaration context,
-so it needs the literal cache path above instead.
+For a gated SDD task, it refuses completion (exit 2, fed back to the model)
+unless it finds verification evidence: a `Verified:` or `Evidence:` line in
+the task description, or a `Tests:`/`Verified:`/`Evidence:` line with a
+value in that task's report file (see
+[verification-before-completion](skills/verification-before-completion/SKILL.md#evidence-line)
+for the exact format). Set `SUPERTEAM_SKIP_VERIFY_GATE=1` to bypass it.
 
 ## Philosophy
 
