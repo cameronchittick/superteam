@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# Runs every superteam test suite in one command. On PATH as a bare
+# `superteam-test` while the plugin is enabled (plugins-reference.md, "File
+# locations reference": bin/).
+#
+# One PASS/FAIL/SKIP line per suite, failing output echoed underneath, and a
+# non-zero exit if anything failed. A suite whose prerequisite is missing is
+# named as SKIP with the reason - never silently dropped, never a FAIL.
+#
+# Prerequisites are declared per suite in SUITES below rather than sniffed out
+# of the scripts, so what gets skipped is readable in one place.
+
+set -u
+
+usage() {
+    cat <<'EOF'
+Usage: superteam-test [--list] [--help]
+Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
+Exits non-zero if any suite fails; a suite whose prerequisite is missing
+(timeout, yq, a non-worktree checkout) is reported as SKIP, not FAIL.
+--list prints the suite names without running them.
+EOF
+}
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+# "<path>|<prerequisite>" - prerequisite is empty, a command that must be on
+# PATH, or "checkout" for a suite that cannot run from a git worktree.
+#
+# Excluded on purpose:
+#   tests/claude-code/test-helpers.sh                          - a helper, not a suite
+#   tests/claude-code/run-skill-tests.sh                       - a runner over the above
+#   tests/claude-code/test-superteam-driven-development-integration.sh - needs timeout, drives a live session
+SUITES="
+tests/hooks/test-team-hooks.sh|
+tests/hooks/test-session-start.sh|
+tests/hooks/test-bash-guard.sh|
+tests/hooks/test-task-monitor.sh|
+tests/claude-code/test-agent-roster.sh|
+tests/claude-code/test-dispatch-template.sh|
+tests/claude-code/test-sdd-workspace.sh|
+tests/claude-code/test-superteam-driven-development.sh|timeout
+tests/claude-code/test-worktree-native-preference.sh|timeout
+tests/claude-code/test-worktree-path-policy.sh|
+tests/codex/test-marketplace-manifest.sh|
+tests/codex/test-package-codex-plugin.sh|checkout
+tests/devin/test-devin-plugin.sh|
+tests/kimi/run-tests.sh|
+tests/version-bump/test-bump-version.sh|yq
+tests/shell-lint/test-lint-shell.sh|
+"
+
+case "${1:-}" in
+    --help)
+        usage
+        exit 0
+        ;;
+    --list)
+        printf '%s\n' "$SUITES" | while IFS='|' read -r suite _; do
+            [ -n "$suite" ] && echo "$suite"
+        done
+        echo "claude plugin validate ."
+        exit 0
+        ;;
+    "") ;;
+    *)
+        echo "superteam-test: unknown option '$1'" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+
+failed=0
+skipped=0
+passed=0
+
+# Why a prerequisite is missing, or empty when it is satisfied.
+missing_reason() {
+    case "$1" in
+        "") return 0 ;;
+        checkout)
+            # scripts/package-codex-plugin.sh requires .git to be a directory,
+            # and in a git worktree .git is a file pointing at the real one.
+            [ -d "$ROOT/.git" ] || echo "needs a non-worktree checkout"
+            ;;
+        *)
+            command -v "$1" >/dev/null 2>&1 || echo "needs $1"
+            ;;
+    esac
+}
+
+report() {
+    printf '%s %s\n' "$1" "$2"
+}
+
+run_suite() {
+    local suite="$1" prereq="$2" reason output
+
+    reason="$(missing_reason "$prereq")"
+    if [ -n "$reason" ]; then
+        report SKIP "$suite ($reason)"
+        skipped=$((skipped + 1))
+        return
+    fi
+
+    if output="$(cd "$ROOT" && bash "$ROOT/$suite" 2>&1)"; then
+        report PASS "$suite"
+        passed=$((passed + 1))
+    else
+        report FAIL "$suite"
+        printf '%s\n' "$output" | sed 's/^/    /'
+        failed=$((failed + 1))
+    fi
+}
+
+# A here-string keeps the loop in this shell, so the counters survive it.
+while IFS='|' read -r suite prereq; do
+    [ -n "$suite" ] || continue
+    run_suite "$suite" "$prereq"
+done <<EOF
+$SUITES
+EOF
+
+if command -v claude >/dev/null 2>&1; then
+    if validate_output="$(cd "$ROOT" && claude plugin validate . 2>&1)"; then
+        report PASS "claude plugin validate ."
+        passed=$((passed + 1))
+    else
+        report FAIL "claude plugin validate ."
+        printf '%s\n' "$validate_output" | sed 's/^/    /'
+        failed=$((failed + 1))
+    fi
+else
+    report SKIP "claude plugin validate . (needs claude)"
+    skipped=$((skipped + 1))
+fi
+
+echo
+echo "$passed passed, $failed failed, $skipped skipped"
+[ "$failed" -eq 0 ] || exit 1
