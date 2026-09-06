@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Monitor for superteam: names a task that has been in_progress with no
+# update for SUPERTEAM_STUCK_MINUTES (default 20) minutes. Each stdout line
+# becomes one notification, so a task is emitted once and then only again
+# after its file is touched (an update it did not have before).
+#
+# Task dir: the DIR argument, else SUPERTEAM_TASKS_DIR, else
+# ~/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID}. With no list id there is no
+# team on this session, so the monitor exits 0 in silence. Fails open.
+#
+# Usage: task-monitor [DIR] [--once]
+
+usage() {
+    cat <<'EOF'
+Usage: task-monitor [DIR] [--once]
+Monitor: prints one line per task left in_progress with no update for
+SUPERTEAM_STUCK_MINUTES minutes (default 20). Polls every 60 seconds;
+--once runs a single pass and exits. DIR defaults to SUPERTEAM_TASKS_DIR,
+else ~/.claude/tasks/$CLAUDE_CODE_TASK_LIST_ID.
+EOF
+}
+
+DIR=""
+ONCE=""
+for arg in "$@"; do
+    case "$arg" in
+        --help) usage; exit 0 ;;
+        --once) ONCE=1 ;;
+        *) [ -z "$DIR" ] && DIR="$arg" ;;
+    esac
+done
+
+if [ -z "$DIR" ]; then
+    if [ -n "${SUPERTEAM_TASKS_DIR:-}" ]; then
+        DIR="$SUPERTEAM_TASKS_DIR"
+    elif [ -n "${CLAUDE_CODE_TASK_LIST_ID:-}" ]; then
+        DIR="${HOME:-}/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID}"
+    else
+        exit 0
+    fi
+fi
+
+STUCK_MINUTES="${SUPERTEAM_STUCK_MINUTES:-20}"
+EMITTED="$DIR/.monitor-emitted"
+
+# mtime SECONDS-since-epoch, BSD stat then GNU stat.
+mtime() {
+    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+}
+
+# json_line FILE KEY -- value of a top-level pretty-printed "key": "value".
+# Anchoring at start of line keeps a key that also appears inside the
+# description string (one long line) from matching.
+json_line() {
+    sed -n 's/^[[:space:]]*"'"$2"'"[[:space:]]*:[[:space:]]*"\(.*\)",*$/\1/p' "$1" | head -1
+}
+
+scan() {
+    [ -d "$DIR" ] || return 0
+    local now file id subject owner stamp age last
+    now="$(date +%s)"
+
+    find "$DIR" -name '*.json' -mmin +"$STUCK_MINUTES" 2>/dev/null | while read -r file; do
+        [ "$(json_line "$file" status)" = "in_progress" ] || continue
+
+        stamp="$(mtime "$file")"
+        last=""
+        if [ -f "$EMITTED" ]; then
+            last="$(sed -n 's/^'"$(basename "$file" .json)"' //p' "$EMITTED" | head -1)"
+        fi
+        # Emitted already, and the task has not been touched since.
+        [ -n "$last" ] && [ "$stamp" -le "$last" ] 2>/dev/null && continue
+
+        id="$(json_line "$file" id)"
+        [ -n "$id" ] || id="$(basename "$file" .json)"
+        subject="$(json_line "$file" subject)"
+        owner="$(json_line "$file" owner)"
+        [ -n "$owner" ] || owner="none"
+        age=$(( (now - stamp) / 60 ))
+
+        echo "stuck: task $id \"$subject\" in_progress $age min, owner $owner"
+
+        # Rewrite this task's line in the emitted ledger.
+        if [ -f "$EMITTED" ]; then
+            grep -v "^$(basename "$file" .json) " "$EMITTED" > "$EMITTED.tmp" 2>/dev/null || true
+            mv "$EMITTED.tmp" "$EMITTED"
+        fi
+        echo "$(basename "$file" .json) $stamp" >> "$EMITTED"
+    done
+}
+
+if [ -n "$ONCE" ]; then
+    scan
+    exit 0
+fi
+
+while :; do
+    scan
+    sleep 60
+done
