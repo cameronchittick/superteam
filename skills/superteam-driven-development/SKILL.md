@@ -257,7 +257,9 @@ start, create one task per plan task with `TaskCreate` (subject
 then wire dependencies with `addBlockedBy` from the plan's "Depends on:"
 lines. Worktree subagents do not receive the Task tools; teammates do (see
 below) — so who claims and completes a task depends on which kind of IC
-holds it:
+holds it. A task changes state only through `TaskUpdate` — no one edits
+`~/.claude/tasks/**` by hand; a hand-edited file skips the `TaskCompleted`
+gate and is a lie about being done.
 
 - **Implementer (worktree subagent):** it has no `TaskUpdate`. You are its
   hands on the list — `TaskUpdate` owner=<IC name>, status=in_progress
