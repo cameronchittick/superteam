@@ -393,7 +393,9 @@ all four.
   separator — so quoting one in text (an `echo`, a `grep` pattern, a heredoc
   writing a report) is allowed. A backtick is not a separator here, which
   means backtick-quoted prose passes and a backtick command substitution
-  passes with it. It reads the command
+  passes with it; the mirror is that a heredoc line *beginning* with one of
+  these commands is still denied, so put a word or a backtick in front of it.
+  It reads the command
   as text rather than running it — `cd /tmp && rm -rf ./x` reads as a relative
   target and a symlink out of the worktree is not resolved — so it is a
   guardrail against the common destructive typo, not a sandbox.

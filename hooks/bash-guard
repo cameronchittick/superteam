@@ -14,8 +14,13 @@
 # the $PWD containment test is a literal prefix comparison. A backtick does
 # not count as command position either, so `git reset --hard` inside backticks
 # runs unstopped - the cost of letting a review report quote the command it is
-# reporting on. It is a guardrail against the common destructive typo, not a
-# sandbox.
+# reporting on. The mirror of that cost: a line of prose that BEGINS with one
+# of these commands - a fenced code block line, a bullet starting with "git
+# reset --hard discards..." - is denied, because a line start is command
+# position and the hook cannot see it is inside a heredoc (leading whitespace
+# does not help - it is skipped). Put a word, a bullet marker or a backtick in
+# front of it. It is a guardrail against the common
+# destructive typo, not a sandbox.
 #
 # Deny is returned as the PreToolUse permissionDecision payload on stdout with
 # exit 0 (hooks.md, "PreToolUse decision control").
@@ -92,6 +97,9 @@ norm="$(printf '%s' "$command_text" | tr '\t' ' ' | tr -s ' ')"
 # backtick is deliberately not in the list: backtick-quoted prose in a Markdown
 # heredoc is how reports get written, and a backtick-substituted destructive
 # command is not the typo this guardrail exists for.
+# The prefix group covers a bare sudo, env or command word and nothing else:
+# "sudo -u alice", "nohup", "if ...; then", "xargs" all put the real command
+# somewhere this pattern does not look.
 cmdpos='(^|[;&|]|\$\()[[:space:]]*((sudo|env|command)[[:space:]]+)*'
 
 if printf '%s' "$norm" | grep -qE "${cmdpos}tmux +kill-server([^[:alnum:]_.-]|\$)"; then
@@ -131,29 +139,24 @@ check_target() {
 }
 
 set -f  # the command text is data, never a glob to expand
-# A newline ends a command too, so make it a separator token of its own.
-walk="$(printf '%s' "$norm" | sed 's/$/ ; /' | tr '\n' ' ')"
+# Separators end the rm clause, and the shell does not need spaces around
+# them: "rm -rf ./x;cat /etc/hosts" is one word to the token splitter, and
+# leaving the state set made every later token a delete target. Give every
+# separator its own token first - a newline ends a command too - and strip
+# quotes afterwards, so a quoted target followed by a separator is still read
+# as a target.
+walk="$(printf '%s' "$norm" | sed -e 's/$/ ; /' -e 's/[;&|]/ ; /g' | tr '\n' ' ')"
 for token in $walk; do
+    if [ "$token" = ";" ]; then
+        in_rm=""; has_r=""; has_f=""
+        continue
+    fi
+
     # Strip one layer of surrounding quotes: the shell would.
     case "$token" in
         \"*\") token="${token#\"}"; token="${token%\"}" ;;
         \'*\') token="${token#\'}"; token="${token%\'}" ;;
     esac
-
-    # A separator ends the rm clause whether or not it is a token of its own:
-    # "rm -rf ./x; cat /etc/hosts" glues the ";" to the target, and leaving the
-    # state set made every later token a delete target.
-    ends_clause=""
-    while :; do
-        case "$token" in
-            *';'|*'&'|*'|') token="${token%?}"; ends_clause=1 ;;
-            *) break ;;
-        esac
-    done
-    if [ -z "$token" ]; then
-        in_rm=""; has_r=""; has_f=""
-        continue
-    fi
 
     if [ -z "$in_rm" ]; then
         [ "$token" = "rm" ] && { in_rm=1; has_r=""; has_f=""; }
@@ -171,8 +174,6 @@ for token in $walk; do
                 ;;
         esac
     fi
-
-    [ -n "$ends_clause" ] && { in_rm=""; has_r=""; has_f=""; }
 done
 set +f
 

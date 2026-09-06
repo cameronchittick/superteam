@@ -166,6 +166,20 @@ assert_allowed "rm -rf inside the worktree then another command is allowed" \
 assert_denied "a second rm after a separator is still checked" \
     "rm -rf ./build; rm -rf /etc/hosts"
 
+# A separator with no space on either side glues to both neighbours, so the
+# next token arrives with the separator in front of it.
+assert_allowed "an unspaced ; ends the rm clause" \
+    "rm -rf ./x;cat /etc/hosts"
+assert_allowed "an unspaced && ends the rm clause" \
+    "rm -rf ./x&&cat /etc/hosts"
+assert_allowed "a separator glued to the next word ends the rm clause" \
+    "rm -rf ./x |tee /etc/hosts"
+
+# Separators are stripped before quotes, so a quoted target followed by a
+# separator is still read as a target.
+assert_denied "a quoted target with a trailing separator is checked" \
+    'rm -rf "/etc/hosts"; echo done'
+
 echo "Bash guard: .. is a path segment, not a substring"
 
 assert_allowed "a file name containing .. is allowed" "rm -rf ./my..dir"

@@ -17,7 +17,7 @@ usage() {
 Usage: superteam-test [--list] [--help]
 Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
 Exits non-zero if any suite fails; a suite whose prerequisite is missing
-(timeout, yq, dot, python3) is reported as SKIP, not FAIL.
+(timeout, yq, dot, python3, node) is reported as SKIP, not FAIL.
 --list prints the suite names without running them.
 EOF
 }
@@ -40,7 +40,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # else that is runnable bash is listed below.
 SUITES="
 tests/hooks/test-team-hooks.sh|python3
-tests/hooks/test-session-start.sh|
+tests/hooks/test-session-start.sh|node
 tests/hooks/test-bash-guard.sh|python3
 tests/hooks/test-task-monitor.sh|python3
 tests/claude-code/test-agent-roster.sh|
@@ -56,7 +56,7 @@ tests/kimi/run-tests.sh|python3
 tests/version-bump/test-bump-version.sh|yq
 tests/shell-lint/test-lint-shell.sh|
 tests/antigravity/run-tests.sh|
-tests/opencode/run-tests.sh|
+tests/opencode/run-tests.sh|node
 tests/systematic-debugging/test-find-polluter.sh|
 tests/writing-skills/test-render-graphs.sh|node,dot
 "
