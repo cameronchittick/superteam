@@ -258,6 +258,28 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST"
 
+teamenv_missing_home="$(make_home claude-code-team-env-missing)"
+assert_command_output \
+    "Claude Code points at superteam:setup when the team env vars are unset" \
+    "nested" \
+    "superteam:setup" \
+    "" \
+    "$teamenv_missing_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
+teamenv_set_home="$(make_home claude-code-team-env-set)"
+assert_command_output \
+    "Claude Code stays quiet about setup once both team env vars are set" \
+    "nested" \
+    "" \
+    "superteam:setup" \
+    "$teamenv_set_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 \
+    CLAUDE_CODE_ENABLE_TODO_TOOLS=1 \
+    bash "$HOOK_UNDER_TEST"
+
 skill_line_count="$(wc -l < "$REPO_ROOT/skills/using-superteam/SKILL.md")"
 if [[ "$skill_line_count" -le 67 ]]; then
     pass "using-superteam SKILL.md is at most 67 lines (got $skill_line_count)"

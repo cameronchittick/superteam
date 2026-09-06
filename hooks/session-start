@@ -51,6 +51,13 @@ if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
 elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
   # Claude Code sets CLAUDE_PLUGIN_ROOT without COPILOT_CLI
   session_context=$(build_context "$(strip_platform_adaptation "$using_superteam_content")")
+  # A plugin's settings.json supports only the `agent` and `subagentStatusLine`
+  # keys (plugins-reference, "File locations reference"), so superteam cannot
+  # ship the env team mode needs. Say so once, and only when it is missing.
+  if [ -z "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-}" ] || [ -z "${CLAUDE_CODE_ENABLE_TODO_TOOLS:-}" ]; then
+    setup_notice='Team mode needs env in ~/.claude/settings.json: "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1", "CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"} — run superteam:setup to add it.'
+    session_context="${session_context}\\n\\n$(escape_for_json "$setup_notice")"
+  fi
   printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
 else
   # Copilot CLI (sets COPILOT_CLI=1) or unknown platform — SDK standard format
