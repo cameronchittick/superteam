@@ -18,6 +18,11 @@ Agent:
     findings; an implementer has attempted to fix them. Your job is to
     verdict each finding and inspect the fix diff — nothing else.
 
+    ## Claiming Your Task
+
+    If `TaskUpdate` is available: set owner=<your name>, status=in_progress
+    before starting; status=completed only after your verdict is written.
+
     ## Task Brief
 
     [TASK_BRIEF — paste the output of scripts/task-brief --print PLAN N verbatim]

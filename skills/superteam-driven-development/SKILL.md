@@ -243,6 +243,48 @@ a ledger file, not only in todos.
   trust the ledger and `git log` over your own recollection.
 - `git clean -fdx` will destroy the workspace (it's git-ignored scratch); if
   that happens, recover from `git log`.
+- The status bookkeeping above (`Task <N>: complete` lines) is the fallback
+  branch. Check which branch you're in before Task 1 — see "## Ledger" below.
+
+## Ledger
+
+Two branches, chosen once at Setup by whether `TaskCreate` is in your tool
+list — state which branch you're in as you begin.
+
+**Task tools present — the shared task list is the live ledger.** At plan
+start, create one task per plan task with `TaskCreate` (subject
+`Task N: <title>`, description the plan's task brief or a pointer to it),
+then wire dependencies with `addBlockedBy` from the plan's "Depends on:"
+lines. Worktree subagents do not receive the Task tools; teammates do (see
+below) — so who claims and completes a task depends on which kind of IC
+holds it:
+
+- **Implementer (worktree subagent):** it has no `TaskUpdate`. You are its
+  hands on the list — `TaskUpdate` owner=<IC name>, status=in_progress
+  before you dispatch it, then status=completed when its report arrives
+  with the `Tests:` line written. Two `TaskUpdate` calls per task, made by
+  you; no plan-file status line.
+- **Reviewer (teammate):** it has `TaskUpdate` and claims and completes its
+  own review task itself, per its prompt template's claim line
+  (task-reviewer-prompt.md).
+
+Either way you stop hand-writing `Task <N>: complete` status lines —
+`TaskList` shows status directly, and you find the next unblocked task
+with `TaskList` instead of scanning the plan file. If the `TaskCompleted`
+verify gate is enabled, the report's `Tests:` line is what it checks.
+
+**Task tools absent — the plan-file ledger is the fallback.** This is
+every other harness, and a Claude Code session on a model where the Task
+tools are opt-out by default (Sonnet 5, Opus 4.8, Fable 5, Mythos 5, and
+later versions of those families — see Task tool availability) with
+`CLAUDE_CODE_ENABLE_TODO_TOOLS` unset. Use the plan-file ledger above:
+`<workspace>/progress.md` with `Task <N>: complete` lines you write by
+hand.
+
+**Both branches:** Rulings — preflight conflicts, parked findings, breaker
+adjudications — always go in the plan-file ledger at
+`<workspace>/progress.md`. They are spec-level decisions, not status, and
+the shared task list has no field for them.
 
 Read the plan once, note its context and Global Constraints, and create a
 todo per task. If the plan names a Spec, read that too: the spec is the
@@ -329,6 +371,12 @@ between stretches post one line of status and reconcile your live
 children: list them, and chase any that finished without reporting.
 
 ### 1. Dispatch the implementer
+
+If Task tools are present (see "## Ledger"), claim the task you created for
+this at Setup before you dispatch: `TaskUpdate` owner=<IC name>,
+status=in_progress. The implementer is a worktree subagent and never sees
+`TaskUpdate` itself — you are its hands on the list. On the fallback
+branch, skip this and rely on the plan-file ledger alone.
 
 Record BASE per worktree branch: with `isolation: "worktree"` the IC
 starts from the repo default branch, so BASE is
@@ -579,14 +627,22 @@ Agent:
 
 A merge conflict means two ICs touched the same file — the integrator
 resolves a textual conflict and reports it; a semantic conflict comes back
-unresolved and is a finding for the next fix round. Then append the
-completion line to the ledger in the same message as your other
-bookkeeping:
+unresolved and is a finding for the next fix round.
+
+If Task tools are present: mark the implementer's task completed yourself
+(`TaskUpdate` status=completed) once its report has arrived with the
+`Tests:` line written — it is a worktree subagent and cannot do this
+itself. The reviewer, a teammate, already marked its own review task
+completed after writing its verdict. Either way, find the next unblocked
+task with `TaskList` rather than scanning a status line you no longer
+write. On the fallback branch, append the completion line to the ledger
+yourself in the same message as your other bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
   tripped breaker
 
+Rulings stay in the plan-file ledger in both branches (see "## Ledger").
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor
 parked-with-ruling at the cap.
