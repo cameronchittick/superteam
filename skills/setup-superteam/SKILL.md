@@ -1,5 +1,5 @@
 ---
-name: setup
+name: setup-superteam
 description: Use when your human partner asks to enable agent teams / task tools for superteam - merges the two env entries into ~/.claude/settings.json and shows the diff
 ---
 
