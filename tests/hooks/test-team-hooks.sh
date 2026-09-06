@@ -266,6 +266,81 @@ else
     fail "teammate-idle-claim --help prints 5 lines (got $idle_help_lines)"
 fi
 
+echo "Team hooks: task-created-check: Files owned overlap"
+
+# An overlap is a collision only when nothing serializes the two tasks. The
+# TaskCreated payload carries no blockedBy, so the description carries the
+# dependency: a "Depends on: Task M" line naming the overlapping open task's
+# family is the edge, and the hook accepts the overlap.
+overlap_dir="$TEST_ROOT/overlap-tasks"; mkdir -p "$overlap_dir"
+cat > "$overlap_dir/1.json" <<'EOF'
+{"id":"1","subject":"Task 1: implement [implementer]","status":"in_progress","description":"Files owned: a.sh\nDone: x"}
+EOF
+O=(SUPERTEAM_TASKS_DIR="$overlap_dir")
+assert_stderr "overlap with no Depends on line is rejected, naming the open task" 2 'Task 1: implement' \
+    '{"task_id":"9","task_subject":"Task 2: implement [implementer]","task_description":"Files owned: a.sh\nDepends on: none\nDone: x"}' "${O[@]}" -- "$CREATED_HOOK"
+assert_exit "overlap with Depends on: Task 1 is allowed" 0 \
+    '{"task_id":"9","task_subject":"Task 2: implement [implementer]","task_description":"Files owned: a.sh\nDepends on: Task 1\nDone: x"}' "${O[@]}" -- "$CREATED_HOOK"
+assert_exit "overlap with Depends on naming a different task is rejected" 2 \
+    '{"task_id":"9","task_subject":"Task 3: implement [implementer]","task_description":"Files owned: a.sh\nDepends on: Task 2\nDone: x"}' "${O[@]}" -- "$CREATED_HOOK"
+assert_exit "no overlap is allowed" 0 \
+    '{"task_id":"9","task_subject":"Task 2: implement [implementer]","task_description":"Files owned: b.sh\nDepends on: none\nDone: x"}' "${O[@]}" -- "$CREATED_HOOK"
+assert_exit "Depends on listing several tasks exempts each of them" 0 \
+    '{"task_id":"9","task_subject":"Task 4: implement [implementer]","task_description":"Files owned: a.sh\nDepends on: Task 1, Task 7\nDone: x"}' "${O[@]}" -- "$CREATED_HOOK"
+
+echo "Team hooks: task-brief: Depends on line"
+
+BRIEF="$REPO_ROOT/skills/superteam-driven-development/scripts/task-brief"
+fixture_plan="$TEST_ROOT/fixture-plan.md"
+cat > "$fixture_plan" <<'EOF'
+# Plan
+
+**Spec:** specs/fixture.md
+
+### Task 1: First thing
+
+**Files owned:** `a.sh`
+**Depends on:** none
+**Model tier:** most capable
+
+- [ ] Step 1: do it.
+
+### Task 2: Second thing
+
+**Files owned:** `a.sh`, `b.sh`
+**Depends on:** Task 1
+**Model tier:** most capable
+
+- [ ] Step 1: do it too.
+
+## Global Constraints
+
+- Zero dependencies.
+EOF
+
+for kind in implement review merge; do
+    brief_out="$("$BRIEF" --taskcreate "$fixture_plan" 2 "$kind" lane/x 2>&1 || true)"
+    if printf '%s\n' "$brief_out" | grep -qx 'Depends on: Task 1'; then
+        pass "task-brief --taskcreate $kind emits the Depends on line"
+    else
+        fail "task-brief --taskcreate $kind emits the Depends on line"
+        printf '%s\n' "$brief_out" | sed 's/^/      /'
+    fi
+    if printf '%s\n' "$brief_out" | grep -A1 '^Files owned:' | grep -qx 'Depends on: Task 1'; then
+        pass "task-brief --taskcreate $kind puts Depends on right after Files owned"
+    else
+        fail "task-brief --taskcreate $kind puts Depends on right after Files owned"
+    fi
+done
+
+brief_out="$("$BRIEF" --taskcreate "$fixture_plan" 1 implement lane/x 2>&1 || true)"
+if printf '%s\n' "$brief_out" | grep -qx 'Depends on: none'; then
+    pass "task-brief emits 'Depends on: none' when the plan task has no dependency"
+else
+    fail "task-brief emits 'Depends on: none' when the plan task has no dependency"
+    printf '%s\n' "$brief_out" | sed 's/^/      /'
+fi
+
 echo "Team hooks: hooks.json wiring"
 
 if python3 -c "

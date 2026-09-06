@@ -137,7 +137,11 @@ git commit -m "feat: add specific feature"
 **The three header lines.** A lead hands each task to an IC in its own
 worktree, so `**Files owned:**` lists every file the task creates or edits —
 no two tasks that can run concurrently may share a file, or their branches
-collide at merge. `**Depends on:**` names the tasks whose output this one
+collide at merge. When two tasks must share a file, the later one lists the
+earlier one in `Depends on:` — that line becomes a `blockedBy` edge on the
+task list and is what lets the `task-created-check` hook accept the overlap;
+an overlap with no edge is rejected at creation (agent-teams.md, Avoid file
+conflicts). `**Depends on:**` names the tasks whose output this one
 consumes, which is what decides dispatch order (dependents wait; the rest
 run in parallel). `**Model tier:**` follows the reasoning in
 superteam:superteam-driven-development's Model Selection — cheap for 1-2 files

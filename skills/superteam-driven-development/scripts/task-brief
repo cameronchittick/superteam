@@ -66,6 +66,8 @@ if [ "${1:-}" = "--taskcreate" ]; then
   ' "$plan")
 
   owned=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Files owned:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  deps=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Depends on:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  [ -n "$deps" ] || deps=none
   tier=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Model tier:\*\*[[:space:]]*//p' | head -1)
   role=implementer
   if printf '%s' "$tier" | grep -qw prose; then
@@ -97,6 +99,7 @@ if [ "${1:-}" = "--taskcreate" ]; then
   echo "Lane: ${lane}"
   echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
   echo "Files owned: ${owned}"
+  echo "Depends on: ${deps}"
   case "$kind" in
     implement) echo "Done: report at .superteam/sdd/${base}/task-${n}-report.md with a \`Tests:\` line" ;;
     review)    echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review.md with a \`Verified:\` line" ;;
