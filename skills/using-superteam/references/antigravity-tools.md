@@ -5,7 +5,7 @@ Skills speak in actions ("dispatch a subagent", "create a todo", "read a file").
 | Action skills request | Antigravity CLI equivalent |
 |----------------------|----------------------|
 | Dispatch a subagent (`Subagent (general-purpose):` template) | `invoke_subagent` with a built-in `TypeName` — `self` for full-capability work, `research` for read-only |
-| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `invoke_subagent` with the named `*-prompt.md` file filled in — `self` for implementer, writer, integrator; `research` for researcher, reviewer, skeptic (read-only roles stay read-only by instruction where `research` cannot enforce it) |
+| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `invoke_subagent` with the named `*-prompt.md` file filled in — `self` for implementer, writer, integrator; `research` for researcher, reviewer, skeptic (read-only roles stay read-only by instruction where `research` cannot enforce it). The researcher never edits an existing file but may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`). |
 | Task tracking ("create a todo", "mark complete") | a **task artifact** — `write_to_file` with `IsArtifact: true` and `ArtifactType: "task"` (see [Task tracking](#task-tracking)). **Not** `manage_task`, which manages background processes. |
 
 ## Task tracking

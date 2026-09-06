@@ -16,7 +16,7 @@ Skills speak in actions ("dispatch a subagent", "create a todo", "read a file").
 | Search the web | `google_web_search` |
 | Invoke a skill | `activate_skill` |
 | Dispatch a subagent (`Subagent (general-purpose):` template) | `invoke_agent` with `agent_name: "generalist"` (invocable via `@generalist` chat syntax — see [Subagent support](#subagent-support)) |
-| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `invoke_agent` with `agent_name: "generalist"` and the named `*-prompt.md` file filled in; researcher, reviewer and skeptic are read-only — keep that rule by instruction in the prompt, since `generalist` cannot restrict tools |
+| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `invoke_agent` with `agent_name: "generalist"` and the named `*-prompt.md` file filled in; researcher, reviewer and skeptic are read-only — keep that rule by instruction in the prompt, since `generalist` cannot restrict tools. The researcher never edits an existing file but may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`). |
 | Multiple parallel dispatches | Multiple `invoke_agent` calls in the same response |
 | Task tracking ("create a todo", "mark complete") | `write_todos` (statuses: pending, in_progress, completed, cancelled, blocked) |
 
