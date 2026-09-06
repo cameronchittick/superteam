@@ -21,7 +21,7 @@
 - Role tags are exactly: `[implementer]`, `[writer]`, `[reviewer]`, `[integrator]`, `[researcher]`, `[skeptic]`. A teammate's role is its `agentType` in the team config (`superteam:<role>`); names are free but predictable (`impl-1`, `reviewer-1`, `review-spec`, `hyp-3`).
 - Every new bash test assertion goes through the file's `assert_exit`/`assert_stderr` helpers; test files run under `set -euo pipefail`, so never write a bare `out="$(hook)"` that can exit non-zero.
 - Version is bumped to 7.0.0 in all nine manifests by the lead at Finish, not by any task.
-- Every task's report at `.superteam/sdd/2026-09-05-universal-agent-team-system/task-N-report.md` (relative to the worktree) ends with a `Tests:` line naming the command run and its pass count.
+- Every task's report at `.superteam/sdd/2026-09-05-universal-agent-team-system/task-N-report.md` (relative to the worktree) ends with a `Tests:` line naming the command run and its pass count; the same line is appended to the task description as `Verified: …` via `TaskUpdate` before completion.
 - Use the terms in `CONTEXT.md` for task names, identifiers, file names and tests; do not coin synonyms. (No `CONTEXT.md` exists in this repo; the spec's terms — team mode, fallback mode, task graph, role tag, self-claim, Files owned — are the vocabulary.)
 
 ---
@@ -46,7 +46,7 @@
 
 ### Task 1: Hooks — TaskCreated check and TeammateIdle claim
 
-**Files owned:** `hooks/task-created-check`, `hooks/teammate-idle-claim`, `hooks/hooks.json`, `tests/hooks/test-team-hooks.sh`
+**Files owned:** `hooks/task-created-check`, `hooks/teammate-idle-claim`, `hooks/task-completed-verify`, `hooks/hooks.json`, `tests/hooks/test-team-hooks.sh`
 **Depends on:** none
 **Model tier:** standard
 
@@ -54,6 +54,7 @@
 - Create: `hooks/task-created-check`
 - Create: `hooks/teammate-idle-claim`
 - Modify: `hooks/hooks.json` (add `TaskCreated` and `TeammateIdle` entries beside `TaskCompleted`)
+- Modify: `hooks/task-completed-verify` (report lookup: take N from the subject's `Task N:` first, falling back to the digits of `task_id` — list ids and plan numbers differ once review/merge tasks exist)
 - Test: `tests/hooks/test-team-hooks.sh` (extend; keep the 11 existing assertions)
 
 **Interfaces:**
@@ -279,6 +280,10 @@ exit 0
 
 `chmod +x hooks/teammate-idle-claim`. Ordering: task files are named by numeric id; sort numerically so the lowest id wins. The sed for `agentType` assumes `name` precedes `agentType` inside one member object (it does in 2.1.263 configs); if the name appears in an earlier member's field the `[^}]*` bound keeps the match inside one object.
 
+- [ ] **Step 7b: task-completed-verify takes N from the subject**
+
+Before the `digits=` line add: `subj_n="$(printf '%s' "$task_subject" | sed -n 's/^Task \([0-9]*\):.*/\1/p')"` and loop `for n in "$subj_n" "$digits" "$digits_stripped"` (skip empty). Add one assertion: subject `Task 4: implement [implementer]` with `task_id` `17` and a report at `task-4-report.md` → exit 0. Existing 11 assertions stay green.
+
 - [ ] **Step 8: Wire hooks.json**
 
 Add, beside `TaskCompleted`, with the same shape (`"shell": "bash"`, command via `run-hook.cmd`):
@@ -422,7 +427,7 @@ Frontmatter after this task:
 
 The claim rule, verbatim in every body under `## Claiming work (teammate)`:
 
-> As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[<role>]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied; when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
+> As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[<role>]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
 Split-pane rule: every body must open with one paragraph that says who the agent is and what its inputs are, because in split-pane mode the body replaces the system prompt and no dispatch template reaches it.
 
