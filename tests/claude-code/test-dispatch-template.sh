@@ -107,8 +107,10 @@ PLAN
     if printf '%s\n' "$tc" | grep -q '^Files owned: src/a.py, src/b.py$'; then pass "--taskcreate copies Files owned without backticks"; else fail "--taskcreate copies Files owned without backticks"; fi
     if printf '%s\n' "$tc" | grep -q '^Plan: plan.md   Spec: docs/spec.md$'; then pass "--taskcreate body has the Plan/Spec line"; else fail "--taskcreate body has the Plan/Spec line"; fi
     if printf '%s\n' "$tc" | grep -qE '^(Role|Model):'; then fail "--taskcreate body has no Role:/Model: line"; else pass "--taskcreate body has no Role:/Model: line"; fi
-    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review lane/x)"
-    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: worktree-task-1-impl$'; then pass "--taskcreate review subject and Reviews: line"; else fail "--taskcreate review subject and Reviews: line"; fi
+    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-spec lane/x)"
+    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review spec \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: worktree-task-1-impl$' && printf '%s\n' "$tr" | grep -q '^Rubric: skills/superteam-driven-development/task-reviewer-prompt.md$'; then pass "--taskcreate review-spec subject, Reviews: and Rubric: lines"; else fail "--taskcreate review-spec subject, Reviews: and Rubric: lines"; fi
+    ts="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-standards lane/x)"
+    if printf '%s\n' "$ts" | grep -q '^Subject: Task 1: review standards \[reviewer\]$' && printf '%s\n' "$ts" | grep -q '^Rubric: skills/superteam-driven-development/task-standards-prompt.md$' && printf '%s\n' "$ts" | grep -q '^Standards: '; then pass "--taskcreate review-standards subject, Rubric: and Standards: lines"; else fail "--taskcreate review-standards subject, Rubric: and Standards: lines"; fi
     tm="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 merge lane/x)"
     if printf '%s\n' "$tm" | grep -q '^Subject: Task 1: merge \[integrator\]$' && printf '%s\n' "$tm" | grep -q '^Merge: worktree-task-1-impl → lane/x$'; then pass "--taskcreate merge subject and Merge: line"; else fail "--taskcreate merge subject and Merge: line"; fi
     if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 bogus lane/x) >/dev/null 2>&1; then fail "--taskcreate rejects unknown kind"; else pass "--taskcreate rejects unknown kind"; fi

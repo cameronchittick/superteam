@@ -23,9 +23,30 @@ fail() {
     FAILURES=$((FAILURES + 1))
 }
 
+# task-completed-verify falls back to $PWD when the payload carries no "cwd",
+# so a fake payload would find a REAL .superteam/sdd/*/task-N-report.md in the
+# checkout the suite runs from and invert the assertion. Every payload without
+# its own cwd gets this empty scratch directory instead.
+SCRATCH_CWD="$TEST_ROOT/scratch"
+mkdir -p "$SCRATCH_CWD"
+
+# echoes the payload with "cwd" pinned to the scratch dir, unless it has one
+with_scratch_cwd() {
+    case "$1" in
+        '{'*)
+            if [ "${1#*\"cwd\"}" = "$1" ]; then
+                printf '{"cwd":"%s",%s' "$SCRATCH_CWD" "${1#\{}"
+                return
+            fi
+            ;;
+    esac
+    printf '%s' "$1"
+}
+
 # assert_exit DESCRIPTION EXPECTED_EXIT STDIN_JSON [EXTRA_ENV...] -- HOOK [ARGS...]
 assert_exit() {
-    local description="$1" expected="$2" stdin_json="$3"
+    local description="$1" expected="$2" stdin_json
+    stdin_json="$(with_scratch_cwd "$3")"
     shift 3
     local env_args=()
     while [ "$1" != "--" ]; do
@@ -181,7 +202,8 @@ echo "Team hooks: teammate-idle-claim"
 
 # assert_stderr DESCRIPTION EXPECTED_EXIT GREP_PATTERN STDIN_JSON [ENV...] -- HOOK
 assert_stderr() {
-    local description="$1" expected="$2" pattern="$3" stdin_json="$4"; shift 4
+    local description="$1" expected="$2" pattern="$3" stdin_json
+    stdin_json="$(with_scratch_cwd "$4")"; shift 4
     local env_args=(); while [ "$1" != "--" ]; do env_args+=("$1"); shift; done; shift
     local actual=0 output
     output="$(printf '%s' "$stdin_json" | env -i PATH="${PATH:-}" ${env_args[@]+"${env_args[@]}"} "$@" 2>&1)" || actual=$?
@@ -318,7 +340,7 @@ cat > "$fixture_plan" <<'EOF'
 - Zero dependencies.
 EOF
 
-for kind in implement review merge; do
+for kind in implement review-spec review-standards merge; do
     brief_out="$("$BRIEF" --taskcreate "$fixture_plan" 2 "$kind" lane/x 2>&1 || true)"
     if printf '%s\n' "$brief_out" | grep -qx 'Depends on: Task 1'; then
         pass "task-brief --taskcreate $kind emits the Depends on line"
@@ -339,6 +361,111 @@ if printf '%s\n' "$brief_out" | grep -qx 'Depends on: none'; then
 else
     fail "task-brief emits 'Depends on: none' when the plan task has no dependency"
     printf '%s\n' "$brief_out" | sed 's/^/      /'
+fi
+
+echo "Team hooks: task-created-check: review axis"
+
+# Per-task review is two seats from the same reviewer.md: spec and standards.
+# The step between "Task N:" and the role tag must name one of the known
+# steps, so a bare "review" (which axis?) is a rejection, not a guess.
+axis_dir="$TEST_ROOT/axis-tasks"; mkdir -p "$axis_dir"
+A=(SUPERTEAM_TASKS_DIR="$axis_dir")
+axis_payload() {
+    printf '{"task_id":"9","task_subject":"%s","task_description":"Files owned: skills/axis\\nDepends on: none\\nDone: verdict"}' "$1"
+}
+for step in "implement [implementer]" "merge [integrator]" "fix 2 [implementer]" \
+            "review spec [reviewer]" "review standards [reviewer]" \
+            "review spec 2 [reviewer]" "review standards 2 [reviewer]"; do
+    assert_exit "Task 2: $step is accepted" 0 "$(axis_payload "Task 2: $step")" "${A[@]}" -- "$CREATED_HOOK"
+done
+assert_stderr "bare 'Task 2: review [reviewer]' is rejected for want of an axis" 2 'axis' \
+    "$(axis_payload 'Task 2: review [reviewer]')" "${A[@]}" -- "$CREATED_HOOK"
+assert_stderr "an unknown step is rejected" 2 'step' \
+    "$(axis_payload 'Task 2: deploy [implementer]')" "${A[@]}" -- "$CREATED_HOOK"
+
+echo "Team hooks: teammate-idle-claim: both review axes"
+
+axis_idle="$TEST_ROOT/axis-idle"; mkdir -p "$axis_idle"
+cat > "$axis_idle/3.json" <<'EOF'
+{"id":"3","subject":"Task 2: review spec [reviewer]","description":"Files owned: none\nDone: verdict","status":"pending","owner":"","blockedBy":[]}
+EOF
+cat > "$axis_idle/4.json" <<'EOF'
+{"id":"4","subject":"Task 2: review standards [reviewer]","description":"Files owned: none\nDone: verdict","status":"pending","owner":"","blockedBy":[]}
+EOF
+rev_idle='{"teammate_name":"reviewer-1","team_name":"t"}'
+assert_stderr "an idle reviewer is offered the spec axis first (lowest id)" 2 'claim "Task 2: review spec \[reviewer\]"' \
+    "$rev_idle" SUPERTEAM_TASKS_DIR="$axis_idle" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+# with the spec seat taken, the same reviewer is offered the standards axis
+cat > "$axis_idle/3.json" <<'EOF'
+{"id":"3","subject":"Task 2: review spec [reviewer]","description":"Files owned: none\nDone: verdict","status":"completed","owner":"reviewer-1","blockedBy":[]}
+EOF
+assert_stderr "with the spec axis done the reviewer is offered the standards axis" 2 'claim "Task 2: review standards \[reviewer\]"' \
+    "$rev_idle" SUPERTEAM_TASKS_DIR="$axis_idle" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+
+echo "Team hooks: task-brief: review axes and Standards line"
+
+axis_repo="$TEST_ROOT/axis-repo"; mkdir -p "$axis_repo"
+cat > "$axis_repo/CLAUDE.md" <<'EOF'
+# Standards
+EOF
+cat > "$axis_repo/plan.md" <<'EOF'
+# Plan
+
+**Spec:** specs/fixture.md
+
+### Task 2: Second thing
+
+**Files owned:** `a.sh`
+**Depends on:** Task 1
+**Model tier:** most capable
+
+- [ ] Step 1: do it.
+
+## Global Constraints
+
+- Zero dependencies.
+EOF
+
+spec_out="$(cd "$axis_repo" && "$BRIEF" --taskcreate plan.md 2 review-spec lane/x 2>&1 || true)"
+std_out="$(cd "$axis_repo" && "$BRIEF" --taskcreate plan.md 2 review-standards lane/x 2>&1 || true)"
+impl_out="$(cd "$axis_repo" && "$BRIEF" --taskcreate plan.md 2 implement lane/x 2>&1 || true)"
+
+check_line() { # DESCRIPTION HAYSTACK LINE
+    if printf '%s\n' "$2" | grep -qxF "$3"; then
+        pass "$1"
+    else
+        fail "$1"
+        printf '%s\n' "$2" | sed 's/^/      /'
+    fi
+}
+check_line "review-spec subject names the spec axis" "$spec_out" "Subject: Task 2: review spec [reviewer]"
+check_line "review-spec carries the spec rubric" "$spec_out" "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md"
+check_line "review-standards subject names the standards axis" "$std_out" "Subject: Task 2: review standards [reviewer]"
+check_line "review-standards carries the standards rubric" "$std_out" "Rubric: skills/superteam-driven-development/task-standards-prompt.md"
+check_line "review-standards carries the resolved Standards line" "$std_out" "Standards: CLAUDE.md"
+check_line "implement carries the resolved Standards line" "$impl_out" "Standards: CLAUDE.md"
+if printf '%s\n' "$impl_out" | grep -A1 '^Depends on:' | grep -qxF 'Standards: CLAUDE.md'; then
+    pass "Standards sits right after Depends on"
+else
+    fail "Standards sits right after Depends on"
+fi
+if printf '%s\n' "$spec_out" | grep -q '^Standards:'; then
+    fail "review-spec has no Standards line (spec axis does not read them)"
+else
+    pass "review-spec has no Standards line (spec axis does not read them)"
+fi
+
+no_std_repo="$TEST_ROOT/axis-repo-bare"; mkdir -p "$no_std_repo"
+cp "$axis_repo/plan.md" "$no_std_repo/plan.md"
+bare_out="$(cd "$no_std_repo" && "$BRIEF" --taskcreate plan.md 2 implement lane/x 2>&1 || true)"
+check_line "no standards files resolves to 'Standards: none'" "$bare_out" "Standards: none"
+
+review_rc=0
+(cd "$axis_repo" && "$BRIEF" --taskcreate plan.md 2 review lane/x >/dev/null 2>&1) || review_rc=$?
+if [ "$review_rc" -eq 3 ]; then
+    pass "the retired 'review' kind exits 3"
+else
+    fail "the retired 'review' kind exits 3 (got $review_rc)"
 fi
 
 echo "Team hooks: hooks.json wiring"

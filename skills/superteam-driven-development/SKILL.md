@@ -254,6 +254,12 @@ a ledger file, not only in todos.
   plan's directory is never yours to read or write. A worktree implementer
   never receives a path into this directory (see "Two kinds of IC" above)
   — it does not exist inside the worktree.
+- Resolve the standards files once per plan: `scripts/task-brief` does it on
+  its first run and caches the list at `<workspace>/standards` — every
+  `CONTRIBUTING.md`, `CODING_STANDARDS.md`, `CLAUDE.md`, `AGENTS.md` at the
+  repo root, plus any path on the plan's `**Standards:**` line. The
+  `Standards:` line in each implement and review-standards description is
+  that result, so every task of one plan is judged against the same rules.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
   line names your plan file, tasks with a `Task <N>: complete` line are DONE
   — do not re-dispatch them; resume at the first task without one. A task
@@ -320,18 +326,20 @@ With the scan ruled on, team mode has four more Setup steps, in this order:
 
 ## Task graph
 
-Team mode. For plan task N create three tasks, in this order:
+Team mode. For plan task N create four tasks, in this order — review is two
+axes, and they run in parallel:
 
 | Subject | Role tag | blockedBy |
 | --- | --- | --- |
 | `Task N: implement [implementer]` (or `[writer]` for prose tasks) | implementer/writer | `Task M: merge` for each plan `Depends on: M` |
-| `Task N: review [reviewer]` | reviewer | `Task N: implement` |
-| `Task N: merge [integrator]` | integrator | `Task N: review` |
+| `Task N: review spec [reviewer]` | reviewer | `Task N: implement` |
+| `Task N: review standards [reviewer]` | reviewer | `Task N: implement` |
+| `Task N: merge [integrator]` | integrator | `Task N: review spec` AND `Task N: review standards` |
 
 The description is the whole brief — no pointers, because a teammate in a
 worktree cannot read a file in your checkout. Emit it with this skill's
-`scripts/task-brief --taskcreate PLAN N implement|review|merge [LANE]`, which
-prints the subject and the description body:
+`scripts/task-brief --taskcreate PLAN N implement|review-spec|review-standards|merge [LANE]`,
+which prints the subject and the description body:
 
 ```
 Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
@@ -339,6 +347,7 @@ Lane: <lane branch>
 Worktree: task-N-impl        (EnterWorktree name; branch worktree-task-N-impl)
 Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
 Depends on: Task M (or "none")
+Standards: CLAUDE.md, CONTRIBUTING.md   (implement and review-standards only)
 Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 ## Task Brief
 <verbatim plan task text>
@@ -346,17 +355,19 @@ Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 <verbatim>
 ```
 
-Review descriptions add `Reviews: worktree-task-N-impl` and the rubric
-pointer (`task-reviewer-prompt.md`); merge descriptions add
+Both review descriptions add `Reviews: worktree-task-N-impl` and their
+rubric pointer — `task-reviewer-prompt.md` for the spec axis,
+`task-standards-prompt.md` for the standards axis; merge descriptions add
 `Merge: worktree-task-N-impl → <lane>`. `Files owned:` is the same list on
-all three.
+all four.
 
 The exact calls:
 
 ```
-scripts/task-brief --taskcreate PLAN N implement LANE   → TaskCreate(subject, description)
-scripts/task-brief --taskcreate PLAN N review LANE      → TaskCreate; TaskUpdate addBlockedBy=<implement id>
-scripts/task-brief --taskcreate PLAN N merge LANE       → TaskCreate; TaskUpdate addBlockedBy=<review id>
+scripts/task-brief --taskcreate PLAN N implement LANE         → TaskCreate(subject, description)
+scripts/task-brief --taskcreate PLAN N review-spec LANE       → TaskCreate; TaskUpdate addBlockedBy=<implement id>
+scripts/task-brief --taskcreate PLAN N review-standards LANE  → TaskCreate; TaskUpdate addBlockedBy=<implement id>
+scripts/task-brief --taskcreate PLAN N merge LANE             → TaskCreate; TaskUpdate addBlockedBy=<both review ids>
 for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
 ```
 
@@ -365,23 +376,28 @@ for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
 The line alone is not the edge: you still make that `addBlockedBy` call.
 
 The `task-created-check` hook rejects a malformed task — a subject without a
-role tag, a description without a `Files owned:` or `Done:` line, or a
-`Files owned:` list that overlaps another live task outside this `Task N:`
-family. It deletes the rejected task: fix the description and recreate it.
+role tag, a step that is not one of implement / merge / fix `<r>` /
+review spec `[r]` / review standards `[r]` (a bare `Task N: review` names no
+axis and is rejected by name), a description without a `Files owned:` or
+`Done:` line, or a `Files owned:` list that overlaps another live task
+outside this `Task N:` family. It deletes the rejected task: fix the
+description and recreate it.
 
-**Fix rounds.** On reading a review verdict, create the pair:
-`Task N: fix <r> [implementer]` blockedBy the review that raised it, then
-`Task N: review <r> [reviewer]` blockedBy that fix, and `addBlockedBy` the
-new review onto `Task N: merge`. The merge task cannot be claimed until the
-last review completes. Fix and review tasks repeat the family's
-`Files owned:` list.
+**Fix rounds.** Re-open only the failed axis. Create
+`Task N: fix <r> [implementer]` blockedBy the review(s) that raised the
+findings, then `Task N: review spec <r>` and/or `Task N: review standards <r>`
+— one per failed axis, each blockedBy that fix — and `addBlockedBy` each new
+review onto `Task N: merge`. An axis that came back Approved is not re-run.
+The merge task cannot be claimed until every review on it completes. Fix and
+review tasks repeat the family's `Files owned:` list.
 
 ### Task subjects
 
 Four rules bind every subject on the list:
 
-1. Plan tasks: `Task N: <step> [role]`, step in {implement, review, merge,
-   fix <round>, review <round>}; task numbers are unique for the life of the
+1. Plan tasks: `Task N: <step> [role]`, step in {implement, merge,
+   fix <round>, review spec [round], review standards [round]} — review
+   always names its axis; task numbers are unique for the life of the
    list (a second plan continues the numbering, never restarts at 1); the
    plan name and the brief go in the description.
 2. Everything else: an imperative verb phrase, no `Task N:` prefix, no
@@ -631,11 +647,27 @@ write them.
 
 ### 3. Review the task
 
+Per-task review is **two seats**, filled from the same `agents/reviewer.md`
+and running in parallel off the same diff:
+
+| Seat | Task | Rubric | Judges |
+| --- | --- | --- | --- |
+| spec | `Task N: review spec [reviewer]` | `task-reviewer-prompt.md` | the diff against the plan task and the spec — missing, extra, misunderstood |
+| standards | `Task N: review standards [reviewer]` | `task-standards-prompt.md` | the diff against the `Standards:` files and `smell-baseline.md`, every finding cited as file + rule |
+
+One `reviewer-1` takes both seats in turn (they are separate tasks; it claims
+the lower id first). Spawn a second reviewer seat only when the plan has more
+than 6 tasks.
+
+**Never rerank across axes.** Aggregate the two verdicts in the ledger under
+`## Spec` and `## Standards`, each keeping its own severity ranking — a
+Critical standards finding never promotes a Minor spec finding, or the
+reverse. Both verdicts are required before merge; a task with one seat
+reporting is not reviewed.
+
 Per-task reviews are task-scoped gates. The broad review happens once, at the
-final whole-branch review. Never skip the task review, and never accept a
-report missing either verdict — spec compliance AND task quality are both
-required. Implementer self-review never replaces the task review; both are
-needed.
+final whole-branch review. Never skip either seat. Implementer self-review
+never replaces the task review; both are needed.
 
 - Hand the reviewer its diff as a file: run this skill's
   `scripts/review-package PLAN_FILE BASE HEAD` and pass the reviewer the file path
@@ -677,7 +709,10 @@ complete: you hold the plan and cross-task context the reviewer
 lacks. If you confirm an item is a real gap, treat it as a failed spec
 review — it enters the fix loop with the other findings.
 
-Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
+Templates: [task-reviewer-prompt.md](task-reviewer-prompt.md) (spec axis) and
+[task-standards-prompt.md](task-standards-prompt.md) (standards axis). Both
+seats get the same diff file, brief and report; only the standards seat gets
+the `Standards:` list.
 
 ### 4. The fix loop
 

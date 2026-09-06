@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # TaskCreated hook for superteam. Gated on task_subject ^Task [0-9]+: --
 # every other task is accepted untouched. Rejects (exit 2) a Task N task
-# whose subject lacks a roster role tag, whose description lacks a
+# whose subject lacks a roster role tag, whose subject's step is not one of
+# implement / merge / fix <R> / review spec [R] / review standards [R] (a
+# bare "review" names no axis), whose description lacks a
 # "Files owned:" or "Done:" line, or whose Files owned overlap an open
 # (pending/in_progress) task on the same list outside its own Task N family.
 # Task dir: SUPERTEAM_TASKS_DIR, else
@@ -18,9 +20,9 @@
 usage() {
     cat <<'EOF'
 Usage: task-created-check
-TaskCreated hook: rejects (exit 2) a "Task N:" task without a [role] tag,
-a "Files owned:" line and a "Done:" line, or whose Files owned overlap an open
-task outside its family and not named on its "Depends on:" line. Reads stdin JSON.
+TaskCreated hook: rejects (exit 2) a "Task N:" task without a [role] tag, a known
+step (implement/merge/fix R/review spec|standards [R]), a "Files owned:" line or a
+"Done:" line, or whose Files owned overlap an open task with no "Depends on:" edge.
 Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
 EOF
 }
@@ -55,6 +57,18 @@ family="$(printf '%s' "$subject" | sed -n 's/^\(Task [0-9]*\):.*/\1/p')"
 
 if ! printf '%s' "$subject" | grep -qE '\[(implementer|writer|reviewer|integrator|researcher|skeptic)\]$'; then
     echo "Task subject must end with a role tag: [implementer] [writer] [reviewer] [integrator] [researcher] [skeptic]" >&2
+    exit 2
+fi
+
+# The step between "Task N:" and the role tag. Review is two axes from the
+# same reviewer.md, so a bare "review" is ambiguous and rejected by name.
+step="$(printf '%s' "$subject" | sed -e 's/^Task [0-9]*:[[:space:]]*//' -e 's/[[:space:]]*\[[a-z]*\]$//')"
+if ! printf '%s' "$step" | grep -qE '^(implement|merge|fix [0-9]+|review (spec|standards)( [0-9]+)?)$'; then
+    if printf '%s' "$step" | grep -qE '^review( [0-9]+)?$'; then
+        echo "review needs an axis: spec or standards — 'Task N: review spec [reviewer]' or 'Task N: review standards [reviewer]'" >&2
+    else
+        echo "Task subject step must be one of: implement, merge, fix <R>, review spec [R], review standards [R] (got '$step')" >&2
+    fi
     exit 2
 fi
 
