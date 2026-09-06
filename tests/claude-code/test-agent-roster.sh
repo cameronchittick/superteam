@@ -368,9 +368,19 @@ main() {
         fail "agents/researcher.md denies Edit and NotebookEdit but allows Write"
         echo "    disallowedTools: ${denied:-<none>}"
     fi
+    # The description must not still call the researcher read-only: it may
+    # write exactly one findings file.
+    if grep '^description:' "$r" | grep -qF 'read-only'; then
+        fail "agents/researcher.md description does not say read-only"
+    else
+        pass "agents/researcher.md description does not say read-only"
+    fi
+    grep '^description:' "$r" | grep -qF 'findings file' \
+        && pass "agents/researcher.md description names its one findings file" \
+        || fail "agents/researcher.md description names its one findings file"
     local phrase
-    for phrase in 'docs/superteam/research/' 'primary' 'URL + section' 'file:line'; do
-        grep -qiF "$phrase" "$r" \
+    for phrase in 'docs/superteam/research/' 'Primary sources only' 'URL + section' 'file:line'; do
+        grep -qF "$phrase" "$r" \
             && pass "agents/researcher.md states: $phrase" \
             || fail "agents/researcher.md states: $phrase"
     done
