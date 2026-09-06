@@ -5,11 +5,13 @@ description: Use when executing an implementation plan as the lead (PM) of a tea
 
 # Superteam-Driven Development
 
-You are the lead (PM). Execute the plan by dispatching one fresh implementer
-IC per task into its own worktree, a task review (spec compliance + code
-quality) after each, and a broad whole-branch review at the end. The lead
-never implements beyond a one-line fix: it briefs, reviews, rules, and
-dispatches the integrator to merge.
+You are the lead (PM). Execute the plan as a task graph worked by one fresh
+implementer IC per task in its own worktree, a task review (spec compliance
++ code quality) after each, and a broad whole-branch review at the end. The
+lead never implements beyond a one-line fix: it briefs, reviews, rules, and
+leaves the merge to the integrator. Read "## Modes" first — team mode puts
+the graph on the shared task list and lets role teammates claim their own
+work; fallback mode dispatches the same roles as subagents.
 
 **Why ICs:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never receive your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
@@ -81,6 +83,13 @@ version bumps — one at a time). Four rules bind every dispatch:
 The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
 
+**In team mode the same roster spawns once, as a pool of teammates that
+self-claim** (see "## Role pool"), and the call shapes below describe the
+fallback dispatch. The one change team mode makes to a seat: the implementer
+and writer take no `isolation` on the call and isolate themselves with
+`EnterWorktree` after claiming, which is why they must be split-pane
+teammates.
+
 **Implementer** — a named subagent with worktree isolation. It writes code,
 commits on its own branch, and reports; the integrator merges. The call shape:
 
@@ -131,7 +140,7 @@ as their final message.
 
 **Integrator** — `subagent_type: "superteam:integrator"`, no `isolation`,
 dispatched one at a time in your checkout after a task's review is clean
-(§5) and again at Finish. It gets the branch to merge, the lane, the test
+("5. Complete the task") and again at Finish. It gets the branch to merge, the lane, the test
 command, and whether to bump; it reports the merge commit and the suite
 result. You never merge inline when the integrator is available.
 
@@ -149,56 +158,60 @@ digraph process {
 
     subgraph cluster_per_task {
         label="Per Task";
-        "Dispatch implementer IC in worktree (./implementer-prompt.md)" [shape=box];
+        "Lead creates Task N graph: implement, review, merge" [shape=box];
+        "implementer self-claims, EnterWorktree, git merge lane" [shape=box];
         "Implementer asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
-        "Implementer implements, tests, commits, self-reviews" [shape=box];
-        "Generate review package, dispatch reviewer teammate (./task-reviewer-prompt.md)" [shape=box];
+        "Implementer implements, tests, commits, self-reviews, appends Verified: line" [shape=box];
+        "reviewer self-claims, reads the branch diff, verdicts spec and quality" [shape=box];
         "Spec ✅ and quality approved?" [shape=diamond];
         "Finding conflicts with plan text?" [shape=diamond];
         "Rule on the conflict, ledger the ruling" [shape=box];
-        "Fix round R of 5: R≤3 SendMessage implementer; R≥4 fresh implementer IC, more capable model" [shape=box];
-        "Dispatch scoped re-review (./re-review-prompt.md)" [shape=box];
+        "Lead creates fix round R of 5: Task N fix R, Task N review R" [shape=box];
+        "implementer self-claims the fix, fixes in the same worktree branch" [shape=box];
+        "reviewer self-claims the re-review, verdicts each finding" [shape=box];
         "All findings addressed?" [shape=diamond];
         "R = 5?" [shape=diamond];
         "Adjudicate each open finding" [shape=box];
         "Any load-bearing finding?" [shape=diamond];
         "Rule and continue; stop only if every path forward is a guess" [shape=box];
         "Park findings in ledger with rulings" [shape=box];
-        "Merge worktree branch into lane, remove worktree, ledger completion" [shape=box];
+        "integrator self-claims, merges the branch into lane, removes worktree" [shape=box];
     }
 
-    "Setup: lane branch, ledger check, read plan, pre-flight review" [shape=box];
+    "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" [shape=box];
     "More tasks remain?" [shape=diamond];
     "Dispatch two-axis final review (superteam:requesting-code-review)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
     "Final review clean: delete this plan's workspace" [shape=box];
     "Use superteam:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
-    "Setup: lane branch, ledger check, read plan, pre-flight review" -> "Dispatch implementer IC in worktree (./implementer-prompt.md)";
-    "Dispatch implementer IC in worktree (./implementer-prompt.md)" -> "Implementer asks questions?";
+    "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" -> "Lead creates Task N graph: implement, review, merge";
+    "Lead creates Task N graph: implement, review, merge" -> "implementer self-claims, EnterWorktree, git merge lane";
+    "implementer self-claims, EnterWorktree, git merge lane" -> "Implementer asks questions?";
     "Implementer asks questions?" -> "Answer questions, provide context" [label="yes"];
-    "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews";
-    "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews" [label="no"];
-    "Implementer implements, tests, commits, self-reviews" -> "Generate review package, dispatch reviewer teammate (./task-reviewer-prompt.md)";
-    "Generate review package, dispatch reviewer teammate (./task-reviewer-prompt.md)" -> "Spec ✅ and quality approved?";
-    "Spec ✅ and quality approved?" -> "Merge worktree branch into lane, remove worktree, ledger completion" [label="yes"];
+    "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line";
+    "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line" [label="no"];
+    "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality";
+    "reviewer self-claims, reads the branch diff, verdicts spec and quality" -> "Spec ✅ and quality approved?";
+    "Spec ✅ and quality approved?" -> "integrator self-claims, merges the branch into lane, removes worktree" [label="yes"];
     "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
     "Finding conflicts with plan text?" -> "Rule on the conflict, ledger the ruling" [label="yes"];
-    "Rule on the conflict, ledger the ruling" -> "Fix round R of 5: R≤3 SendMessage implementer; R≥4 fresh implementer IC, more capable model";
-    "Finding conflicts with plan text?" -> "Fix round R of 5: R≤3 SendMessage implementer; R≥4 fresh implementer IC, more capable model" [label="no"];
-    "Fix round R of 5: R≤3 SendMessage implementer; R≥4 fresh implementer IC, more capable model" -> "Dispatch scoped re-review (./re-review-prompt.md)";
-    "Dispatch scoped re-review (./re-review-prompt.md)" -> "All findings addressed?";
-    "All findings addressed?" -> "Merge worktree branch into lane, remove worktree, ledger completion" [label="yes"];
+    "Rule on the conflict, ledger the ruling" -> "Lead creates fix round R of 5: Task N fix R, Task N review R";
+    "Finding conflicts with plan text?" -> "Lead creates fix round R of 5: Task N fix R, Task N review R" [label="no"];
+    "Lead creates fix round R of 5: Task N fix R, Task N review R" -> "implementer self-claims the fix, fixes in the same worktree branch";
+    "implementer self-claims the fix, fixes in the same worktree branch" -> "reviewer self-claims the re-review, verdicts each finding";
+    "reviewer self-claims the re-review, verdicts each finding" -> "All findings addressed?";
+    "All findings addressed?" -> "integrator self-claims, merges the branch into lane, removes worktree" [label="yes"];
     "All findings addressed?" -> "R = 5?" [label="no"];
-    "R = 5?" -> "Fix round R of 5: R≤3 SendMessage implementer; R≥4 fresh implementer IC, more capable model" [label="no - next round"];
+    "R = 5?" -> "Lead creates fix round R of 5: Task N fix R, Task N review R" [label="no - next round"];
     "R = 5?" -> "Adjudicate each open finding" [label="yes - breaker trips"];
     "Adjudicate each open finding" -> "Any load-bearing finding?";
     "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
     "Any load-bearing finding?" -> "Park findings in ledger with rulings" [label="no"];
-    "Park findings in ledger with rulings" -> "Merge worktree branch into lane, remove worktree, ledger completion";
-    "Merge worktree branch into lane, remove worktree, ledger completion" -> "More tasks remain?";
-    "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
+    "Park findings in ledger with rulings" -> "integrator self-claims, merges the branch into lane, removes worktree";
+    "integrator self-claims, merges the branch into lane, removes worktree" -> "More tasks remain?";
+    "More tasks remain?" -> "Lead creates Task N graph: implement, review, merge" [label="yes"];
     "More tasks remain?" -> "Dispatch two-axis final review (superteam:requesting-code-review)" [label="no"];
     "Dispatch two-axis final review (superteam:requesting-code-review)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete this plan's workspace";
@@ -206,14 +219,33 @@ digraph process {
 }
 ```
 
+## Modes
+
+**Team mode** is on when all hold: `TaskCreate` is in your tool list
+(`CLAUDE_CODE_ENABLE_TODO_TOOLS=1` on the opt-in model families), agent
+teams are on (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`), and the session is
+interactive (`claude -p` never spawns teammates). State the mode once at
+Setup. Anything else is **fallback mode** = 6.10.0 behaviour: worktree
+subagents, you claim and complete tasks or keep the plan-file ledger, no
+teammates, no hooks fire on subagents. Other harnesses are always fallback.
+
+Team mode also requires **split-pane teammates** — `teammateMode: "tmux"` in
+this repo's `.claude/settings.local.json`, or `--teammate-mode tmux` at
+launch. An in-process teammate shares your session's process cwd, so its
+`EnterWorktree` moves you and every other teammate with it; a dogfood run
+landed three implementers' edits in one worktree that way. In-process
+teammates are only for roles that never enter a worktree: reviewer,
+integrator, researcher, skeptic. If split panes are unavailable, run the
+implement and write tasks in fallback mode.
+
 ## Setup
 
 Ensure the work happens in an isolated workspace: use
 superteam:using-git-worktrees to create one or verify the existing one.
 Your branch is the **lane branch** — the integration branch every task
-merges into. ICs do not branch from it: `isolation: "worktree"` branches
-them from the repo default branch, and dependent tasks catch up with
-`git merge <lane>` as their first step. Never start implementation on a
+merges into. ICs do not branch from it: `isolation: "worktree"` and
+`EnterWorktree` both branch them from the repo default branch, and every
+task catches up with `git merge <lane>` as its first step. Never start implementation on a
 main/master branch without your human partner's explicit consent.
 
 Conversation memory does not survive compaction. In real sessions,
@@ -243,51 +275,13 @@ a ledger file, not only in todos.
   trust the ledger and `git log` over your own recollection.
 - `git clean -fdx` will destroy the workspace (it's git-ignored scratch); if
   that happens, recover from `git log`.
-- The status bookkeeping above (`Task <N>: complete` lines) is the fallback
-  branch. Check which branch you're in before Task 1 — see "## Ledger" below.
+- The status bookkeeping above (`Task <N>: complete` lines) belongs to
+  fallback mode. State which mode you are in before Task 1.
 
-## Ledger
-
-Two branches, chosen once at Setup by whether `TaskCreate` is in your tool
-list — state which branch you're in as you begin.
-
-**Task tools present — the shared task list is the live ledger.** At plan
-start, create one task per plan task with `TaskCreate` (subject
-`Task N: <title>`, description the plan's task brief or a pointer to it),
-then wire dependencies with `addBlockedBy` from the plan's "Depends on:"
-lines. Worktree subagents do not receive the Task tools; teammates do (see
-below) — so who claims and completes a task depends on which kind of IC
-holds it. A task changes state only through `TaskUpdate` — no one edits
-`~/.claude/tasks/**` by hand; a hand-edited file skips the `TaskCompleted`
-gate and is a lie about being done.
-
-- **Implementer (worktree subagent):** it has no `TaskUpdate`. You are its
-  hands on the list — `TaskUpdate` owner=<IC name>, status=in_progress
-  before you dispatch it, then status=completed when its report arrives
-  with the `Tests:` line written. Two `TaskUpdate` calls per task, made by
-  you; no plan-file status line.
-- **Reviewer (teammate):** it has `TaskUpdate` and claims and completes its
-  own review task itself, per its prompt template's claim line
-  (task-reviewer-prompt.md).
-
-Either way you stop hand-writing `Task <N>: complete` status lines —
-`TaskList` shows status directly, and you find the next unblocked task
-with `TaskList` instead of scanning the plan file. The plugin's
-`TaskCompleted` verify gate checks the report's `Tests:` line before an
-SDD task can complete.
-
-**Task tools absent — the plan-file ledger is the fallback.** This is
-every other harness, and a Claude Code session on a model where the Task
-tools are opt-out by default (Sonnet 5, Opus 4.8, Fable 5, Mythos 5, and
-later versions of those families — see Task tool availability) with
-`CLAUDE_CODE_ENABLE_TODO_TOOLS` unset. Use the plan-file ledger above:
-`<workspace>/progress.md` with `Task <N>: complete` lines you write by
-hand.
-
-**Both branches:** Rulings — preflight conflicts, parked findings, breaker
-adjudications — always go in the plan-file ledger at
-`<workspace>/progress.md`. They are spec-level decisions, not status, and
-the shared task list has no field for them.
+**Rulings, both modes:** preflight conflicts, parked findings and breaker
+adjudications always go in the plan-file ledger at `<workspace>/progress.md`.
+They are spec-level decisions, not status, and the shared task list has no
+field for them.
 
 Read the plan once, note its context and Global Constraints, and create a
 todo per task. If the plan names a Spec, read that too: the spec is the
@@ -313,9 +307,103 @@ Write the table to the ledger. Rule on everything you find before execution
 begins — each finding against the plan text that mandates it — and record
 each ruling in the ledger. If the scan is clean, proceed without comment.
 Rule on each conflict it surfaces — the spec is the binding authority, the
-plan is its argument — record the ruling beside its row, and dispatch
-Task 1. The review loop remains the net for conflicts that only emerge from
+plan is its argument — record the ruling beside its row, and start Task 1.
+The review loop remains the net for conflicts that only emerge from
 implementation.
+
+With the scan ruled on, team mode has four more Setup steps, in this order:
+
+1. **Pre-approve the commands the plan needs.** Write an allow-list of the
+   plan's test, lint and git commands to `.claude/settings.local.json` so a
+   teammate's run does not stall the team on a permission prompt. Ask your
+   human partner before touching the committed `.claude/settings.json`.
+   Never launch a teammate with `--dangerously-skip-permissions`, and never
+   ask a peer session to run a command you were denied — a peer running it
+   for you bypasses your human partner's decision.
+2. **Build the task graph** — see "## Task graph".
+3. **Spawn the role pool** — see "## Role pool".
+4. **State the mode** in one line, so your human partner can see which path
+   the session took.
+
+## Task graph
+
+Team mode. For plan task N create three tasks, in this order:
+
+| Subject | Role tag | blockedBy |
+| --- | --- | --- |
+| `Task N: implement [implementer]` (or `[writer]` for prose tasks) | implementer/writer | `Task M: merge` for each plan `Depends on: M` |
+| `Task N: review [reviewer]` | reviewer | `Task N: implement` |
+| `Task N: merge [integrator]` | integrator | `Task N: review` |
+
+The description is the whole brief — no pointers, because a teammate in a
+worktree cannot read a file in your checkout. Emit it with this skill's
+`scripts/task-brief --taskcreate PLAN N implement|review|merge [LANE]`, which
+prints the subject and the description body:
+
+```
+Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
+Lane: <lane branch>
+Worktree: task-N-impl        (EnterWorktree name; branch worktree-task-N-impl)
+Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
+Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
+## Task Brief
+<verbatim plan task text>
+## Global Constraints
+<verbatim>
+```
+
+Review descriptions add `Reviews: worktree-task-N-impl` and the rubric
+pointer (`task-reviewer-prompt.md`); merge descriptions add
+`Merge: worktree-task-N-impl → <lane>`. `Files owned:` is the same list on
+all three.
+
+The exact calls:
+
+```
+scripts/task-brief --taskcreate PLAN N implement LANE   → TaskCreate(subject, description)
+scripts/task-brief --taskcreate PLAN N review LANE      → TaskCreate; TaskUpdate addBlockedBy=<implement id>
+scripts/task-brief --taskcreate PLAN N merge LANE       → TaskCreate; TaskUpdate addBlockedBy=<review id>
+for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
+```
+
+The `task-created-check` hook rejects a malformed task — a subject without a
+role tag, a description without a `Files owned:` or `Done:` line, or a
+`Files owned:` list that overlaps another live task outside this `Task N:`
+family. It deletes the rejected task: fix the description and recreate it.
+
+**Fix rounds.** On reading a review verdict, create the pair:
+`Task N: fix <r> [implementer]` blockedBy the review that raised it, then
+`Task N: review <r> [reviewer]` blockedBy that fix, and `addBlockedBy` the
+new review onto `Task N: merge`. The merge task cannot be claimed until the
+last review completes. Fix and review tasks repeat the family's
+`Files owned:` list.
+
+## Role pool
+
+Team mode. Sizing default: 1 implementer + 1 reviewer + 1 integrator covers
+up to 6 plan tasks; add one more implementer per further 5 tasks; at most 5
+teammates. A writer replaces the implementer when the plan's tasks are prose.
+
+Spawn each with a named `Agent` call and **no `isolation`** — implementers
+isolate themselves with `EnterWorktree` after they claim. Names are
+predictable: `impl-1`, `writer-1`, `reviewer-1`, `integrator-1`.
+
+```
+Agent:
+  name: "impl-1"
+  subagent_type: "superteam:implementer"   # superteam:writer for prose plans
+  description: "Implementer seat 1"
+  prompt: |
+    You are `impl-1`. Your tasks are on the shared list; claim per your
+    agent body. Lane: `<lane>`. Model: `<model>`.
+```
+
+The dispatch prompt carries only name, model and that pointer: split-pane
+mode replaces the system prompt with the agent body, so the role, the claim
+rule, the worktree steps and the report format already live there. Model
+precedence is spawn prompt > agent definition > `CLAUDE_CODE_SUBAGENT_MODEL`
+> your own model; pick the model per "## Model Selection" and write it into
+the prompt.
 
 ## Model Selection
 
@@ -350,7 +438,32 @@ from prose descriptions stay on the default.
 - Touches multiple files with integration concerns → default
 - Requires design judgment or broad codebase understanding → `opus`, reason written
 
-## The Task Loop
+## Monitor loop
+
+In team mode you create, watch and steer. You never implement, and you
+never claim an implement, review or merge task yourself — the pool claims
+its own role's work, and a lead holding a task is a seat nobody can take.
+
+- **Completion is two `TaskUpdate` calls, in order.** First the description,
+  with the `Verified:` line appended; then `status=completed`. That line is
+  the evidence the `task-completed-verify` gate reads — a report file inside
+  a worktree is invisible to it. A single call that sets both is rejected by
+  the gate and loses the description edit with it. Hold every teammate to
+  the same order, and never hand-edit `~/.claude/tasks/**`.
+- **The idle notification is the report.** Read it when it arrives; do not
+  poll. Then `TaskList` to see what moved and what unblocked.
+- **Nudge before you reassign.** A task that shows `in_progress` with no
+  commit and no report after one monitor pass gets one `SendMessage` to its
+  owner by name. If the next pass is unchanged, reassign: `TaskUpdate` the
+  task back to `pending` with no owner, and message the pool.
+- **Verdicts make tasks, not dispatches.** On a review verdict with open
+  findings, create the fix/review pair from "## Task graph" and let the pool
+  claim them.
+- **Rulings still go to `progress.md`.** The shared list has no field for
+  them, and they are what your human partner reads at Finish.
+
+The two subsections that follow — the review's contents and the fix loop's
+five-round breaker — bind in both modes; only who dispatches changes.
 
 **Batch small same-shape work.** When the plan lists several tasks that are
 each a small, independent edit of the same kind — the same one-line fix,
@@ -375,11 +488,16 @@ children: list them, and chase any that finished without reporting.
 
 ### 1. Dispatch the implementer
 
-If Task tools are present (see "## Ledger"), claim the task you created for
-this at Setup before you dispatch: `TaskUpdate` owner=<IC name>,
-status=in_progress. The implementer is a worktree subagent and never sees
-`TaskUpdate` itself — you are its hands on the list. On the fallback
-branch, skip this and rely on the plan-file ledger alone.
+**Team mode:** there is no dispatch. `impl-1` claims `Task N: implement`
+itself, runs `EnterWorktree` with the description's `Worktree:` name and
+`git merge <lane>` as its first two acts, and the task description is its
+whole brief. Skip to "3. Review the task"; the rest of this subsection is
+the fallback dispatch.
+
+**Fallback mode:** claim the task you created at Setup before you dispatch —
+`TaskUpdate` owner=<IC name>, status=in_progress. The implementer is a
+worktree subagent and never sees `TaskUpdate` itself, so you are its hands
+on the list. Without the Task tools, rely on the plan-file ledger alone.
 
 Record BASE per worktree branch: with `isolation: "worktree"` the IC
 starts from the repo default branch, so BASE is
@@ -432,6 +550,10 @@ depends on merged prior tasks, the dispatch says
 Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 2. Handle the report
+
+**Team mode:** the reviewer reads the worktree branch directly, so no copy
+is needed for it; copy the report out anyway before the integrator removes
+the worktree. The four statuses below still describe what a report can say.
 
 First, copy the implementer's report out of the worktree into this plan's
 workspace, so the reviewer (a teammate in your checkout) can read it:
@@ -606,6 +728,10 @@ a silent discard is forbidden.
 
 ### 5. Complete the task
 
+**Team mode:** the review completing unblocks `Task N: merge`, which
+`integrator-1` claims; the merge details are already in its description.
+You do nothing but read the completion. The dispatch below is fallback mode.
+
 When the review comes back clean — or every open finding is parked with a
 ruling at the cap — dispatch the integrator to merge the IC's branch into
 the lane. One dispatch per merge, never two at once (it mutates your
@@ -632,23 +758,68 @@ A merge conflict means two ICs touched the same file — the integrator
 resolves a textual conflict and reports it; a semantic conflict comes back
 unresolved and is a finding for the next fix round.
 
-If Task tools are present: mark the implementer's task completed yourself
-(`TaskUpdate` status=completed) once its report has arrived with the
-`Tests:` line written — it is a worktree subagent and cannot do this
-itself. The reviewer, a teammate, already marked its own review task
-completed after writing its verdict. Either way, find the next unblocked
-task with `TaskList` rather than scanning a status line you no longer
-write. On the fallback branch, append the completion line to the ledger
-yourself in the same message as your other bookkeeping:
+In fallback mode with the Task tools present, mark the implementer's task
+completed yourself (`TaskUpdate` status=completed) once its report has
+arrived with the `Tests:` line written — it is a worktree subagent and
+cannot do this itself. Find the next unblocked task with `TaskList` rather
+than scanning a status line you no longer write. Without the Task tools,
+append the completion line to the ledger yourself in the same message as
+your other bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
   tripped breaker
 
-Rulings stay in the plan-file ledger in both branches (see "## Ledger").
+Rulings stay in the plan-file ledger in both modes (see "## Setup").
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor
 parked-with-ruling at the cap.
+
+## Restart
+
+If the session comes back after a crash or a restart: `TaskList`; reset to
+`pending` every `in_progress` task whose owner is not in the `members` list
+of `~/.claude/teams/<team>/config.json`; then re-spawn one teammate per role
+that still has open tasks. The worktrees and their branches survive a
+restart, so a re-claimed task resumes on the branch the last owner left.
+
+## Fallback
+
+Task tools absent, teams off, or `-p`. This is every other harness, and a
+Claude Code session on a model where the Task tools are opt-out by default
+(Sonnet 5, Opus 4.8, Fable 5, Mythos 5, and later versions of those
+families — see Task tool availability) with `CLAUDE_CODE_ENABLE_TODO_TOOLS`
+unset. Dispatch worktree subagents per "1. Dispatch the implementer", claim
+and complete their tasks yourself, and keep the plan-file ledger.
+
+**Task tools present — the shared task list is the live ledger.** At plan
+start, create one task per plan task with `TaskCreate` (subject
+`Task N: <title>`, description the plan's task brief or a pointer to it),
+then wire dependencies with `addBlockedBy` from the plan's "Depends on:"
+lines. Worktree subagents do not receive the Task tools; teammates do (see
+below) — so who claims and completes a task depends on which kind of IC
+holds it. A task changes state only through `TaskUpdate` — no one edits
+`~/.claude/tasks/**` by hand; a hand-edited file skips the `TaskCompleted`
+gate and is a lie about being done.
+
+- **Implementer (worktree subagent):** it has no `TaskUpdate`. You are its
+  hands on the list — `TaskUpdate` owner=<IC name>, status=in_progress
+  before you dispatch it, then status=completed when its report arrives
+  with the `Tests:` line written. Two `TaskUpdate` calls per task, made by
+  you; no plan-file status line.
+- **Reviewer (teammate):** it has `TaskUpdate` and claims and completes its
+  own review task itself, per its prompt template's claim line
+  (task-reviewer-prompt.md).
+
+Either way you stop hand-writing `Task <N>: complete` status lines —
+`TaskList` shows status directly, and you find the next unblocked task
+with `TaskList` instead of scanning the plan file. The plugin's
+`TaskCompleted` verify gate checks the report's `Tests:` line before an
+SDD task can complete.
+
+**Task tools absent — the plan-file ledger is the fallback.** Use the
+plan-file ledger from Setup: `<workspace>/progress.md` with
+`Task <N>: complete` lines you write by hand.
 
 ## Final Review
 
@@ -703,7 +874,11 @@ the integrator once more to delete this plan's workspace
 (`rm -rf <workspace>`) — the git history is the record now. Sibling
 directories belong to other plans; the dispatch names exactly one path.
 
-Use superteam:finishing-a-development-branch.
+Use superteam:finishing-a-development-branch. In team mode its "Team
+teardown" section is what shuts the pool down: when a role has no pending
+tasks left, `SendMessage` a `shutdown_request` to each idle teammate of that
+role; when every merge is done, merge the lane into trunk and shut down the
+rest. Never shut down a teammate whose role still has an unclaimed task.
 
 ## Common Rationalizations
 

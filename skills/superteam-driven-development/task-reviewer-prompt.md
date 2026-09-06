@@ -21,8 +21,10 @@ Agent:
 
     ## Claiming Your Task
 
-    If `TaskUpdate` is available: set owner=<your name>, status=in_progress
-    before starting; status=completed only after your verdict is written.
+    Team mode: you claimed `Task N: review [reviewer]`; the description's
+    `Reviews:` line names the branch. Fallback mode: if `TaskUpdate` is
+    available, set owner=<your name>, status=in_progress before starting;
+    status=completed only after your verdict is written.
 
     You may `SendMessage` the implementer by name for a clarifying question
     about what a change was for. You never edit and never fix; your verdict
