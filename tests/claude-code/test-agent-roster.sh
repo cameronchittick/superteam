@@ -227,6 +227,44 @@ main() {
     done
     grep -qF 'user_config.review_model' "$AGENTS/reviewer.md" && pass "agents/reviewer.md names user_config.review_model" || fail "agents/reviewer.md names user_config.review_model"
 
+    # (k5) skills preload: each role's `skills:` frontmatter names exactly
+    #      the skills its work needs, plugin-scoped
+    local want skills_line
+    for entry in \
+        "implementer:superteam:test-driven-development, superteam:verification-before-completion" \
+        "writer:superteam:test-driven-development, superteam:verification-before-completion" \
+        "reviewer:superteam:requesting-code-review" \
+        "integrator:superteam:finishing-a-development-branch"; do
+        role="${entry%%:*}"
+        want="${entry#*:}"
+        skills_line="$(grep '^skills:' "$AGENTS/$role.md" || true)"
+        if [[ "$skills_line" == "skills: $want" ]]; then
+            pass "agents/$role.md preloads: $want"
+        else
+            fail "agents/$role.md preloads: $want"
+            echo "    skills line: ${skills_line:-<none>}"
+        fi
+    done
+
+    # (k6) the false "the skills field is ignored" claim is gone from every
+    #      agent that preloads, and each says to invoke them by hand if the
+    #      teammate spawn did not preload them
+    local ignored
+    ignored="$(grep -ln 'skills` field is ignored' "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md "$AGENTS"/integrator.md "$AGENTS"/researcher.md 2>/dev/null || true)"
+    if [[ -z "$ignored" ]]; then
+        pass "no preloading agent claims the skills field is ignored"
+    else
+        fail "no preloading agent claims the skills field is ignored"
+        echo "    found in: $ignored"
+    fi
+    for role in implementer writer reviewer integrator researcher; do
+        if grep -q 'invoke each with `Skill`' "$AGENTS/$role.md"; then
+            pass "agents/$role.md falls back to invoking the skills by hand"
+        else
+            fail "agents/$role.md falls back to invoking the skills by hand"
+        fi
+    done
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it
