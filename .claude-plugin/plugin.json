@@ -13,5 +13,19 @@
     "collaboration",
     "best-practices",
     "workflows"
-  ]
+  ],
+  "userConfig": {
+    "worker_model": {
+      "type": "string",
+      "title": "Worker model",
+      "description": "Model for superteam:implementer and superteam:writer",
+      "default": "opus"
+    },
+    "review_model": {
+      "type": "string",
+      "title": "Review model",
+      "description": "Model for superteam:reviewer",
+      "default": "opus"
+    }
+  }
 }

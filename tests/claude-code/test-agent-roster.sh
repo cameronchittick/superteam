@@ -177,6 +177,56 @@ main() {
         grep -q 'never as a teammate' "$AGENTS/$role.md" && pass "agents/$role.md scopes haiku to subagent dispatch" || fail "agents/$role.md scopes haiku to subagent dispatch"
     done
 
+    # (k3) roster model defaults: implementer/writer default to the
+    #      worker model and reviewer to the review model (both opus, either
+    #      literal or as the userConfig placeholder); researcher and
+    #      integrator stay sonnet; skeptic stays opus
+    local model_line
+    for role in implementer writer; do
+        model_line="$(grep '^model:' "$AGENTS/$role.md" || true)"
+        if [[ "$model_line" == 'model: opus' || "$model_line" == 'model: ${user_config.worker_model}' ]]; then
+            pass "agents/$role.md defaults to the worker model (opus)"
+        else
+            fail "agents/$role.md defaults to the worker model (opus)"
+            echo "    model line: ${model_line:-<none>}"
+        fi
+    done
+    model_line="$(grep '^model:' "$AGENTS/reviewer.md" || true)"
+    if [[ "$model_line" == 'model: opus' || "$model_line" == 'model: ${user_config.review_model}' ]]; then
+        pass "agents/reviewer.md defaults to the review model (opus)"
+    else
+        fail "agents/reviewer.md defaults to the review model (opus)"
+        echo "    model line: ${model_line:-<none>}"
+    fi
+    for role in researcher integrator; do
+        if [[ "$(grep '^model:' "$AGENTS/$role.md" || true)" == 'model: sonnet' ]]; then
+            pass "agents/$role.md stays sonnet"
+        else
+            fail "agents/$role.md stays sonnet"
+        fi
+    done
+    if [[ "$(grep '^model:' "$AGENTS/skeptic.md" || true)" == 'model: opus' ]]; then
+        pass "agents/skeptic.md stays opus"
+    else
+        fail "agents/skeptic.md stays opus"
+    fi
+
+    # (k4) the userConfig keys exist in the plugin manifest with opus
+    #      defaults, and implementer/writer/reviewer name their key
+    local manifest="$REPO_ROOT/.claude-plugin/plugin.json"
+    local key
+    for key in worker_model review_model; do
+        if grep -A5 "\"$key\"" "$manifest" 2>/dev/null | grep -q '"default": *"opus"'; then
+            pass "plugin.json declares userConfig $key with default opus"
+        else
+            fail "plugin.json declares userConfig $key with default opus"
+        fi
+    done
+    for role in implementer writer; do
+        grep -qF 'user_config.worker_model' "$AGENTS/$role.md" && pass "agents/$role.md names user_config.worker_model" || fail "agents/$role.md names user_config.worker_model"
+    done
+    grep -qF 'user_config.review_model' "$AGENTS/reviewer.md" && pass "agents/reviewer.md names user_config.review_model" || fail "agents/reviewer.md names user_config.review_model"
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it
