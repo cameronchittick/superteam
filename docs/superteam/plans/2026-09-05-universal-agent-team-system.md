@@ -422,10 +422,10 @@ Frontmatter after this task:
 
 | agent | model | effort | maxTurns | memory | tools / disallowedTools | isolation |
 | --- | --- | --- | --- | --- | --- | --- |
-| implementer | sonnet | medium | 60 | — | `tools: Read, Edit, Write, Bash, Glob, Grep, Skill, EnterWorktree, ExitWorktree` | worktree |
+| implementer | sonnet | medium | 60 | — | `tools: Read, Edit, Write, Bash, Glob, Grep, Skill, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage, EnterWorktree, ExitWorktree` | worktree |
 | writer | sonnet | medium | 60 | — | same as implementer | worktree |
 | reviewer | sonnet | high | 30 | project | `disallowedTools: Edit, Write, NotebookEdit` | — |
-| integrator | sonnet | medium | 20 | — | `tools: Bash, Read, Glob, Grep, Edit` | — |
+| integrator | sonnet | medium | 20 | — | `tools: Bash, Read, Glob, Grep, Edit, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage` | — |
 | researcher | sonnet | medium | 30 | — | `disallowedTools: Edit, Write, NotebookEdit` | — |
 | skeptic | opus | high | 30 | project | `disallowedTools: Edit, Write, NotebookEdit` | — |
 
@@ -447,6 +447,9 @@ for role in implementer writer reviewer integrator researcher skeptic; do
     grep -q "ends with \`\[$role\]\`" "$f" && pass "agents/$role.md claim rule names its own role tag" || fail "agents/$role.md claim rule names its own role tag"
     grep -qi 'never edit `~/.claude/tasks/\*\*`' "$f" && pass "agents/$role.md forbids hand-editing tasks" || fail "agents/$role.md forbids hand-editing tasks"
     grep -q 'model: inherit' "$f" && fail "agents/$role.md must not use model: inherit" || pass "agents/$role.md has an explicit model"
+done
+for role in implementer writer integrator; do
+    grep -q '^tools: .*ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md allows the team tools" || fail "agents/$role.md allows the team tools"
 done
 for role in implementer writer; do
     grep -q '^tools: .*EnterWorktree, ExitWorktree' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md allows EnterWorktree/ExitWorktree" || fail "agents/$role.md allows EnterWorktree/ExitWorktree"
@@ -472,7 +475,7 @@ Structure (same for writer, with "prose" in place of "code" and `Verified:` in p
 4. Existing numbered work rules 2–8 (keep the guard section and the "relative paths" text verbatim — `tests/claude-code/test-dispatch-template.sh` greps `relative to your cwd` and `mkdir -p` in the prompt file, not here, but keep them anyway).
 5. `## Report`: existing final-report order; report file at `.superteam/sdd/<plan>/task-N-report.md`; ends with `Tests:` line; as a teammate, complete the task after the file is written.
 6. `## Never`: existing list plus "run anything with `background`", "spawn teammates or a nested team (foreground subagents only)", "edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand", "end a turn with a command running".
-7. Last line: "As a teammate you run at the lead's effort, not this file's `effort`; Claude Code adds SendMessage, the Task tools and the worktree tools when the lead has them; the `skills` field is ignored — invoke skills by name with `Skill`."
+7. Last line: "As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; the `skills` field is ignored — invoke skills by name with `Skill`."
 
 Delete the old `## Shared task list` section and the old "When spawned as a teammate…" line.
 
