@@ -23,9 +23,14 @@ unblocked task; the lead creates, watches and steers, never implements.
    audit doc.
 2. An in-process teammate (named `Agent` call, no `isolation` on the call)
    has TaskList/TaskUpdate/TaskCreate/TaskGet, SendMessage, Agent,
-   EnterWorktree, ExitWorktree. Its `EnterWorktree` moves only itself to
-   `.claude/worktrees/<name>` on branch `worktree-<name>`; the lead's cwd is
-   unchanged.
+   EnterWorktree, ExitWorktree — but it shares the session's process cwd:
+   its `EnterWorktree` moves the lead and every other teammate too (dogfood
+   run 22:25: three implementers' edits landed in one worktree). A
+   split-pane teammate (`teammateMode: "tmux"`) is its own process: its
+   `EnterWorktree` pins only itself, the lead's cwd stays put, and it has the
+   Task tools (deferred, loaded via ToolSearch), EnterWorktree, SendMessage;
+   Glob/Grep are absent. Its environment comes from the tmux session, not the
+   lead process, so the task-list id must be set on the tmux session.
 3. Frontmatter `isolation: worktree` does not stop a teammate launch; only
    `isolation` on the call does (sub-agents.md, "isolation").
 4. Frontmatter `effort` is honoured for subagents and ignored for teammates,
