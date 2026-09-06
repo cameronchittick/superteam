@@ -378,6 +378,21 @@ new review onto `Task N: merge`. The merge task cannot be claimed until the
 last review completes. Fix and review tasks repeat the family's
 `Files owned:` list.
 
+### Task subjects
+
+Four rules bind every subject on the list:
+
+1. Plan tasks: `Task N: <step> [role]`, step in {implement, review, merge,
+   fix <round>, review <round>}; task numbers are unique for the life of the
+   list (a second plan continues the numbering, never restarts at 1); the
+   plan name and the brief go in the description.
+2. Everything else: an imperative verb phrase, no `Task N:` prefix, no
+   brackets.
+3. Waiting on a human: one task `Cameron: <exact command or action>` (use
+   your human partner's name), with dependents blockedBy it; never
+   "(blocked on X)" in a subject.
+4. Under 60 characters, no outcome words in the subject.
+
 ## Role pool
 
 Team mode. Sizing default: 1 implementer + 1 reviewer + 1 integrator covers
