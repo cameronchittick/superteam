@@ -34,9 +34,11 @@ Agent:
 
     ## Claiming Your Task
 
-    If `TaskUpdate` is available: set owner=<your name>, status=in_progress
-    before starting; status=completed only after your report's `Tests:`
-    line is written.
+    If `TaskUpdate` is in your tool list (it usually is not in a
+    worktree): set owner=<your name>, status=in_progress before starting;
+    status=completed only after your report's `Tests:` line is written. If
+    it is not in your tool list, the lead does this on your behalf from
+    your report — nothing for you to do here.
 
     ## Before You Begin
 

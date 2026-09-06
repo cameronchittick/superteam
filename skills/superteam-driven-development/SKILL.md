@@ -255,14 +255,23 @@ list — state which branch you're in as you begin.
 start, create one task per plan task with `TaskCreate` (subject
 `Task N: <title>`, description the plan's task brief or a pointer to it),
 then wire dependencies with `addBlockedBy` from the plan's "Depends on:"
-lines. The implementer claims its task (`TaskUpdate` owner=self,
-status=in_progress) before starting and marks it completed only after its
-report's `Tests:` line is written; the reviewer does the same for its own
-task before and after its verdict. You stop hand-writing
-`Task <N>: complete` status lines — `TaskList` shows status directly, and
-you find the next unblocked task with `TaskList` instead of scanning the
-plan file. If the `TaskCompleted` verify gate is enabled, the report's
-`Tests:` line is what it checks.
+lines. Worktree subagents do not receive the Task tools; teammates do (see
+below) — so who claims and completes a task depends on which kind of IC
+holds it:
+
+- **Implementer (worktree subagent):** it has no `TaskUpdate`. You are its
+  hands on the list — `TaskUpdate` owner=<IC name>, status=in_progress
+  before you dispatch it, then status=completed when its report arrives
+  with the `Tests:` line written. Two `TaskUpdate` calls per task, made by
+  you; no plan-file status line.
+- **Reviewer (teammate):** it has `TaskUpdate` and claims and completes its
+  own review task itself, per its prompt template's claim line
+  (task-reviewer-prompt.md).
+
+Either way you stop hand-writing `Task <N>: complete` status lines —
+`TaskList` shows status directly, and you find the next unblocked task
+with `TaskList` instead of scanning the plan file. If the `TaskCompleted`
+verify gate is enabled, the report's `Tests:` line is what it checks.
 
 **Task tools absent — the plan-file ledger is the fallback.** This is
 every other harness, and a Claude Code session on a model where the Task
@@ -363,11 +372,11 @@ children: list them, and chase any that finished without reporting.
 
 ### 1. Dispatch the implementer
 
-If Task tools are present (see "## Ledger"), the task you created for this
-at Setup is what the implementer claims on its own first turn (its prompt
-template carries the `TaskUpdate` claim line) — you dispatch, you don't
-claim on its behalf. On the fallback branch, skip this and rely on the
-plan-file ledger alone.
+If Task tools are present (see "## Ledger"), claim the task you created for
+this at Setup before you dispatch: `TaskUpdate` owner=<IC name>,
+status=in_progress. The implementer is a worktree subagent and never sees
+`TaskUpdate` itself — you are its hands on the list. On the fallback
+branch, skip this and rely on the plan-file ledger alone.
 
 Record BASE per worktree branch: with `isolation: "worktree"` the IC
 starts from the repo default branch, so BASE is
@@ -620,12 +629,14 @@ A merge conflict means two ICs touched the same file — the integrator
 resolves a textual conflict and reports it; a semantic conflict comes back
 unresolved and is a finding for the next fix round.
 
-If Task tools are present, the implementer and the reviewer already marked
-their own tasks completed (their prompt templates carry the `TaskUpdate`
-completion line) — find the next unblocked task with `TaskList` rather than
-scanning a status line you no longer write. On the fallback branch, append
-the completion line to the ledger yourself in the same message as your
-other bookkeeping:
+If Task tools are present: mark the implementer's task completed yourself
+(`TaskUpdate` status=completed) once its report has arrived with the
+`Tests:` line written — it is a worktree subagent and cannot do this
+itself. The reviewer, a teammate, already marked its own review task
+completed after writing its verdict. Either way, find the next unblocked
+task with `TaskList` rather than scanning a status line you no longer
+write. On the fallback branch, append the completion line to the ledger
+yourself in the same message as your other bookkeeping:
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
