@@ -84,6 +84,8 @@ export CLAUDE_CODE_ENABLE_TODO_TOOLS=1
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 ```
 
+- Or ask Claude to run `superteam:setup`, which merges the same two vars into the `env` block of your `~/.claude/settings.json` and shows you the diff. A plugin cannot set them for you: a plugin's own `settings.json` supports only the `agent` and `subagentStatusLine` keys.
+
 Also recommended, in your Claude Code settings:
 
 ```json
