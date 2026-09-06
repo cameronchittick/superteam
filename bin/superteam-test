@@ -17,7 +17,7 @@ usage() {
 Usage: superteam-test [--list] [--help]
 Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
 Exits non-zero if any suite fails; a suite whose prerequisite is missing
-(timeout, yq, dot) is reported as SKIP, not FAIL.
+(timeout, yq, dot, python3, node) is reported as SKIP, not FAIL.
 --list prints the suite names without running them.
 EOF
 }
@@ -39,24 +39,24 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # The three runtime exclusions are out of a bash runner's scope; everything
 # else that is runnable bash is listed below.
 SUITES="
-tests/hooks/test-team-hooks.sh|
-tests/hooks/test-session-start.sh|
-tests/hooks/test-bash-guard.sh|
-tests/hooks/test-task-monitor.sh|
+tests/hooks/test-team-hooks.sh|python3
+tests/hooks/test-session-start.sh|node
+tests/hooks/test-bash-guard.sh|python3
+tests/hooks/test-task-monitor.sh|python3
 tests/claude-code/test-agent-roster.sh|
 tests/claude-code/test-dispatch-template.sh|
 tests/claude-code/test-sdd-workspace.sh|
 tests/claude-code/test-superteam-driven-development.sh|timeout
 tests/claude-code/test-worktree-native-preference.sh|timeout
 tests/claude-code/test-worktree-path-policy.sh|
-tests/codex/test-marketplace-manifest.sh|
-tests/codex/test-package-codex-plugin.sh|
-tests/devin/test-devin-plugin.sh|
-tests/kimi/run-tests.sh|
+tests/codex/test-marketplace-manifest.sh|python3
+tests/codex/test-package-codex-plugin.sh|python3
+tests/devin/test-devin-plugin.sh|python3
+tests/kimi/run-tests.sh|python3
 tests/version-bump/test-bump-version.sh|yq
 tests/shell-lint/test-lint-shell.sh|
 tests/antigravity/run-tests.sh|
-tests/opencode/run-tests.sh|
+tests/opencode/run-tests.sh|node
 tests/systematic-debugging/test-find-polluter.sh|
 tests/writing-skills/test-render-graphs.sh|node,dot
 "

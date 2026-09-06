@@ -11,8 +11,16 @@
 # Known blind spots, stated plainly: this reads the command as text, it does
 # not run it. "cd /tmp && rm -rf ./x" reads as a relative target and is
 # allowed, and a symlink pointing out of the worktree is not resolved, because
-# the $PWD containment test is a literal prefix comparison. It is a guardrail
-# against the common destructive typo, not a sandbox.
+# the $PWD containment test is a literal prefix comparison. A backtick does
+# not count as command position either, so `git reset --hard` inside backticks
+# runs unstopped - the cost of letting a review report quote the command it is
+# reporting on. The mirror of that cost: a line of prose that BEGINS with one
+# of these commands - a fenced code block line, a bullet starting with "git
+# reset --hard discards..." - is denied, because a line start is command
+# position and the hook cannot see it is inside a heredoc (leading whitespace
+# does not help - it is skipped). Put a word, a bullet marker or a backtick in
+# front of it. It is a guardrail against the common
+# destructive typo, not a sandbox.
 #
 # Deny is returned as the PreToolUse permissionDecision payload on stdout with
 # exit 0 (hooks.md, "PreToolUse decision control").
@@ -64,7 +72,7 @@ json_escape() {
 }
 
 deny() {
-    set -- "$(json_escape "$1")"
+    set -- "$(json_escape "$1 If you meant it, set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this guard.")"
     cat <<EOF
 {
   "hookSpecificOutput": {
@@ -77,19 +85,32 @@ EOF
     exit 0
 }
 
-# Whitespace-normalised copy, so "git   reset --hard" and a newline-separated
-# script both match the same word sequences.
-norm="$(printf '%s' "$command_text" | tr '\n\t' '  ' | tr -s ' ')"
+# Whitespace-normalised copy, so "git   reset --hard" matches the same word
+# sequence. Newlines are kept: a newline is a command separator, and grep
+# anchors ^ at every line, which is exactly the boundary we want.
+norm="$(printf '%s' "$command_text" | tr '\t' ' ' | tr -s ' ')"
 
-if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_.-])tmux +kill-server([^[:alnum:]_.-]|$)'; then
+# A forbidden command only counts in command position: at the start of a line
+# or right after a separator (; & && | || $(), past any leading whitespace and
+# any sudo/env/command prefix. Quoting one in prose - a heredoc writing a
+# report, an echo, a grep pattern - is writing about it, not running it. A
+# backtick is deliberately not in the list: backtick-quoted prose in a Markdown
+# heredoc is how reports get written, and a backtick-substituted destructive
+# command is not the typo this guardrail exists for.
+# The prefix group covers a bare sudo, env or command word and nothing else:
+# "sudo -u alice", "nohup", "if ...; then", "xargs" all put the real command
+# somewhere this pattern does not look.
+cmdpos='(^|[;&|]|\$\()[[:space:]]*((sudo|env|command)[[:space:]]+)*'
+
+if printf '%s' "$norm" | grep -qE "${cmdpos}tmux +kill-server([^[:alnum:]_.-]|\$)"; then
     deny "tmux kill-server tears down every teammate's pane, not just yours. Kill your own session by name instead."
 fi
 
-if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_.-])git +checkout +(-- +)?\.( |$)'; then
+if printf '%s' "$norm" | grep -qE "${cmdpos}git +checkout +(-- +)?\.( |\$)"; then
     deny "git checkout . discards every uncommitted change in the worktree. Name the paths you mean, or stash first."
 fi
 
-if printf '%s' "$norm" | grep -qE '(^|[^[:alnum:]_.-])git +reset +--hard([^[:alnum:]_.-]|$)'; then
+if printf '%s' "$norm" | grep -qE "${cmdpos}git +reset +--hard([^[:alnum:]_.-]|\$)"; then
     deny "git reset --hard throws away commits and the working tree with no undo. Use git reset --soft or git revert."
 fi
 
@@ -104,8 +125,9 @@ check_target() {
     case "$1" in
         '$PWD'|'$PWD'/*|'${PWD}'|'${PWD}'/*) return 0 ;;  # literally under $PWD
     esac
+    # ".." only escapes as a whole path segment: ./my..dir stays put.
     case "$1" in
-        *..*) outside_target="$1"; return 0 ;;
+        ..|../*|*/../*|*/..) outside_target="$1"; return 0 ;;
         '~'|'~'/*) outside_target="$1"; return 0 ;;
         /*)
             case "$1" in
@@ -117,35 +139,41 @@ check_target() {
 }
 
 set -f  # the command text is data, never a glob to expand
-for token in $norm; do
+# Separators end the rm clause, and the shell does not need spaces around
+# them: "rm -rf ./x;cat /etc/hosts" is one word to the token splitter, and
+# leaving the state set made every later token a delete target. Give every
+# separator its own token first - a newline ends a command too - and strip
+# quotes afterwards, so a quoted target followed by a separator is still read
+# as a target.
+walk="$(printf '%s' "$norm" | sed -e 's/$/ ; /' -e 's/[;&|]/ ; /g' | tr '\n' ' ')"
+for token in $walk; do
+    if [ "$token" = ";" ]; then
+        in_rm=""; has_r=""; has_f=""
+        continue
+    fi
+
     # Strip one layer of surrounding quotes: the shell would.
     case "$token" in
         \"*\") token="${token#\"}"; token="${token%\"}" ;;
         \'*\') token="${token#\'}"; token="${token%\'}" ;;
     esac
 
-    case "$token" in
-        ';'|'&&'|'||'|'|'|'&')
-            in_rm=""; has_r=""; has_f="" ; continue ;;
-    esac
-
     if [ -z "$in_rm" ]; then
         [ "$token" = "rm" ] && { in_rm=1; has_r=""; has_f=""; }
-        continue
+    else
+        case "$token" in
+            --recursive) has_r=1 ;;
+            --force) has_f=1 ;;
+            --*) ;;
+            -*)
+                case "$token" in *r*|*R*) has_r=1 ;; esac
+                case "$token" in *f*) has_f=1 ;; esac
+                ;;
+            *)
+                [ -n "$has_r" ] && [ -n "$has_f" ] && check_target "$token"
+                ;;
+        esac
     fi
-
-    case "$token" in
-        --recursive) has_r=1; continue ;;
-        --force) has_f=1; continue ;;
-        --*) continue ;;
-        -*)
-            case "$token" in *r*|*R*) has_r=1 ;; esac
-            case "$token" in *f*) has_f=1 ;; esac
-            continue
-            ;;
-    esac
-
-    [ -n "$has_r" ] && [ -n "$has_f" ] && check_target "$token"
 done
 set +f
 
