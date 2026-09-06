@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# TeammateIdle hook for superteam plugin (opt-in, not wired in hooks.json).
+#
+# When a teammate is about to go idle, exit 2 (keeps it working, per the
+# TeammateIdle decision-control contract) if the shared task list still has
+# a pending, unowned, unblocked task -- so an idle teammate self-claims the
+# next task instead of stopping while work remains.
+#
+# Layout discovered by inspecting ~/.claude/tasks/<list-id>/*.json in a real
+# session (see task-4 report for the inspection): each task is one JSON
+# file named "<id>.json" with fields id, subject, description, activeForm,
+# status ("pending" | "in_progress" | "completed"), blocks (array of ids
+# this task unblocks), blockedBy (array of ids that must complete first),
+# and owner (added once an agent claims the task; absent/empty means
+# unclaimed). <list-id> looks like "session-<8 hex chars>".
+#
+# The TeammateIdle payload doesn't carry <list-id> directly, but it does
+# carry the (docs-deprecated) "team_name" field, which is exactly that
+# session-derived list-id -- confirmed against a live team's
+# ~/.claude/tasks/session-<id>/ directory. We use it for that lookup only;
+# if it's ever removed, or the directory it points at doesn't exist, we
+# fail open (exit 0) rather than guess.
+
+usage() {
+    cat <<'EOF'
+Usage: teammate-idle-claim
+TeammateIdle hook: exits 2 to keep a teammate working when pending,
+unowned, unblocked tasks remain on its shared ~/.claude/tasks/<team_name>
+task list. Reads the TeammateIdle JSON payload from stdin. Fails open
+(exit 0) when teammate_name/team_name is absent or the list layout is unknown.
+EOF
+}
+
+if [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+input="$(cat 2>/dev/null || true)"
+
+# ponytail: no escaped-quote handling (see task-completed-verify's json_field
+# for why) -- fine for teammate_name/team_name, which never carry quotes.
+json_field() {
+    printf '%s' "$1" | tr '\n' ' ' | \
+        sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+teammate_name="$(json_field "$input" "teammate_name")"
+team_name="$(json_field "$input" "team_name")"
+
+# Fail open: no teammate, no team (can't locate the list), malformed input.
+if [ -z "$teammate_name" ] || [ -z "$team_name" ]; then
+    exit 0
+fi
+
+tasks_dir="$HOME/.claude/tasks/$team_name"
+[ -d "$tasks_dir" ] || exit 0
+
+shopt -s nullglob
+files=("$tasks_dir"/*.json)
+shopt -u nullglob
+[ "${#files[@]}" -gt 0 ] || exit 0
+
+# Per-file scalar field lookup (works on bash 3.2 too, so no assoc arrays).
+task_field() {
+    local file="$1" field="$2"
+    tr '\n' ' ' < "$file" | \
+        sed -n 's/.*"'"$field"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+task_array() {
+    local file="$1" field="$2"
+    tr '\n' ' ' < "$file" | \
+        sed -n 's/.*"'"$field"'"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | \
+        grep -o '"[^"]*"' | sed 's/"//g'
+}
+
+status_for_id() {
+    local id="$1" f
+    for f in "${files[@]}"; do
+        if [ "$(task_field "$f" id)" = "$id" ]; then
+            task_field "$f" status
+            return
+        fi
+    done
+}
+
+for f in "${files[@]}"; do
+    status="$(task_field "$f" status)"
+    [ "$status" = "pending" ] || continue
+
+    owner="$(task_field "$f" owner)"
+    [ -z "$owner" ] || continue
+
+    blocked=0
+    for blocker_id in $(task_array "$f" blockedBy); do
+        blocker_status="$(status_for_id "$blocker_id")"
+        if [ "$blocker_status" != "completed" ]; then
+            blocked=1
+            break
+        fi
+    done
+    [ "$blocked" -eq 0 ] || continue
+
+    echo "Unclaimed unblocked tasks remain on the shared list: run TaskList and claim the lowest id, or tell the lead why you are stopping." >&2
+    exit 2
+done
+
+exit 0
