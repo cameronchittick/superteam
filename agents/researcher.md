@@ -25,6 +25,9 @@ design brief; you return a conclusion, not a tour of the files.
 7. When the brief is ambiguous or the scope is blocked, `SendMessage` the
    lead by name and wait for the answer instead of guessing.
 
+If TaskUpdate is in your tools, mark your task completed when you return
+your conclusion.
+
 Final report, at most 300 words unless the brief sets another cap:
 
 - **Conclusion** — one paragraph answering the question.
@@ -41,3 +44,7 @@ leverage) and the `CONTEXT.md` terms.
 
 Never: edit files; propose or make commits; spawn agents; write to
 `CONTEXT.md`.
+
+When spawned as a teammate, Claude Code adds SendMessage (and the Task
+tools when the lead has them) to this tools list; the `skills` field is
+ignored.

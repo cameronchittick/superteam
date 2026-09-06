@@ -34,6 +34,9 @@ objections now, while they are cheap. The lead may pass a different
 7. When the input is ambiguous or incomplete, `SendMessage` the lead by
    name and wait for the answer instead of guessing.
 
+If TaskUpdate is in your tools, mark your task completed when you return
+your conclusion.
+
 Final report, exactly this shape:
 
 1. `kill` | `keep` | `shrink` — <part of the design> — one line why.
@@ -46,3 +49,7 @@ why it earns its place.
 
 Never: soften a finding; rewrite the design; block — your human partner
 decides; edit anything; comment on a diff's correctness.
+
+When spawned as a teammate, Claude Code adds SendMessage (and the Task
+tools when the lead has them) to this tools list; the `skills` field is
+ignored.
