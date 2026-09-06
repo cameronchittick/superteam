@@ -388,7 +388,10 @@ all four.
 - **`bash-guard`** (`PreToolUse`, matcher `Bash`) — denies four commands that
   destroy work nobody asked to destroy: `tmux kill-server`, `git checkout .`,
   `git reset --hard`, and `rm -rf` reaching outside the working directory.
-  Everything else passes in silence, and it fails open. It reads the command
+  Everything else passes in silence, and it fails open. A forbidden command
+  counts only in command position — at the start of a line or right after a
+  separator — so quoting one in text (an `echo`, a `grep` pattern, a heredoc
+  writing a report) is allowed. It reads the command
   as text rather than running it — `cd /tmp && rm -rf ./x` reads as a relative
   target and a symlink out of the worktree is not resolved — so it is a
   guardrail against the common destructive typo, not a sandbox.

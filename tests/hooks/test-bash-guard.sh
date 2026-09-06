@@ -28,9 +28,11 @@ fail() {
     FAILURES=$((FAILURES + 1))
 }
 
-# json_escape STRING -- escape backslashes and double quotes for a JSON string
+# json_escape STRING -- escape backslashes, double quotes and newlines for a
+# JSON string value (a raw newline is not legal inside one)
 json_escape() {
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | \
+        awk 'BEGIN { ORS = "" } NR > 1 { print "\\n" } { print }'
 }
 
 # payload COMMAND -- a PreToolUse Bash payload carrying COMMAND
@@ -114,6 +116,62 @@ assert_allowed "git checkout of a branch is allowed" "git checkout main"
 assert_allowed "git reset --soft is allowed" "git reset --soft HEAD~1"
 assert_allowed "tmux without kill-server is allowed" "tmux list-sessions"
 assert_allowed "an ordinary command is allowed" "bash tests/hooks/test-team-hooks.sh"
+
+echo "Bash guard: a forbidden command quoted in text is not a forbidden command"
+
+# The four literal patterns match only in command position - at the start of
+# the command or right after a separator. Writing about them is not running
+# them; the final reviewer's report heredoc was denied three times for saying
+# the words.
+assert_allowed "echoing the words tmux kill-server is allowed" \
+    'echo "never run tmux kill-server"'
+assert_allowed "grepping for git reset --hard is allowed" \
+    "grep 'git reset --hard' README.md"
+assert_allowed "git checkout . inside a sentence is allowed" \
+    'echo "we do not use git checkout . here"'
+assert_allowed "a heredoc describing the guard is allowed" \
+    'cat > notes.md <<EOF
+The guard stops tmux kill-server and git reset --hard when you run them.
+Delete the build dir with rm -rf ./build; keep /etc/hosts alone.
+EOF'
+
+# Command position still means denied, including after a separator.
+assert_denied "git reset --hard after && is denied" "cd /tmp && git reset --hard"
+assert_denied "tmux kill-server after a pipe is denied" "true | tmux kill-server"
+assert_denied "sudo does not hide tmux kill-server" "sudo tmux kill-server"
+assert_denied "a command on the second line of a script is denied" \
+    'cd /tmp
+git reset --hard'
+
+echo "Bash guard: the rm walk stops at a glued separator"
+
+# The parser used to reset only on a token that was exactly a separator, so
+# "rm -rf ./x; cat /etc/hosts" left it mid-rm and tested every later token as
+# a delete target - it denied naming the JSON tail.
+assert_allowed "a separator glued to a target ends the rm clause" \
+    "echo docs mention rm -rf ./x here; then later cat /etc/hosts"
+assert_allowed "rm -rf inside the worktree then another command is allowed" \
+    "rm -rf ./build; cat /etc/hosts"
+assert_denied "a second rm after a separator is still checked" \
+    "rm -rf ./build; rm -rf /etc/hosts"
+
+echo "Bash guard: .. is a path segment, not a substring"
+
+assert_allowed "a file name containing .. is allowed" "rm -rf ./my..dir"
+assert_allowed "a dotted file name is allowed" "rm -rf build/v1..2.log"
+assert_denied "a leading ../ still escapes" "rm -rf ../x"
+
+echo "Bash guard: every deny names the escape hatch"
+
+for deny_cmd in "tmux kill-server" "git checkout ." "git reset --hard" "rm -rf ~/x"; do
+    run_guard "$(payload "$deny_cmd")"
+    if printf '%s' "$GUARD_OUT" | grep -q 'SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass'; then
+        pass "the deny for '$deny_cmd' names the escape hatch"
+    else
+        fail "the deny for '$deny_cmd' names the escape hatch"
+        printf '%s\n' "$GUARD_OUT" | sed 's/^/      /'
+    fi
+done
 
 echo "Bash guard: scope and bypass"
 
