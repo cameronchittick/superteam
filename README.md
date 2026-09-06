@@ -73,6 +73,31 @@ The Superteam marketplace provides Superteam and some other related plugins for 
   /plugin install superteam@cameronchittick
   ```
 
+#### Agent teams
+
+Superteam's team-driven workflows need both env vars set — add them to your
+shell profile:
+
+```bash
+# ~/.zshrc
+export CLAUDE_CODE_ENABLE_TODO_TOOLS=1
+export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+```
+
+Also recommended, in your Claude Code settings:
+
+```json
+{
+  "subagentPromptCacheTtl": "1h"
+}
+```
+
+Keep a team to 3–5 role teammates, with 5–6 tasks per teammate — beyond
+that, split into a second lane rather than growing one team. Without both
+env vars (or on any other harness), Superteam falls back to the 6.10.0
+worktree-subagent path automatically; no configuration is required to use
+that path.
+
 ### Antigravity
 
 Install Superteam as a plugin from this repository:
@@ -316,21 +341,32 @@ Named roles the skills dispatch as `superteam:<name>`; each carries its own mode
 
 ### Agent-team hooks
 
-`hooks/task-completed-verify` is bundled and wired into `hooks/hooks.json`
-as a `TaskCompleted` hook, so it runs automatically on Claude Code — no
-`settings.json` changes needed. It only gates
-[superteam-driven-development](skills/superteam-driven-development/SKILL.md)
-tasks: a task whose subject matches `Task N: <title>` (the format that
-skill's shared task list uses), or whose description contains
-`.superteam/sdd/`. Every other task list — including a PM's own
-coordination list — completes untouched.
+Three hooks are bundled and wired into `hooks/hooks.json`, so they run
+automatically on Claude Code — no `settings.json` changes needed. All
+three gate only on a task subject matching `Task N: <title>` (the format
+[superteam-driven-development](skills/superteam-driven-development/SKILL.md)'s
+shared task list uses); every other task list — including a PM's own
+coordination list — is untouched. `SUPERTEAM_SKIP_VERIFY_GATE=1` bypasses
+all three.
 
-For a gated SDD task, it refuses completion (exit 2, fed back to the model)
-unless it finds verification evidence: a `Verified:` or `Evidence:` line in
-the task description, or a `Tests:`/`Verified:`/`Evidence:` line with a
-value in that task's report file (see
-[verification-before-completion](skills/verification-before-completion/SKILL.md#evidence-line)
-for the exact format). Set `SUPERTEAM_SKIP_VERIFY_GATE=1` to bypass it.
+- **`task-created-check`** (`TaskCreated`) — rejects a new task (exit 2,
+  reason fed back) when its subject lacks a `[role]` tag from the agent
+  roster, or its description lacks a `Files owned:` line or a `Done:`
+  line; also rejects when its `Files owned:` overlaps a pending or
+  in-progress task on the same list that isn't in the same `Task N:`
+  family and isn't upstream of it.
+- **`teammate-idle-claim`** (`TeammateIdle`) — when a teammate goes idle,
+  looks for a pending, unowned, unblocked task matching its role (from its
+  name prefix or `SUPERTEAM_ROLE_<NAME>`); if one exists, exits 2 with
+  `claim "<subject>"` so the teammate claims it; otherwise exits 0. Never
+  names another role's task.
+- **`task-completed-verify`** (`TaskCompleted`) — refuses completion (exit
+  2, fed back to the model) unless it finds verification evidence: a
+  `Verified:` or `Evidence:` line in the task description, or a
+  `Tests:`/`Verified:`/`Evidence:` line with a value in that task's report
+  file (see
+  [verification-before-completion](skills/verification-before-completion/SKILL.md#evidence-line)
+  for the exact format).
 
 ## Philosophy
 
