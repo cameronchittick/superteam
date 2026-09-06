@@ -140,7 +140,10 @@ if [[ "$FORMAT" == "zip" ]]; then
   command -v unzip >/dev/null || die "unzip not found in PATH"
 fi
 
-[[ -d "$REPO_ROOT/.git" ]] || die "repo root is not a git checkout: $REPO_ROOT"
+# Not `-d .git`: in a linked worktree .git is a FILE pointing at the real
+# git dir, so the directory test fails in every worktree.
+git -C "$REPO_ROOT" rev-parse --git-dir >/dev/null 2>&1 ||
+  die "repo root is not a git checkout: $REPO_ROOT"
 git -C "$REPO_ROOT" rev-parse --verify "$REF^{commit}" >/dev/null ||
   die "git ref does not resolve to a commit: $REF"
 

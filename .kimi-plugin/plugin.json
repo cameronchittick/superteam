@@ -1,7 +1,7 @@
 {
   "name": "superteam",
   "version": "7.0.0",
-  "description": "An agentic skills framework and software development methodology.",
+  "description": "Skills, hooks and an agent roster for Claude Code agent teams: brainstorm, plan, TDD, review and merge as a lead with implementer, reviewer and integrator teammates; other harnesses supported.",
   "author": {
     "name": "Cameron Chittick"
   },
