@@ -405,6 +405,10 @@ precedence is spawn prompt > agent definition > `CLAUDE_CODE_SUBAGENT_MODEL`
 > your own model; pick the model per "## Model Selection" and write it into
 the prompt.
 
+**Never spawn a haiku teammate:** haiku cannot run in auto mode, so every
+command prompts in the lead pane (permission-modes.md). Use sonnet or opus;
+haiku is for subagents only.
+
 ## Model Selection
 
 Use the least powerful model that can handle each role to conserve cost and increase speed.
@@ -418,7 +422,8 @@ it. The session's model is never the fallback.
 
 **Override down to `haiku`** when the task's plan text contains the
 complete code to write — the implementation is transcription plus testing.
-Single-file mechanical fixes qualify too.
+Single-file mechanical fixes qualify too. Subagents only: a teammate never
+goes to haiku (see "## Role pool").
 
 **Override up to `opus`** for: the final whole-branch review (both axes);
 a review of a risky diff (concurrency, a function or API contract, shared
@@ -450,8 +455,18 @@ its own role's work, and a lead holding a task is a seat nobody can take.
   a worktree is invisible to it. A single call that sets both is rejected by
   the gate and loses the description edit with it. Hold every teammate to
   the same order, and never hand-edit `~/.claude/tasks/**`.
+- **Completion gate refusals:** read the teammate's `Verified:` line in the
+  task description and complete the task yourself when the evidence is there;
+  the 6.x gate truncates descriptions at an escaped quote.
+- **Check your own pane every pass.** Every pass, look at your own pane for a
+  pending permission dialog: a teammate's prompt lands there and only a human
+  can answer it, so a dead or stopped teammate's prompt must be dismissed
+  (Esc or No) at once; an unanswered prompt stalls the whole team.
 - **The idle notification is the report.** Read it when it arrives; do not
   poll. Then `TaskList` to see what moved and what unblocked.
+- **Answer questions within one pass.** A teammate that needs your answer
+  sets its task to pending and idles; answer it, then tell it to continue.
+  Never leave a teammate's question unanswered for more than one pass.
 - **Nudge before you reassign.** A task that shows `in_progress` with no
   commit and no report after one monitor pass gets one `SendMessage` to its
   owner by name. If the next pass is unchanged, reassign: `TaskUpdate` the
