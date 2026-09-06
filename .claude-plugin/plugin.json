@@ -21,13 +21,13 @@
     "worker_model": {
       "type": "string",
       "title": "Worker model",
-      "description": "Model for superteam:implementer and superteam:writer",
+      "description": "Model for superteam:implementer and superteam:writer. Claude Code does not substitute ${user_config.*} into agent frontmatter (verified 2.1.263) — the model is set in agents/*.md; this key records the intent.",
       "default": "opus"
     },
     "review_model": {
       "type": "string",
       "title": "Review model",
-      "description": "Model for superteam:reviewer",
+      "description": "Model for superteam:reviewer. Claude Code does not substitute ${user_config.*} into agent frontmatter (verified 2.1.263) — the model is set in agents/*.md; this key records the intent.",
       "default": "opus"
     }
   }
