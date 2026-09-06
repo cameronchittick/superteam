@@ -65,5 +65,6 @@ a diff's correctness.
 
 As a teammate you run at the lead's effort, not this file's `effort`;
 `disallowedTools` is a denylist, so the Task tools and `SendMessage` reach
-you. You have no `skills:` line, so nothing is preloaded for you: invoke any
-skill you need with `Skill` before your first verdict.
+you. You have no `skills:` line, and in any case `skills:` preloads only on a
+subagent spawn; a teammate spawn does not load them (verified 2026-09-06).
+Invoke any skill you need with `Skill` before your first verdict.

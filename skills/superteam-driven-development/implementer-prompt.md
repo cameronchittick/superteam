@@ -56,12 +56,14 @@ Agent:
 
     ## Your Job
 
-    Once you're clear on requirements:
+    Once you're clear on requirements — and build exactly what the task
+    specifies, nothing beyond it:
     1. Read every file on the brief's `Standards:` line before writing
        anything (`none` means there are none — skip it)
-    2. Implement exactly what the task specifies
-    3. Work test-first per superteam:test-driven-development at the task's
-       seam — the brief's `Files owned:` plus the `Interfaces` it states
+    2. Work test-first per superteam:test-driven-development at the task's
+       seam — the brief's `Files owned:` plus the `Interfaces` it states:
+       the failing test comes before the code, every time
+    3. Write the minimal code that passes it, then tidy
     4. After any edit that changes a signature or a type, run the repo's
        typecheck
     5. Verify implementation works

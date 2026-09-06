@@ -224,6 +224,18 @@ PLAN
         fail "implementer-prompt.md runs the focused file, then the full suite once"
     fi
 
+    # (g) the numbered job list puts the failing test before the code. A list
+    #     that says "implement" first tells the IC to write code, then tests.
+    local test_first_line implement_line
+    test_first_line="$(grep -n 'Work test-first' "$prompt" | head -1 | cut -d: -f1)"
+    implement_line="$(grep -nE '^ *[0-9]+\. *Implement ' "$prompt" | head -1 | cut -d: -f1)"
+    if [[ -n "$test_first_line" && ( -z "$implement_line" || "$test_first_line" -lt "$implement_line" ) ]]; then
+        pass "implementer-prompt.md orders test-first before implement"
+    else
+        fail "implementer-prompt.md orders test-first before implement"
+        echo "    test-first at line ${test_first_line:-<none>}, implement at line ${implement_line:-<none>}"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."

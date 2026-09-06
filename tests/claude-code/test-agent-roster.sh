@@ -257,11 +257,33 @@ main() {
         fail "no preloading agent claims the skills field is ignored"
         echo "    found in: $ignored"
     fi
+    # The pattern accepts the Task 2 wording and the Task 11 wording, because
+    # researcher.md is Task 13's file and still carries the older sentence.
     for role in implementer writer reviewer integrator researcher; do
-        if grep -q 'invoke each with `Skill`' "$AGENTS/$role.md"; then
+        if grep -qE 'invoke each (skill named in `skills:` )?with `Skill`' "$AGENTS/$role.md"; then
             pass "agents/$role.md falls back to invoking the skills by hand"
         else
             fail "agents/$role.md falls back to invoking the skills by hand"
+        fi
+    done
+
+    # (k6b) the hedge is gone: a teammate spawn does NOT preload `skills:`
+    #       (lead probe 2026-09-06). researcher.md is excluded — Task 13's.
+    local hedged
+    hedged="$(grep -ln 'may not preload' \
+        "$AGENTS"/implementer.md "$AGENTS"/writer.md "$AGENTS"/reviewer.md \
+        "$AGENTS"/integrator.md "$AGENTS"/skeptic.md 2>/dev/null || true)"
+    if [[ -z "$hedged" ]]; then
+        pass "no agent file hedges about teammate skill preloading"
+    else
+        fail "no agent file hedges about teammate skill preloading"
+        echo "    found in: $hedged"
+    fi
+    for role in implementer writer reviewer integrator skeptic; do
+        if grep -q 'a teammate spawn does not' "$AGENTS/$role.md"; then
+            pass "agents/$role.md states that a teammate spawn does not preload skills"
+        else
+            fail "agents/$role.md states that a teammate spawn does not preload skills"
         fi
     done
 
