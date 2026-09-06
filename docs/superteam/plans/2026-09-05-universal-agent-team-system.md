@@ -13,12 +13,13 @@
 ## Global Constraints
 
 - Plugin stays zero-dependency: hooks and scripts use only bash, sed, awk, grep, find; `python3` only inside tests.
-- `skills/using-superteam/SKILL.md` stays exactly 63 lines (`wc -l` = 63).
+- `skills/using-superteam/SKILL.md`: no tuned content (Rule, Skill Priority, Red Flags rows, User Instructions) is removed or reworded; Step 0 is added as a compact block of at most 4 lines. Line count ceiling: 67 (63 + Step 0), pending the human partner's ruling on the 63-line pin; if the ruling is "63 exact", the lead decides which lines pay for it, never the writer.
 - Skill invocation prefix is `superteam:`; "your human partner" voice stays; never "the user".
 - Agent frontmatter carries an explicit `model` (never `inherit`); `effort`, `maxTurns`, `memory`, `isolation` per the spec's "Roles and self-claim".
 - Other harnesses keep the non-team path: no file under `skills/using-superteam/references/{codex,pi,antigravity,hermes}-tools.md`, `.codex-plugin/`, `.kimi-plugin/`, `.devin-plugin/`, `.hermes-plugin/`, `.cursor-plugin/`, `gemini-extension.json` changes in this plan except the 7.0.0 bump the lead does at Finish.
 - Hooks fail open on unparseable input and exit 0 for any subject not matching `^Task [0-9]+:`; `SUPERTEAM_SKIP_VERIFY_GATE=1` bypasses every hook.
-- Role tags are exactly: `[implementer]`, `[writer]`, `[reviewer]`, `[integrator]`, `[researcher]`, `[skeptic]`. Teammate name prefixes are exactly `impl-`, `writer-`, `reviewer-`, `integrator-`, `researcher-`, `skeptic-`.
+- Role tags are exactly: `[implementer]`, `[writer]`, `[reviewer]`, `[integrator]`, `[researcher]`, `[skeptic]`. A teammate's role is its `agentType` in the team config (`superteam:<role>`); names are free but predictable (`impl-1`, `reviewer-1`, `review-spec`, `hyp-3`).
+- Every new bash test assertion goes through the file's `assert_exit`/`assert_stderr` helpers; test files run under `set -euo pipefail`, so never write a bare `out="$(hook)"` that can exit non-zero.
 - Version is bumped to 7.0.0 in all nine manifests by the lead at Finish, not by any task.
 - Every task's report at `.superteam/sdd/2026-09-05-universal-agent-team-system/task-N-report.md` (relative to the worktree) ends with a `Tests:` line naming the command run and its pass count.
 - Use the terms in `CONTEXT.md` for task names, identifiers, file names and tests; do not coin synonyms. (No `CONTEXT.md` exists in this repo; the spec's terms — team mode, fallback mode, task graph, role tag, self-claim, Files owned — are the vocabulary.)
@@ -56,8 +57,8 @@
 - Test: `tests/hooks/test-team-hooks.sh` (extend; keep the 11 existing assertions)
 
 **Interfaces:**
-- Consumes: payload JSON on stdin with `task_id`, `task_subject`, `task_description`, `teammate_name`, `team_name`, `cwd` (hooks.md "TaskCreated", "TeammateIdle"). Task files at `${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team_name}}/*.json` with fields `id`, `subject`, `description`, `status`, `owner`, `blockedBy` (array of ids).
-- Produces: `hooks/task-created-check` exit 2 + stderr reason to reject; `hooks/teammate-idle-claim` exit 2 + stderr `claim "<subject>"` to re-prompt; both `--help` print 5 lines. `hooks/run-hook.cmd <name>` dispatch is unchanged (it runs `hooks/<name>`).
+- Consumes: payload JSON on stdin with `task_id`, `task_subject`, `task_description`, `teammate_name`, `team_name`, `cwd` (hooks.md "TaskCreated", "TeammateIdle"). Task files at `${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team_name}}/*.json` with fields `id`, `subject`, `description`, `status`, `owner`, `blockedBy` (array of ids). Team config at `${SUPERTEAM_TEAMS_DIR:-$HOME/.claude/teams}/<team_name>/config.json` whose `members` array has objects with `name` and `agentType` (e.g. `"agentType": "superteam:reviewer"`) — verified on 2.1.263 team configs.
+- Produces: `hooks/task-created-check` exit 2 + stderr reason to reject; `hooks/teammate-idle-claim` exit 2 + stderr `claim "<subject>"` to re-prompt; both `--help` print 5 lines. Role for the idle hook comes from the team config member's `agentType` (strip the `superteam:` prefix), else `SUPERTEAM_ROLE_<NAME>` (name upper-cased, `-`→`_`); no name-prefix parsing — teammate names are free (`review-spec`, `hyp-3`, `impl-1`). `hooks/run-hook.cmd <name>` dispatch is unchanged (it runs `hooks/<name>`).
 
 Copy `json_field` and `json_unescape` from `hooks/task-completed-verify` verbatim into each new script (no shared lib — three files that must each run standalone under `run-hook.cmd`).
 
@@ -150,6 +151,7 @@ for f in "$dir"/*.json; do
     ofam="$(printf '%s' "$osubj" | sed -n 's/^\(Task [0-9]*\):.*/\1/p')"
     [ -n "$ofam" ] && [ "$ofam" = "$family" ] && continue
     oowned="$(json_unescape "$(json_field "$other" "description")" | sed -n 's/^Files owned:[[:space:]]*//p' | head -1)"
+    set -f  # no globbing: a Files owned entry like agents/*.md is a literal
     for p in $(printf '%s' "$owned" | tr ',' ' '); do
         for q in $(printf '%s' "$oowned" | tr ',' ' '); do
             if [ "$p" = "$q" ]; then
@@ -161,7 +163,7 @@ done
 exit 0
 ```
 
-`chmod +x hooks/task-created-check`. Note the upstream exemption: a task that lists a file owned by a task it is `blockedBy` is legal per the spec; implement it by reading the new task's own `blockedBy` from the payload if present (`json_field "$input" "blockedBy"` yields nothing for arrays with this parser — ponytail: the TaskCreated payload has no blockedBy, dependencies are added after creation, so "upstream" reduces to "not open at the same time"; document this in the header comment).
+`chmod +x hooks/task-created-check`. Add `set +f` after the loops. Note the upstream exemption: a task that lists a file owned by a task it is `blockedBy` is legal per the spec; implement it by reading the new task's own `blockedBy` from the payload if present (`json_field "$input" "blockedBy"` yields nothing for arrays with this parser — ponytail: the TaskCreated payload has no blockedBy, dependencies are added after creation, so "upstream" reduces to "not open at the same time"; document this in the header comment).
 
 - [ ] **Step 4: Run tests; expect the task-created-check assertions to PASS**
 
@@ -175,26 +177,34 @@ Append after the task-created-check block:
 ```bash
 echo "Team hooks: teammate-idle-claim"
 
+# assert_stderr DESCRIPTION EXPECTED_EXIT GREP_PATTERN STDIN_JSON [ENV...] -- HOOK
+assert_stderr() {
+    local description="$1" expected="$2" pattern="$3" stdin_json="$4"; shift 4
+    local env_args=(); while [ "$1" != "--" ]; do env_args+=("$1"); shift; done; shift
+    local actual=0 output
+    output="$(printf '%s' "$stdin_json" | env -i PATH="${PATH:-}" "${env_args[@]}" "$@" 2>&1)" || actual=$?
+    if [ "$actual" -eq "$expected" ] && printf '%s' "$output" | grep -q -- "$pattern"; then pass "$description"; else fail "$description (exit $actual: $output)"; fi
+}
+teams_dir="$TEST_ROOT/teams"; mkdir -p "$teams_dir/t"
+cat > "$teams_dir/t/config.json" <<'EOF'
+{"name":"t","members":[{"name":"team-lead","agentType":"team-lead"},{"name":"hyp-3","agentType":"superteam:researcher"},{"name":"reviewer-1","agentType":"superteam:reviewer"},{"name":"integrator-1","agentType":"superteam:integrator"},{"name":"anna","agentType":"superteam:implementer"}]}
+EOF
 cat > "$tasks_dir/4.json" <<'EOF'
 {"id":"4","subject":"Task 5: implement [implementer]","description":"Files owned: skills/z\nDone: report","status":"pending","owner":"","blockedBy":[]}
 EOF
 cat > "$tasks_dir/5.json" <<'EOF'
 {"id":"5","subject":"Task 6: implement [implementer]","description":"Files owned: skills/w\nDone: report","status":"pending","owner":"","blockedBy":["4"]}
 EOF
-idle='{"teammate_name":"impl-1","team_name":"t"}'
-out="$(printf '%s' "$idle" | env -i PATH="$PATH" SUPERTEAM_TASKS_DIR="$tasks_dir" "$IDLE_HOOK" 2>&1)" ; rc=$?
-if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'claim "Task 5: implement \[implementer\]"'; then
-    pass "idle implementer is told to claim the first unblocked pending implementer task"
-else
-    fail "idle implementer is told to claim the first unblocked pending implementer task (rc=$rc: $out)"
-fi
-assert_exit "idle reviewer with only blocked reviewer tasks stays idle" 0 '{"teammate_name":"reviewer-1","team_name":"t"}' SUPERTEAM_TASKS_DIR="$tasks_dir" -- "$IDLE_HOOK"
-assert_exit "idle integrator with no integrator tasks stays idle" 0 '{"teammate_name":"integrator-1","team_name":"t"}' SUPERTEAM_TASKS_DIR="$tasks_dir" -- "$IDLE_HOOK"
-assert_exit "teammate with no role prefix stays idle" 0 '{"teammate_name":"helper","team_name":"t"}' SUPERTEAM_TASKS_DIR="$tasks_dir" -- "$IDLE_HOOK"
-out="$(printf '{"teammate_name":"bob","team_name":"t"}' | env -i PATH="$PATH" SUPERTEAM_TASKS_DIR="$tasks_dir" SUPERTEAM_ROLE_BOB=implementer "$IDLE_HOOK" 2>&1)"; rc=$?
-if [ "$rc" -eq 2 ]; then pass "SUPERTEAM_ROLE_<NAME> supplies the role for an unprefixed name"; else fail "SUPERTEAM_ROLE_<NAME> supplies the role for an unprefixed name (rc=$rc)"; fi
-assert_exit "missing tasks dir stays idle" 0 "$idle" SUPERTEAM_TASKS_DIR="$TEST_ROOT/nope" -- "$IDLE_HOOK"
-assert_exit "SUPERTEAM_SKIP_VERIFY_GATE=1 bypasses teammate-idle-claim" 0 "$idle" SUPERTEAM_TASKS_DIR="$tasks_dir" SUPERTEAM_SKIP_VERIFY_GATE=1 -- "$IDLE_HOOK"
+idle='{"teammate_name":"anna","team_name":"t"}'
+E=(SUPERTEAM_TASKS_DIR="$tasks_dir" SUPERTEAM_TEAMS_DIR="$teams_dir")
+assert_stderr "idle implementer (role from team config agentType) is told to claim the first unblocked pending implementer task" 2 'claim "Task 5: implement \[implementer\]"' "$idle" "${E[@]}" -- "$IDLE_HOOK"
+assert_exit "idle reviewer with only blocked reviewer tasks stays idle" 0 '{"teammate_name":"reviewer-1","team_name":"t"}' "${E[@]}" -- "$IDLE_HOOK"
+assert_exit "idle integrator with no integrator tasks stays idle" 0 '{"teammate_name":"integrator-1","team_name":"t"}' "${E[@]}" -- "$IDLE_HOOK"
+assert_exit "idle researcher never gets an implementer task" 0 '{"teammate_name":"hyp-3","team_name":"t"}' "${E[@]}" -- "$IDLE_HOOK"
+assert_exit "teammate absent from team config stays idle" 0 '{"teammate_name":"ghost","team_name":"t"}' "${E[@]}" -- "$IDLE_HOOK"
+assert_stderr "SUPERTEAM_ROLE_<NAME> supplies the role when config has none" 2 'claim "Task 5' '{"teammate_name":"bob-2","team_name":"t"}' "${E[@]}" SUPERTEAM_ROLE_BOB_2=implementer -- "$IDLE_HOOK"
+assert_exit "missing tasks dir stays idle" 0 "$idle" SUPERTEAM_TASKS_DIR="$TEST_ROOT/nope" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+assert_exit "SUPERTEAM_SKIP_VERIFY_GATE=1 bypasses teammate-idle-claim" 0 "$idle" "${E[@]}" SUPERTEAM_SKIP_VERIFY_GATE=1 -- "$IDLE_HOOK"
 assert_exit "malformed JSON exits 0" 0 '{{' -- "$IDLE_HOOK"
 ```
 
@@ -209,8 +219,9 @@ Run: `bash tests/hooks/test-team-hooks.sh`
 ```bash
 #!/usr/bin/env bash
 # TeammateIdle hook for superteam. Role-aware: derives the idle teammate's
-# role from its name prefix (impl-, writer-, reviewer-, integrator-,
-# researcher-, skeptic-) or SUPERTEAM_ROLE_<NAME>; if a pending, unowned,
+# role from the team config member's agentType ("superteam:<role>") at
+# ${SUPERTEAM_TEAMS_DIR:-~/.claude/teams}/<team_name>/config.json, else
+# SUPERTEAM_ROLE_<NAME>; if a pending, unowned,
 # unblocked "Task N:" task tagged with that role exists, exits 2 with
 # 'claim "<subject>"' so the teammate keeps working. Never names another
 # role's task. Fails open (exit 0) on anything unexpected.
@@ -231,13 +242,18 @@ json_unescape() { printf '%s' "$1" | sed -e 's/\\n/\
 /g' -e 's/\\"/"/g' -e 's/\\\\/\\/g'; }
 name="$(json_field "$input" "teammate_name")"
 [ -n "$name" ] || exit 0
-case "$name" in
-    impl-*) role=implementer ;; writer-*) role=writer ;; reviewer-*) role=reviewer ;;
-    integrator-*) role=integrator ;; researcher-*) role=researcher ;; skeptic-*) role=skeptic ;;
-    *) envname="SUPERTEAM_ROLE_$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')"; role="$(printenv "$envname" 2>/dev/null || true)" ;;
-esac
-[ -n "$role" ] || exit 0
 team="$(json_field "$input" "team_name")"
+cfg="${SUPERTEAM_TEAMS_DIR:-$HOME/.claude/teams}/$team/config.json"
+role=""
+if [ -f "$cfg" ]; then
+    # member object for this name -> its agentType; superteam:<role> -> <role>
+    role="$(tr '\n' ' ' < "$cfg" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"'"$name"'"[^}]*"agentType"[[:space:]]*:[[:space:]]*"superteam:\([a-z]*\)".*/\1/p' | head -1)"
+fi
+if [ -z "$role" ]; then
+    envname="SUPERTEAM_ROLE_$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')"
+    role="$(printenv "$envname" 2>/dev/null || true)"
+fi
+case "$role" in implementer|writer|reviewer|integrator|researcher|skeptic) ;; *) exit 0 ;; esac
 dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
 [ -d "$dir" ] || exit 0
 is_done() { # id -> 0 if that task file is completed (or missing)
@@ -261,7 +277,7 @@ done
 exit 0
 ```
 
-`chmod +x hooks/teammate-idle-claim`. Ordering: task files are named by numeric id; sort numerically so the lowest id wins.
+`chmod +x hooks/teammate-idle-claim`. Ordering: task files are named by numeric id; sort numerically so the lowest id wins. The sed for `agentType` assumes `name` precedes `agentType` inside one member object (it does in 2.1.263 configs); if the name appears in an earlier member's field the `[^}]*` bound keeps the match inside one object.
 
 - [ ] **Step 8: Wire hooks.json**
 
@@ -300,7 +316,8 @@ git commit -m "Hooks: TaskCreated shape/overlap check and role-aware TeammateIdl
 
 **Interfaces:**
 - Consumes: a plan file whose tasks have `**Files owned:**`, `**Depends on:**`, `**Model tier:**` header lines and a `## Global Constraints` section; `--print` mode (unchanged).
-- Produces: `task-brief --taskcreate PLAN_FILE N KIND [LANE]` where KIND ∈ `implement|review|merge`, LANE defaults to the current branch. Prints to stdout the subject on line 1 (`Subject: Task N: implement [implementer]`), a blank line, then the description exactly per the spec's "The task graph" block. Role for `implement` is `[writer]` when the task's `**Model tier:**` line is followed by the word `prose` on the same line, else `[implementer]`. Model tier maps cheap→haiku, standard→sonnet, most capable→opus.
+- Produces: `task-brief --taskcreate PLAN_FILE N KIND [LANE]` where KIND ∈ `implement|review|merge`, LANE defaults to the current branch. Prints to stdout the subject on line 1 (`Subject: Task N: implement [implementer]`), a blank line, then the description: `Reviews:`/`Rubric:` (review) or `Merge:` (merge), then `Plan:`/`Spec:`, `Lane:`, `Worktree:`, `Files owned:`, `Done:`, `## Task Brief`, `## Global Constraints`. No `Role:` (the subject tag carries it) and no `Model:` (the pool's model is set at spawn). Role for `implement` is `[writer]` when the task's `**Model tier:**` line contains the word `prose`, else `[implementer]`.
+- Ordering note: Task 4 edits files this test greps but only appends assertions here; Task 4 keeps the grepped strings, so both worktrees pass the test independently and the integrator's full run after each merge is the check.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -309,7 +326,8 @@ Append to `tests/claude-code/test-dispatch-template.sh` inside the existing test
 ```bash
     tc="$("$TASK_BRIEF" --taskcreate "$plan" 1 implement lane/x)"
     if printf '%s\n' "$tc" | sed -n 1p | grep -q '^Subject: Task 1: implement \[implementer\]$'; then pass "--taskcreate implement subject carries role tag"; else fail "--taskcreate implement subject carries role tag"; fi
-    for line in '^Role: implementer$' '^Lane: lane/x$' '^Worktree: task-1-impl' '^Files owned: ' '^Model: ' '^Done: report at \.superteam/sdd/' '^## Task Brief$' '^## Global Constraints$'; do
+    for line in '^Lane: lane/x$' '^Worktree: task-1-impl' '^Files owned: ' '^Done: report at \.superteam/sdd/' '^## Task Brief$' '^## Global Constraints$'; do
+        # the Task 1 fixture must declare **Files owned:** for the Files owned assertion to be meaningful
         if printf '%s\n' "$tc" | grep -q "$line"; then pass "--taskcreate body has $line"; else fail "--taskcreate body has $line"; fi
     done
     tr="$("$TASK_BRIEF" --taskcreate "$plan" 1 review lane/x)"
@@ -339,20 +357,18 @@ if [ "${1:-}" = "--taskcreate" ]; then
   constraints=$(awk '/^## Global Constraints/ {on=1; next} on && /^(## |---)/ {exit} on {print}' "$plan")
   owned=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Files owned:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
   tier=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Model tier:\*\*[[:space:]]*//p' | head -1)
-  case "$tier" in cheap*) model=haiku ;; "most capable"*) model=opus ;; *) model=sonnet ;; esac
-  role=implementer; printf '%s' "$tier" | grep -qw prose && role=writer
+  role=implementer; if printf '%s' "$tier" | grep -qw prose; then role=writer; fi
   spec=$(sed -n 's/^\*\*Spec:\*\*[[:space:]]*//p' "$plan" | head -1 | tr -d '`'); [ -n "$spec" ] || spec=none
   base=$(basename "$plan" .md); wt="task-${n}-impl"
   case "$kind" in
-    implement) echo "Subject: Task ${n}: implement [${role}]"; echo; echo "Role: ${role}" ;;
-    review)    echo "Subject: Task ${n}: review [reviewer]"; echo; echo "Role: reviewer"; echo "Reviews: worktree-${wt}"; echo "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md" ;;
-    merge)     echo "Subject: Task ${n}: merge [integrator]"; echo; echo "Role: integrator"; echo "Merge: worktree-${wt} → ${lane}" ;;
+    implement) echo "Subject: Task ${n}: implement [${role}]"; echo ;;
+    review)    echo "Subject: Task ${n}: review [reviewer]"; echo; echo "Reviews: worktree-${wt}"; echo "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md" ;;
+    merge)     echo "Subject: Task ${n}: merge [integrator]"; echo; echo "Merge: worktree-${wt} → ${lane}" ;;
   esac
   echo "Plan: ${plan}   Spec: ${spec}"
   echo "Lane: ${lane}"
   echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
   echo "Files owned: ${owned}"
-  echo "Model: ${model}"
   case "$kind" in
     implement) echo "Done: report at .superteam/sdd/${base}/task-${n}-report.md with a \`Tests:\` line" ;;
     review)    echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review.md with a \`Verified:\` line" ;;
@@ -406,7 +422,7 @@ Frontmatter after this task:
 
 The claim rule, verbatim in every body under `## Claiming work (teammate)`:
 
-> When you were spawned as a teammate you have `TaskList` and `TaskUpdate`. Your work is on the shared list: run `TaskList`, pick the first task that is `pending`, has no owner, has no unresolved `blockedBy`, and whose subject ends with your role tag `[<role>]`; `TaskUpdate` it with owner=<your name>, status=in_progress; read its full description with `TaskGet` — the description is your whole brief. Never claim a task with another role's tag. A task the lead already assigned to you, or names in a message, comes before the scan. If `TaskUpdate` reports a different owner, drop it and scan again. Complete a task only after its `Done:` line is satisfied. When nothing matches, stop and end your turn — your final message is your report, and the idle hook will tell you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
+> As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[<role>]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied; when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
 Split-pane rule: every body must open with one paragraph that says who the agent is and what its inputs are, because in split-pane mode the body replaces the system prompt and no dispatch template reaches it.
 
@@ -419,13 +435,14 @@ for role in implementer writer reviewer integrator researcher skeptic; do
     f="$REPO_ROOT/agents/$role.md"
     grep -q '^maxTurns: [0-9]' "$f" && pass "agents/$role.md sets maxTurns" || fail "agents/$role.md sets maxTurns"
     grep -q '^## Claiming work (teammate)' "$f" && pass "agents/$role.md carries the claim rule" || fail "agents/$role.md carries the claim rule"
-    grep -q "\[$role\]" "$f" && pass "agents/$role.md names its own role tag" || fail "agents/$role.md names its own role tag"
+    grep -q "ends with \`\[$role\]\`" "$f" && pass "agents/$role.md claim rule names its own role tag" || fail "agents/$role.md claim rule names its own role tag"
     grep -qi 'never edit `~/.claude/tasks/\*\*`' "$f" && pass "agents/$role.md forbids hand-editing tasks" || fail "agents/$role.md forbids hand-editing tasks"
     grep -q 'model: inherit' "$f" && fail "agents/$role.md must not use model: inherit" || pass "agents/$role.md has an explicit model"
 done
 for role in implementer writer; do
     grep -q '^tools: .*EnterWorktree, ExitWorktree' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md allows EnterWorktree/ExitWorktree" || fail "agents/$role.md allows EnterWorktree/ExitWorktree"
-    grep -q 'git merge' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md merges the lane first" || fail "agents/$role.md merges the lane first"
+    grep -q '^## Isolating (teammate)' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md has the Isolating section" || fail "agents/$role.md has the Isolating section"
+    grep -q 'first command inside it is `git merge' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md merges the lane first" || fail "agents/$role.md merges the lane first"
 done
 for role in reviewer skeptic; do
     grep -q '^memory: project' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md has memory: project" || fail "agents/$role.md has memory: project"
@@ -441,8 +458,8 @@ Run: `bash tests/claude-code/test-agent-roster.sh`
 Structure (same for writer, with "prose" in place of "code" and `Verified:` in place of `Tests:` where the writer's report line differs):
 
 1. Opening paragraph: "You are an implementer on a team (role tag `[implementer]`, teammate names `impl-1`, `impl-2`…). Your brief is either the dispatch prompt (subagent) or a task description on the shared list (teammate). Both carry `Files owned:`, `Lane:`, `Worktree:`, `Done:`, `## Task Brief`, `## Global Constraints`." 
-2. `## Claiming work (teammate)` — the verbatim rule above.
-3. `## Isolating (teammate)`: after claiming, `EnterWorktree` with the `Worktree:` name from the description; first command inside it is `git merge <Lane>`; do everything there; before completing, `ExitWorktree` keeping the worktree (the integrator removes it). As a subagent with `isolation: worktree` you are already isolated; skip this section.
+2. `## Claiming work (teammate)` — the verbatim rule above with `<role>` replaced by this file's role, so the text reads ``ends with `[implementer]` ``.
+3. `## Isolating (teammate)`: after claiming, `EnterWorktree` with the `Worktree:` name from the description; the exact sentence "first command inside it is `git merge <Lane>`" must appear; do everything there; before completing, `ExitWorktree` keeping the worktree (the integrator removes it). As a subagent with `isolation: worktree` you are already isolated; skip this section.
 4. Existing numbered work rules 2–8 (keep the guard section and the "relative paths" text verbatim — `tests/claude-code/test-dispatch-template.sh` greps `relative to your cwd` and `mkdir -p` in the prompt file, not here, but keep them anyway).
 5. `## Report`: existing final-report order; report file at `.superteam/sdd/<plan>/task-N-report.md`; ends with `Tests:` line; as a teammate, complete the task after the file is written.
 6. `## Never`: existing list plus "run anything with `background`", "spawn teammates or a nested team (foreground subagents only)", "edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand", "end a turn with a command running".
@@ -464,9 +481,10 @@ Opening paragraph (role tag `[integrator]`, prefix `integrator-`), claim rule, `
 
 Opening paragraphs (tags `[researcher]`/`[skeptic]`, prefixes `researcher-`/`skeptic-`), claim rule, `maxTurns: 30`; skeptic `memory: project` (remember kill patterns across sessions; never store repo secrets). Researcher in systematic-debugging team mode: `## Disproving peers` — read `~/.claude/teams/<team>/config.json` `members` for sibling `hyp-N` names, `SendMessage` a peer when your evidence contradicts its hypothesis, report survivors to the lead.
 
-- [ ] **Step 8: Run; expect PASS**
+- [ ] **Step 8: Run; expect PASS, and validate the frontmatter fields**
 
-Run: `bash tests/claude-code/test-agent-roster.sh`
+Run: `bash tests/claude-code/test-agent-roster.sh && claude plugin validate .`
+Expected: roster PASS; validate reports no error on `maxTurns` or `memory` (both are documented plugin-agent frontmatter fields; if validate rejects one, report BLOCKED with the exact message — do not remove the field silently).
 
 - [ ] **Step 9: Commit**
 
@@ -514,7 +532,7 @@ Replace `## Setup`, `## Ledger`, `## The Task Loop` and `## The Process` graph w
 
 - `## Modes` — the spec's "Modes" paragraph verbatim; the lead states the mode once.
 - `## Setup` — lane branch and workspace (keep the existing text); then in team mode: pre-approval (write the allow-list of the plan's test/lint/git commands to `.claude/settings.local.json`; ask the lead before touching committed `.claude/settings.json`; never `--dangerously-skip-permissions`; never ask a peer session to run a command you were denied); build the graph; spawn the role pool; state the mode.
-- `## Task graph` — the spec's table and description block; the exact commands:
+- `## Task graph` — the spec's table and description block (minus `Role:`/`Model:`, which the emitter does not print); the exact commands:
   ```
   scripts/task-brief --taskcreate PLAN N implement LANE   → TaskCreate(subject, description)
   scripts/task-brief --taskcreate PLAN N review LANE      → TaskCreate; TaskUpdate addBlockedBy=<implement id>
@@ -587,29 +605,22 @@ git commit -m "Team modes: review, debugging, brainstorming, parallel pools; tea
 - Consumes: env var names `CLAUDE_CODE_ENABLE_TODO_TOOLS`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, setting `subagentPromptCacheTtl`, `teammateMode`; hook names from Task 1.
 - Produces: `## Step 0: how many agents` table in using-superteam (Claude Code branch only, as injected by `hooks/session-start`).
 
-- [ ] **Step 1: Failing test** — add to `tests/hooks/test-session-start.sh`: the Claude Code injected text contains `Step 0` and `TaskCreate`; `wc -l skills/using-superteam/SKILL.md` = 63.
+- [ ] **Step 1: Failing test** — add to `tests/hooks/test-session-start.sh`: the Claude Code injected text contains `Step 0` and `TaskCreate`; `wc -l skills/using-superteam/SKILL.md` ≤ 67 (update any existing exact-63 assertion in that file to ≤ 67).
 - [ ] **Step 2: Run** `bash tests/hooks/test-session-start.sh` — expect FAIL.
-- [ ] **Step 3: SKILL.md** — insert after `## The Rule`:
+- [ ] **Step 3: SKILL.md** — insert after the `## The Rule` section (before `## Skill Priority`), exactly these 4 lines (heading, blank, one paragraph, blank):
 
 ```
 ## Step 0: how many agents
 
-Before dispatching, decide: do I have `TaskCreate`? am I interactive (not `-p`)? are teams on (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`)? All three → team mode; otherwise foreground subagents.
-
-| Need | Use | Cost |
-| --- | --- | --- |
-| one answer, one file set | subagent (`isolation: worktree` when it edits) | 1 context |
-| one worker that reports and stays | teammate (named `Agent`, no isolation) | 1 context + mailbox |
-| a plan of 3+ tasks or 3+ hypotheses | team of 3–5 role teammates on the task graph | N contexts, shared list |
-| another repo or a second lead | cross-session peer PM via `SendMessage` (uds) | separate session |
+Team mode = `TaskCreate` in your tools + interactive (not `-p`) + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; otherwise foreground subagents. One answer or one file set → a subagent (`isolation: worktree` when it edits); a worker that reports and stays → a teammate (named `Agent`, no isolation); 3+ plan tasks or 3+ hypotheses → a team of 3–5 role teammates on the task graph; another repo or a second lead → a cross-session peer via `SendMessage`. Cost: one context per agent, so a team is N contexts on one shared list.
 ```
 
-Remove lines of equal count from the Red Flags table (drop the four weakest rows) so the file stays at 63 lines; verify with `wc -l`.
+The full decision table lives in `references/claude-code-tools.md` (Step 4). Remove nothing else; verify `wc -l` ≤ 67.
 
-- [ ] **Step 4: references/claude-code-tools.md** — rewrite: Task tools table (keep); availability gate (keep, fix the pilot parenthetical: `CLAUDE_CODE_TASK_LIST_ID` names the on-disk dir, verified 2.1.263); launch rule (keep); add sections `## Team files` (`~/.claude/teams/<team>/config.json` with `members`, per-teammate mailboxes, task dir `~/.claude/tasks/<list>/`; never hand-edit; teammates discover peers via config.json and may message across roles), `## Model precedence` (spawn prompt > definition `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > lead), `## teammateMode` (`auto|in-process|tmux`; in split-pane/tmux mode the agent body replaces the system prompt — bodies must be self-sufficient), `## Effort` (frontmatter honoured for subagents, inherited for teammates), `## Known bug` (subagents never receive Task tools on 2.1.263; repro: agent with `tools: Read, TaskList` gets only Read).
+- [ ] **Step 4: references/claude-code-tools.md** — rewrite: `## Step 0 decision table` (Need / Use / Cost rows: one answer → subagent, 1 context; a worker that stays → teammate, 1 context + mailbox; 3+ tasks or hypotheses → team of 3–5, N contexts on one list; another repo → cross-session peer PM, separate session); Task tools table (keep); availability gate (keep, fix the pilot parenthetical: `CLAUDE_CODE_TASK_LIST_ID` names the on-disk dir, verified 2.1.263); launch rule (keep); add sections `## Team files` (`~/.claude/teams/<team>/config.json` with `members`, per-teammate mailboxes, task dir `~/.claude/tasks/<list>/`; never hand-edit; teammates discover peers via config.json and may message across roles), `## Model precedence` (spawn prompt > definition `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > lead), `## teammateMode` (`auto|in-process|tmux`; in split-pane/tmux mode the agent body replaces the system prompt — bodies must be self-sufficient), `## Effort` (frontmatter honoured for subagents, inherited for teammates), `## Known bug` (subagents never receive Task tools on 2.1.263; repro: agent with `tools: Read, TaskList` gets only Read).
 - [ ] **Step 5: README.md** — in the setup section require both env vars (with a `~/.zshrc` export block), recommend `"subagentPromptCacheTtl": "1h"` in settings, team size 3–5, 5–6 tasks per teammate; update "### Agent-team hooks" to list the three hooks and what each rejects; state that other harnesses use the fallback path.
 - [ ] **Step 6: hooks/session-start** — no logic change unless the Step 0 header must be stripped for other harnesses: the Claude Code branch injects SKILL.md minus "## Platform Adaptation"; other branches inject the full file. Leave as is unless the test in Step 1 fails on it.
-- [ ] **Step 7: Run** `bash tests/hooks/test-session-start.sh && test "$(wc -l < skills/using-superteam/SKILL.md)" -eq 63` — expect PASS.
+- [ ] **Step 7: Run** `bash tests/hooks/test-session-start.sh && test "$(wc -l < skills/using-superteam/SKILL.md)" -le 67` — expect PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -631,9 +642,20 @@ git commit -m "using-superteam Step 0 decision table; README enable/tuning; Clau
 - Consumes: the ten sources, fetched the same day with `curl -sL <url> -o .superteam/src/<name>.md` (gitignored scratch inside the worktree): `https://code.claude.com/docs/en/agent-teams.md`, `sub-agents.md`, `plugins-reference.md`, `tools-reference.md`, `hooks.md`, `env-vars.md`, `settings-reference.md`, `cross-session-messaging.md`, `worktrees.md`, `interactive-mode.md`.
 - Produces: a table per source: feature · `source: <url>#<section>` · used where in superteam (file) · or why not.
 
-- [ ] **Step 1: Fetch** the ten files with curl; `grep -c '^#' .superteam/src/*.md` must be non-zero for each (a redirect page fails this).
+- [ ] **Step 1: Fetch** the ten files: `mkdir -p .superteam/src` then one `curl -fsSL <url> -o .superteam/src/<name>.md` per file. If any curl exits non-zero, or `grep -c '^#' .superteam/src/<name>.md` is 0, STOP: write the report with `BLOCKED: fetch failed for <name>` and no `Tests:` line, and end your turn. Never write a table from memory.
 - [ ] **Step 2: Write** the doc: header (date, harness 2.1.263, fetch time), one section per source with the table, then `## Findings`: the subagent Task-tools bug with the exact repro (agent file with `tools: Read, TaskList, TaskUpdate, TaskCreate, TaskGet`, env `CLAUDE_CODE_ENABLE_TODO_TOOLS=1 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `claude -p` in a git repo, observed tools list = Read only; ToolSearch `select:TaskList` → no match), the effort finding with both citations, and the EnterWorktree spike (teammate moved, lead cwd unchanged).
-- [ ] **Step 3: Verify** every `source:` line has a `#section` anchor that exists as a heading in the fetched file: `grep -o 'source: [^ ]*' doc | while read …; do grep -q "^#.* $(anchor→title)" …; done` — write the loop in the report.
+- [ ] **Step 3: Verify** every `source:` citation resolves to a heading in the fetched file. Anchors are the heading text lower-cased with spaces as `-` and punctuation dropped. Run and paste into the report:
+
+```bash
+fail=0
+grep -o 'source: https://code.claude.com/docs/en/[a-z-]*\.md#[a-z0-9-]*' docs/superteam/plans/2026-09-05-agent-team-audit.md | sort -u | while read -r _ url; do
+  f=".superteam/src/$(basename "${url%%#*}")"; a="${url##*#}"
+  if ! grep -E '^#+ ' "$f" | sed -E 's/^#+ //; s/[^A-Za-z0-9 -]//g' | tr 'A-Z ' 'a-z-' | grep -qx "$a"; then echo "MISSING $url"; fail=1; fi
+done
+echo "anchor check done"
+```
+
+Every `MISSING` line must be fixed before commit; the report's `Tests:` line is `Tests: anchor check — 0 MISSING of <N> citations`.
 - [ ] **Step 4: Commit**
 
 ```bash
