@@ -17,17 +17,16 @@ usage() {
 Usage: superteam-test [--list] [--help]
 Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
 Exits non-zero if any suite fails; a suite whose prerequisite is missing
-(timeout, yq, dot, a non-worktree checkout) is reported as SKIP, not FAIL.
+(timeout, yq, dot) is reported as SKIP, not FAIL.
 --list prints the suite names without running them.
 EOF
 }
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# "<path>|<prerequisite>" - prerequisite is empty, a comma-separated list of
-# commands that must be on PATH, or "checkout" for a suite that cannot run
-# from a git worktree. A directory with a run-tests.sh is entered through it,
-# because that runner owns the order of its own test-*.sh files.
+# "<path>|<prerequisite>" - prerequisite is empty or a comma-separated list of
+# commands that must be on PATH. A directory with a run-tests.sh is entered
+# through it, because that runner owns the order of its own test-*.sh files.
 #
 # Excluded on purpose:
 #   tests/claude-code/test-helpers.sh    - a helper, not a suite
@@ -51,7 +50,7 @@ tests/claude-code/test-superteam-driven-development.sh|timeout
 tests/claude-code/test-worktree-native-preference.sh|timeout
 tests/claude-code/test-worktree-path-policy.sh|
 tests/codex/test-marketplace-manifest.sh|
-tests/codex/test-package-codex-plugin.sh|checkout
+tests/codex/test-package-codex-plugin.sh|
 tests/devin/test-devin-plugin.sh|
 tests/kimi/run-tests.sh|
 tests/version-bump/test-bump-version.sh|yq
@@ -90,11 +89,6 @@ passed=0
 missing_reason() {
     case "$1" in
         "") return 0 ;;
-        checkout)
-            # scripts/package-codex-plugin.sh requires .git to be a directory,
-            # and in a git worktree .git is a file pointing at the real one.
-            [ -d "$ROOT/.git" ] || echo "needs a non-worktree checkout"
-            ;;
         *)
             local cmd
             for cmd in $(printf '%s' "$1" | tr ',' ' '); do
