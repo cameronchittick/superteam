@@ -114,6 +114,47 @@ main() {
         fail "implementer/writer/integrator warn against hand-editing ~/.claude/tasks ($missing_hand missing)"
     fi
 
+    # (i) implementer.md and writer.md declare a tools: allowlist with Edit
+    #     and Write, and no Agent
+    local role
+    for role in implementer writer; do
+        local tools_line
+        tools_line="$(grep '^tools:' "$AGENTS/$role.md" || true)"
+        if [[ -n "$tools_line" ]] && grep -q 'Edit' <<<"$tools_line" && grep -q 'Write' <<<"$tools_line" && ! grep -qw 'Agent' <<<"$tools_line"; then
+            pass "$role.md has tools: with Edit, Write, and no Agent"
+        else
+            fail "$role.md has tools: with Edit, Write, and no Agent"
+            echo "    tools line: ${tools_line:-<none>}"
+        fi
+    done
+
+    # (j) integrator.md declares a tools: allowlist with Edit and no Write
+    local integrator_tools
+    integrator_tools="$(grep '^tools:' "$AGENTS/integrator.md" || true)"
+    if [[ -n "$integrator_tools" ]] && grep -q 'Edit' <<<"$integrator_tools" && ! grep -qw 'Write' <<<"$integrator_tools"; then
+        pass "integrator.md has tools: with Edit and no Write"
+    else
+        fail "integrator.md has tools: with Edit and no Write"
+        echo "    tools line: ${integrator_tools:-<none>}"
+    fi
+
+    # (k) implementer/writer/integrator tools: line omits SendMessage and
+    #     TaskUpdate — those are added mechanically at teammate spawn
+    local missing_omit=0 role
+    for role in implementer writer integrator; do
+        local tools_line
+        tools_line="$(grep '^tools:' "$AGENTS/$role.md" || true)"
+        if grep -qw 'SendMessage' <<<"$tools_line" || grep -qw 'TaskUpdate' <<<"$tools_line"; then
+            echo "    $role.md tools: line wrongly lists SendMessage or TaskUpdate"
+            missing_omit=$((missing_omit + 1))
+        fi
+    done
+    if [[ "$missing_omit" -eq 0 ]]; then
+        pass "implementer/writer/integrator tools: lines omit SendMessage and TaskUpdate"
+    else
+        fail "implementer/writer/integrator tools: lines omit SendMessage and TaskUpdate ($missing_omit offending)"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."
