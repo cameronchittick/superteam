@@ -144,7 +144,7 @@ main() {
     local f role
     for role in implementer writer reviewer integrator researcher skeptic; do
         f="$AGENTS/$role.md"
-        grep -q '^maxTurns: [0-9]' "$f" && pass "agents/$role.md sets maxTurns" || fail "agents/$role.md sets maxTurns"
+        grep -q '^maxTurns:' "$f" && fail "agents/$role.md sets no maxTurns cap" || pass "agents/$role.md sets no maxTurns cap"
         grep -q '^## Claiming work (teammate)' "$f" && pass "agents/$role.md carries the claim rule" || fail "agents/$role.md carries the claim rule"
         grep -q "ends with \`\[$role\]\`" "$f" && pass "agents/$role.md claim rule names its own role tag" || fail "agents/$role.md claim rule names its own role tag"
         grep -qi 'never edit `~/.claude/tasks/\*\*`' "$f" && pass "agents/$role.md forbids hand-editing tasks" || fail "agents/$role.md forbids hand-editing tasks"

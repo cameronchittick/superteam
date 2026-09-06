@@ -5,7 +5,6 @@ isolation: worktree
 model: opus
 skills: superteam:test-driven-development, superteam:verification-before-completion
 effort: medium
-maxTurns: 60
 color: blue
 tools: Read, Edit, Write, Bash, Glob, Grep, Skill, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage, EnterWorktree, ExitWorktree
 ---

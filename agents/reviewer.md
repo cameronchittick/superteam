@@ -4,7 +4,6 @@ description: "Use when a diff or a document needs a verdict: reads it once, appl
 model: opus
 skills: superteam:requesting-code-review
 effort: high
-maxTurns: 30
 memory: project
 disallowedTools: Edit, Write, NotebookEdit
 color: yellow
