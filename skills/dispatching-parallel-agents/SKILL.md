@@ -93,7 +93,13 @@ copied in by you afterward.
 
 Other harnesses: the same pattern with your platform's subagent dispatch; see `../using-superteam/references/`.
 
-**With Task tools present:** create one task per parallel unit with `TaskCreate` instead of tracking units by hand. Named teammates (in-process, no `isolation`) have `TaskUpdate` and can self-claim the next unblocked unit via `TaskList`/`TaskUpdate` rather than waiting on you. Worktree subagents never receive the Task tools, so for those you still claim and complete each unit's task yourself. Either way, an idle notification means a teammate finished; a single result means a subagent did.
+## Team mode
+
+**Detect:** `TaskCreate` in your tools, teams on, interactive — else use the fallback below.
+
+Create one task per parallel unit with `TaskCreate`, one pool of one role, instead of tracking units by hand. A task whose subject matches `Task N:` needs `Files owned:` and `Done:` lines in its description — the TaskCreated hook requires both; other subjects aren't gated. Named teammates (in-process, no `isolation`) self-claim the next unblocked unit via `TaskList`/`TaskUpdate` per their prompt's instructions, rather than waiting on you. Worktree subagents never receive the Task tools, so for those you still claim and complete each unit's task yourself. Either way, an idle notification means a teammate finished; a single result means a subagent did.
+
+**Fallback:** today's subagent dispatch — one call per unit, tracked by hand.
 
 ### 4. Review and Integrate
 
