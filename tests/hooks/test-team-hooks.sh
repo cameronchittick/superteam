@@ -209,6 +209,16 @@ assert_exit "missing tasks dir stays idle" 0 "$idle" SUPERTEAM_TASKS_DIR="$TEST_
 assert_exit "SUPERTEAM_SKIP_VERIFY_GATE=1 bypasses teammate-idle-claim" 0 "$idle" "${E[@]}" SUPERTEAM_SKIP_VERIFY_GATE=1 -- "$IDLE_HOOK"
 assert_exit "malformed JSON exits 0" 0 '{{' -- "$IDLE_HOOK"
 
+# ids are numbers, not strings: with 2 and 10 both claimable, 2 must win
+ids_dir="$TEST_ROOT/ids"; mkdir -p "$ids_dir"
+cat > "$ids_dir/10.json" <<'EOF'
+{"id":"10","subject":"Task 10: implement [implementer]","description":"Files owned: skills/ten\nDone: report","status":"pending","owner":"","blockedBy":[]}
+EOF
+cat > "$ids_dir/2.json" <<'EOF'
+{"id":"2","subject":"Task 2: implement [implementer]","description":"Files owned: skills/two\nDone: report","status":"pending","owner":"","blockedBy":[]}
+EOF
+assert_stderr "task ids are ordered numerically, so id 2 wins over id 10" 2 'claim "Task 2: implement \[implementer\]"' "$idle" SUPERTEAM_TASKS_DIR="$ids_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+
 idle_help_lines="$({ "$IDLE_HOOK" --help 2>/dev/null || true; } | wc -l | tr -d ' ')"
 if [ "$idle_help_lines" -eq 5 ]; then
     pass "teammate-idle-claim --help prints 5 lines"

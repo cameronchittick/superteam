@@ -69,8 +69,11 @@ is_done() {
     [ "$(json_field "$(tr '\n' ' ' < "$f")" "status")" = "completed" ]
 }
 
-# Task files are named by numeric id; lowest id wins.
-for f in $(ls "$dir"/*.json 2>/dev/null | sort -t/ -k1 -n); do
+# Task files are named by their id; lowest id wins. Sort the bare ids
+# numerically -- sorting whole paths is lexicographic, which puts 10 before 2.
+for id in $(ls "$dir" 2>/dev/null | sed -n 's/\.json$//p' | sort -n); do
+    f="$dir/$id.json"
+    [ -f "$f" ] || continue
     t="$(tr '\n' ' ' < "$f")"
     [ "$(json_field "$t" "status")" = "pending" ] || continue
     [ -z "$(json_field "$t" "owner")" ] || continue
