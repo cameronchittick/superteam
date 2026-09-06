@@ -14,7 +14,38 @@ source "$SCRIPT_DIR/test-helpers.sh"
 
 CLAUDE_PROMPT_TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-90}"
 
+SKILL_DIR="$SCRIPT_DIR/../../skills/superteam-driven-development"
+
 echo "=== Test: superteam-driven-development skill ==="
+echo ""
+
+# Test 0: static content checks (no `claude -p` calls — fast, no live agent)
+echo "Test 0: Static content checks..."
+
+if assert_contains "$(cat "$SKILL_DIR/SKILL.md")" "TaskCreate" "SKILL.md mentions TaskCreate"; then
+    : # pass
+else
+    exit 1
+fi
+
+if assert_contains "$(cat "$SKILL_DIR/SKILL.md")" "addBlockedBy" "SKILL.md mentions addBlockedBy"; then
+    : # pass
+else
+    exit 1
+fi
+
+if assert_contains "$(cat "$SKILL_DIR/SKILL.md")" "Task tools absent\|fallback" "SKILL.md states the fallback-ledger branch"; then
+    : # pass
+else
+    exit 1
+fi
+
+if assert_contains "$(cat "$SKILL_DIR/implementer-prompt.md")" "Tests:" "implementer-prompt.md has a Tests: line"; then
+    : # pass
+else
+    exit 1
+fi
+
 echo ""
 
 # Test 1: Verify skill can be loaded

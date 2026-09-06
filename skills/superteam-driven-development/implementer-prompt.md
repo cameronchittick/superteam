@@ -32,6 +32,12 @@ Agent:
     the lead's mistake — report NEEDS_CONTEXT with the path instead of
     using it.
 
+    ## Claiming Your Task
+
+    If `TaskUpdate` is available: set owner=<your name>, status=in_progress
+    before starting; status=completed only after your report's `Tests:`
+    line is written.
+
     ## Before You Begin
 
     If you have questions about:
@@ -150,7 +156,7 @@ Agent:
     `.superteam/sdd/[PLAN_BASENAME]/task-N-report.md` relative to your cwd
     (`mkdir -p` first):
     - What you implemented (or what you attempted, if blocked)
-    - What you tested and test results
+    - **Tests:** what you tested and the results
     - **TDD Evidence** (if TDD was required for this task):
       - RED: command run, relevant failing output before implementation, and why the failure was expected
       - GREEN: command run and relevant passing output after implementation
@@ -163,7 +169,7 @@ Agent:
     report file):
     - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
     - Commits created (short SHA + subject)
-    - One-line test summary (e.g. "14/14 passing, output pristine")
+    - **Tests:** one-line test summary (e.g. "14/14 passing, output pristine")
     - Your concerns, if any
     - The report file path, relative to your worktree
 
