@@ -57,6 +57,8 @@ to your cwd (`mkdir -p` the directory first; it is gitignored and
 worktree-local). The lead copies it out; you never write outside your
 worktree. Return only the short contract.
 
+Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result — an early "waiting for tests" reply reaches the lead as repeated idle notices.
+
 Never: touch files outside the brief; edit `CONTEXT.md` or ADRs; spawn
 reviewers; merge anything; touch the shared checkout (`cd` into it or use
 its absolute path); retry a guard-refused command unchanged more than once

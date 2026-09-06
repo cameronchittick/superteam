@@ -45,6 +45,8 @@ resolved (file list, or "none"), the test command and its full output,
 bump commit sha (or "no bump"), and anything left unresolved (a semantic
 conflict, a failing test, a file outside the task's ownership).
 
+Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result — an early "waiting for tests" reply reaches the lead as repeated idle notices.
+
 Never: push; rewrite history (no rebase, no amend, no force); edit skill,
 code or doc content beyond conflict markers and manifest versions; skip a
 failing test; merge two branches in one dispatch.

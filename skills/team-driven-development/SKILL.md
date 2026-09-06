@@ -76,6 +76,7 @@ version bumps — one at a time). Four rules bind every dispatch:
 2. **The agent carries the model.** Each agent file sets `model` and `effort`; a call overrides `model` only with a reason from Model Selection written next to it.
 3. **Tools follow the role.** Read-only roles carry `disallowedTools`; the skill never widens them.
 4. **One role per seat.** A reviewer does not fix; a researcher does not edit; an implementer does not merge.
+5. **One report per turn.** No IC ends a turn while a command it started is still running; tests run in the foreground (or are waited on) and the result arrives in one report — an early "waiting" reply reaches you as repeated idle notices.
 
 The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
