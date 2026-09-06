@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# TaskCompleted hook for superteam plugin (opt-in, not wired in hooks.json).
+#
+# Refuses task completion (exit 2) unless there is verification evidence:
+#   (a) task_description contains a line starting with "Verified:" or
+#       "Evidence:", or
+#   (b) the completing agent's report file at
+#       ${cwd}/.superteam/sdd/*/task-<N>-report.md (N = the numeric part of
+#       task_id, e.g. "4" or "task-004") contains a "Tests:", "Verified:" or
+#       "Evidence:" line with a non-empty value.
+#
+# Payload fields (per Claude Code hooks docs): task_id, task_subject,
+# optional task_description, teammate_name, team_name, plus the common
+# fields cwd and transcript_path.
+#
+# Never exits non-zero for malformed/unparseable input -- only exit 2 when
+# we can positively identify a task with no evidence.
+
+usage() {
+    cat <<'EOF'
+Usage: task-completed-verify
+TaskCompleted hook: blocks task completion (exit 2) unless there is
+verification evidence in task_description or the task's report file.
+Reads the TaskCompleted JSON payload from stdin.
+Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
+EOF
+}
+
+if [ "${1:-}" = "--help" ]; then
+    usage
+    exit 0
+fi
+
+if [ "${SUPERTEAM_SKIP_VERIFY_GATE:-}" = "1" ]; then
+    exit 0
+fi
+
+input="$(cat 2>/dev/null || true)"
+
+# Extract a JSON string field's raw (still-escaped) value from a
+# single-line-collapsed JSON blob. Tolerates pretty-printed (multi-line)
+# JSON since we collapse newlines to spaces first.
+# ponytail: doesn't handle a literal escaped quote (\") inside the value --
+# BSD sed's BRE has no alternation, so a fully quote-safe parse would need
+# a real JSON parser. Task metadata doesn't carry embedded quotes in
+# practice; revisit if that changes.
+json_field() {
+    printf '%s' "$1" | tr '\n' ' ' | \
+        sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+# Unescape the common JSON escapes so line-based grep works on the value.
+json_unescape() {
+    printf '%s' "$1" | sed -e 's/\\n/\
+/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g'
+}
+
+task_id="$(json_field "$input" "task_id")"
+
+# No parseable task_id -- malformed/unrelated input. Fail open silently.
+if [ -z "$task_id" ]; then
+    exit 0
+fi
+
+task_description="$(json_unescape "$(json_field "$input" "task_description")")"
+
+if printf '%s\n' "$task_description" | grep -qE '^(Verified|Evidence):'; then
+    exit 0
+fi
+
+cwd="$(json_unescape "$(json_field "$input" "cwd")")"
+[ -n "$cwd" ] || cwd="$PWD"
+
+# Numeric part of task_id: "4" -> "4", "task-004" -> "004" (also try the
+# leading-zero-stripped form so both naming conventions match a report
+# named task-4-report.md or task-004-report.md).
+digits="$(printf '%s' "$task_id" | sed 's/[^0-9]//g')"
+digits_stripped="$(printf '%s' "$digits" | sed 's/^0*//')"
+[ -n "$digits_stripped" ] || digits_stripped="0"
+
+report_found=""
+if [ -n "$digits" ]; then
+    shopt -s nullglob
+    for n in "$digits" "$digits_stripped"; do
+        for f in "$cwd"/.superteam/sdd/*/task-"$n"-report.md; do
+            [ -f "$f" ] || continue
+            if grep -qE '^(Tests|Verified|Evidence):[[:space:]]*[^[:space:]]' "$f"; then
+                report_found="$f"
+                break 2
+            fi
+        done
+    done
+    shopt -u nullglob
+fi
+
+if [ -n "$report_found" ]; then
+    exit 0
+fi
+
+echo "No verification evidence for this task: add a 'Verified: <what you ran>' or 'Evidence: <what you ran>' line to the task description, or a 'Tests:'/'Verified:'/'Evidence:' line with a value to \${cwd}/.superteam/sdd/*/task-${digits:-N}-report.md." >&2
+exit 2
