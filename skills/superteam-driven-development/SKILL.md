@@ -272,8 +272,9 @@ gate and is a lie about being done.
 
 Either way you stop hand-writing `Task <N>: complete` status lines —
 `TaskList` shows status directly, and you find the next unblocked task
-with `TaskList` instead of scanning the plan file. If the `TaskCompleted`
-verify gate is enabled, the report's `Tests:` line is what it checks.
+with `TaskList` instead of scanning the plan file. The plugin's
+`TaskCompleted` verify gate checks the report's `Tests:` line before an
+SDD task can complete.
 
 **Task tools absent — the plan-file ledger is the fallback.** This is
 every other harness, and a Claude Code session on a model where the Task

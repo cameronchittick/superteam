@@ -71,6 +71,14 @@ Skip any step = lying, not verifying
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
 
+## Evidence line
+
+Put the evidence in a report or task description as one line: `Tests: <what
+ran and the result>` for code, or `Verified: <what you checked>` for
+prose/config. Non-empty, at line start. On Claude Code the plugin's
+`TaskCompleted` hook refuses to complete an SDD task (subject `Task N:
+<title>`) that lacks this line — it does not apply to other task lists.
+
 ## Key Patterns
 
 **Tests:**
