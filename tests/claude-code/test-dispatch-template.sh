@@ -134,6 +134,55 @@ PLAN
     if printf '%s\n' "$tw" | grep -q '^Subject: Task 1: implement \[writer\]$'; then pass "--taskcreate prose Model tier gives the [writer] role"; else fail "--taskcreate prose Model tier gives the [writer] role"; fi
     if printf '%s\n' "$tw" | grep -q '^Plan: prose-plan.md   Spec: none$'; then pass "--taskcreate Spec falls back to none"; else fail "--taskcreate Spec falls back to none"; fi
 
+    # (c4) a task block ends at the next heading of the same or higher level,
+    #      whatever its text — the last task must not swallow a trailing
+    #      "## Finish" section
+    cat > "$repo/finish-plan.md" <<'PLAN'
+# Plan
+
+## Global Constraints
+- Keep it simple.
+
+## Task 1: First thing
+
+**Files owned:** `src/a.py`
+**Depends on:** none
+**Model tier:** standard
+
+Do the first thing.
+
+## Task 2: Last thing
+
+**Files owned:** `src/b.py`
+**Depends on:** none
+**Model tier:** standard
+
+Do the last thing.
+
+## Finish (lead)
+
+MERGE-THE-LANE-AND-BUMP-MANIFESTS
+PLAN
+    local last tc_last
+    last="$(cd "$repo" && "$TASK_BRIEF" --print finish-plan.md 2)"
+    if [[ "$last" == *"Do the last thing."* && "$last" != *"MERGE-THE-LANE-AND-BUMP-MANIFESTS"* ]]; then
+        pass "--print stops the last task at the next same-level heading"
+    else
+        fail "--print stops the last task at the next same-level heading"
+        echo "    got: $last"
+    fi
+    tc_last="$(cd "$repo" && "$TASK_BRIEF" --taskcreate finish-plan.md 2 implement lane/x)"
+    if [[ "$tc_last" != *"MERGE-THE-LANE-AND-BUMP-MANIFESTS"* ]]; then
+        pass "--taskcreate brief stops at the next same-level heading"
+    else
+        fail "--taskcreate brief stops at the next same-level heading"
+    fi
+    if [[ "$last" != *"Do the first thing."* ]]; then
+        pass "--print does not leak the previous task"
+    else
+        fail "--print does not leak the previous task"
+    fi
+
     # (d) implementer-prompt.md mentions mkdir -p (report dir must be created)
     if grep -q "mkdir -p" "$TDD_DIR/implementer-prompt.md"; then
         pass "implementer-prompt.md mentions mkdir -p"
