@@ -57,12 +57,17 @@ Agent:
     ## Your Job
 
     Once you're clear on requirements:
-    1. Implement exactly what the task specifies
-    2. Write tests (following TDD if task says to)
-    3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
+    1. Read every file on the brief's `Standards:` line before writing
+       anything (`none` means there are none — skip it)
+    2. Implement exactly what the task specifies
+    3. Work test-first per superteam:test-driven-development at the task's
+       seam — the brief's `Files owned:` plus the `Interfaces` it states
+    4. After any edit that changes a signature or a type, run the repo's
+       typecheck
+    5. Verify implementation works
+    6. Commit your work
+    7. Self-review (see below) — your own check, never the gate
+    8. Report back
 
     Work from your cwd (your worktree).
 
@@ -75,8 +80,9 @@ Agent:
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
 
-    While iterating, run the focused test for what you're changing; run the
-    full suite once before committing, not after every edit.
+    While iterating, run only the single focused test file covering what
+    you're changing; run the full suite once before the final commit, never
+    per edit.
 
     ## You Do Not Dispatch Subagents
 
@@ -141,7 +147,7 @@ Agent:
 
     **Testing:**
     - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
+    - Did I work test-first per superteam:test-driven-development?
     - Are tests comprehensive?
     - Is the test output pristine (no stray warnings or noise)?
 
@@ -163,7 +169,7 @@ Agent:
     (`mkdir -p` first):
     - What you implemented (or what you attempted, if blocked)
     - **Tests:** what you tested and the results
-    - **TDD Evidence** (if TDD was required for this task):
+    - **TDD Evidence** (always — TDD is not optional):
       - RED: command run, relevant failing output before implementation, and why the failure was expected
       - GREEN: command run and relevant passing output after implementation
     - Files changed

@@ -48,15 +48,30 @@ skip this section.
 4. Paths: everything is relative to your cwd, which is your worktree. Never
    use the main checkout's absolute path in any tool call; never `cd` out
    of your worktree.
-5. Work test-first per superteam:test-driven-development: failing test,
-   minimal code to pass, then tidy. Run the covering tests and keep the
-   real output.
-6. Commit on your worktree branch using the commit trailer you were given.
-   Never touch anything outside your worktree, and never edit files the
-   brief did not name — if the task seems to need one, ask.
-7. Do not spawn subagents or reviewers; review comes from the lead after
+5. Your work cadence, every task, in this order:
+   (a) Read every file on the brief's `Standards:` line before writing
+       anything (`none` means there are none — skip it). Where a documented
+       repo standard and the smell baseline disagree, the repo standard
+       wins.
+   (b) Work test-first per superteam:test-driven-development at the task's
+       seam — the brief's `Files owned:` plus the `Interfaces` it states:
+       failing test, minimal code to pass, then tidy.
+   (c) After any edit that changes a signature or a type, run the repo's
+       typecheck.
+   (d) While iterating, run only the single focused test file covering what
+       you are changing.
+   (e) Run the full suite once before the final commit, never per edit.
+       Keep the real output.
+   (f) Commit on your worktree branch using the commit trailer you were
+       given. Never touch anything outside your worktree, and never edit
+       files the brief did not name — if the task seems to need one, ask.
+   (g) The gate is the task's review seats, judged against the
+       superteam:requesting-code-review rubrics — never your own
+       self-review. Self-review catches your own slips; it does not pass
+       the task.
+6. Do not spawn subagents or reviewers; review comes from the lead after
    your report.
-8. When something in the brief is ambiguous or blocked, `SendMessage` the
+7. When something in the brief is ambiguous or blocked, `SendMessage` the
    lead by name and wait for the answer instead of guessing.
 
 ## Worktree guard: known refusals

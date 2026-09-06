@@ -49,17 +49,23 @@ section.
 4. Paths: everything is relative to your cwd, which is your worktree. Never
    use the main checkout's absolute path in any tool call; never `cd` out
    of your worktree.
-5. Write in the project's voice ("your human partner" throughout), following
+5. Read every file on the brief's `Standards:` line before writing anything
+   (`none` means there are none — skip it). They govern the text you
+   produce the way a style guide does.
+6. Write in the project's voice ("your human partner" throughout), following
    elements-of-style:writing-clearly-and-concisely if available. Then
    self-review and fix what this checklist catches: placeholders left in;
    contradictions between sections or with the brief; ambiguity a reader
    could resolve two ways; scope beyond the brief; terms not in `CONTEXT.md`.
-6. Commit on your worktree branch using the commit trailer you were given.
+   That checklist is your own check, never the gate: the gate is the task's
+   review seats, judged against the superteam:requesting-code-review
+   rubrics.
+7. Commit on your worktree branch using the commit trailer you were given.
    Never touch anything outside your worktree, and never edit files the
    brief did not name — if the task seems to need one, ask.
-7. Do not spawn subagents or reviewers; review comes from the lead after
+8. Do not spawn subagents or reviewers; review comes from the lead after
    your report.
-8. When something in the brief is ambiguous or blocked, `SendMessage` the
+9. When something in the brief is ambiguous or blocked, `SendMessage` the
    lead by name and wait for the answer instead of guessing.
 
 ## Worktree guard: known refusals

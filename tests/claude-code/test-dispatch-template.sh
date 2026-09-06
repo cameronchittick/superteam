@@ -190,6 +190,40 @@ PLAN
         fail "implementer-prompt.md mentions mkdir -p"
     fi
 
+    # (e) TDD is always on in implementer-prompt.md: no conditional
+    #     qualifier survives, and the skill is named with its prefix
+    local prompt="$TDD_DIR/implementer-prompt.md" qualifier hits
+    hits=""
+    for qualifier in "if task says to" "if required" "if TDD was required"; do
+        hits+="$(grep -nF "$qualifier" "$prompt" || true)"
+    done
+    if [[ -z "$hits" ]]; then
+        pass "implementer-prompt.md makes TDD unconditional"
+    else
+        fail "implementer-prompt.md makes TDD unconditional"
+        printf '%s\n' "$hits" | sed 's/^/    /'
+    fi
+
+    if grep -q 'superteam:test-driven-development' "$prompt"; then
+        pass "implementer-prompt.md names superteam:test-driven-development"
+    else
+        fail "implementer-prompt.md names superteam:test-driven-development"
+    fi
+
+    # (f) the same cadence as implementer.md: Standards read first, focused
+    #     file while iterating, full suite once before the commit
+    if grep -q '`Standards:`' "$prompt" && grep -q 'before writing' "$prompt"; then
+        pass "implementer-prompt.md reads the Standards: files before writing"
+    else
+        fail "implementer-prompt.md reads the Standards: files before writing"
+    fi
+
+    if grep -q 'focused test' "$prompt" && grep -q 'full suite once' "$prompt"; then
+        pass "implementer-prompt.md runs the focused file, then the full suite once"
+    else
+        fail "implementer-prompt.md runs the focused file, then the full suite once"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."
