@@ -15,7 +15,7 @@ Skills speak in actions ("dispatch a subagent", "create a todo", "read a file").
 | Fetch a URL / read a webpage | `web_extract(urls=[...])` |
 | Search the web | `web_search(query=...)` |
 | Dispatch a subagent | `delegate_task(goal=..., context=..., toolsets=[...], role="leaf")` |
-| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `delegate_task` with the named `*-prompt.md` file filled in as `context`; for researcher, reviewer and skeptic pass read-only `toolsets` and keep the read-only rule by instruction. The researcher never edits an existing file but may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`). |
+| `subagent_type: "superteam:<role>"` (implementer, writer, researcher, reviewer, skeptic, integrator) | `delegate_task` with the named `*-prompt.md` file filled in as `context`; for researcher, reviewer and skeptic pass read-only `toolsets` and keep the rule by instruction — reviewer and skeptic are read-only; the researcher never edits an existing file and may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`). |
 | Task tracking | `todo` tool |
 | Invoke a skill | `skill_view("skill-name")` |
 
