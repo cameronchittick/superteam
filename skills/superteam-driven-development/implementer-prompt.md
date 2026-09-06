@@ -1,5 +1,9 @@
 # Implementer IC Prompt Template
 
+**Team mode: this template is NOT sent** — the task description from
+`task-brief --taskcreate` is the brief, and the agent body carries the
+rules. **Fallback mode: send this template as before.**
+
 Use this template when dispatching an implementer IC into its worktree.
 
 ```
