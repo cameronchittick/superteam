@@ -20,7 +20,9 @@ Agent:
 
     ## Claiming Your Task
 
-    If `TaskUpdate` is available: set owner=<your name>, status=in_progress
+    Team mode: you claimed `Task N: review <r> [reviewer]`; the
+    description's `Reviews:` line names the branch. Fallback mode: if
+    `TaskUpdate` is available, set owner=<your name>, status=in_progress
     before starting; status=completed only after your verdict is written.
 
     ## Task Brief
