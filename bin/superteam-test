@@ -17,20 +17,28 @@ usage() {
 Usage: superteam-test [--list] [--help]
 Runs every superteam test suite and prints one PASS/FAIL/SKIP line each.
 Exits non-zero if any suite fails; a suite whose prerequisite is missing
-(timeout, yq, a non-worktree checkout) is reported as SKIP, not FAIL.
+(timeout, yq, dot, a non-worktree checkout) is reported as SKIP, not FAIL.
 --list prints the suite names without running them.
 EOF
 }
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# "<path>|<prerequisite>" - prerequisite is empty, a command that must be on
-# PATH, or "checkout" for a suite that cannot run from a git worktree.
+# "<path>|<prerequisite>" - prerequisite is empty, a comma-separated list of
+# commands that must be on PATH, or "checkout" for a suite that cannot run
+# from a git worktree. A directory with a run-tests.sh is entered through it,
+# because that runner owns the order of its own test-*.sh files.
 #
 # Excluded on purpose:
-#   tests/claude-code/test-helpers.sh                          - a helper, not a suite
-#   tests/claude-code/run-skill-tests.sh                       - a runner over the above
+#   tests/claude-code/test-helpers.sh    - a helper, not a suite
+#   tests/claude-code/run-skill-tests.sh - a runner over the above
 #   tests/claude-code/test-superteam-driven-development-integration.sh - needs timeout, drives a live session
+#   tests/explicit-skill-requests/       - drives live Claude sessions, not a static suite
+#   tests/brainstorm-server/*.test.js    - node runtime, run with npm test in that directory
+#   tests/hermes/*.py                    - python/pytest runtime
+#   tests/pi/*.mjs                       - pi extension runtime
+# The three runtime exclusions are out of a bash runner's scope; everything
+# else that is runnable bash is listed below.
 SUITES="
 tests/hooks/test-team-hooks.sh|
 tests/hooks/test-session-start.sh|
@@ -48,6 +56,10 @@ tests/devin/test-devin-plugin.sh|
 tests/kimi/run-tests.sh|
 tests/version-bump/test-bump-version.sh|yq
 tests/shell-lint/test-lint-shell.sh|
+tests/antigravity/run-tests.sh|
+tests/opencode/run-tests.sh|
+tests/systematic-debugging/test-find-polluter.sh|
+tests/writing-skills/test-render-graphs.sh|node,dot
 "
 
 case "${1:-}" in
@@ -84,7 +96,10 @@ missing_reason() {
             [ -d "$ROOT/.git" ] || echo "needs a non-worktree checkout"
             ;;
         *)
-            command -v "$1" >/dev/null 2>&1 || echo "needs $1"
+            local cmd
+            for cmd in $(printf '%s' "$1" | tr ',' ' '); do
+                command -v "$cmd" >/dev/null 2>&1 || { echo "needs $cmd"; return 0; }
+            done
             ;;
     esac
 }
