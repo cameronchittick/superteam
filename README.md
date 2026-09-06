@@ -356,8 +356,9 @@ all three.
   in-progress task on the same list that isn't in the same `Task N:`
   family and isn't upstream of it.
 - **`teammate-idle-claim`** (`TeammateIdle`) — when a teammate goes idle,
-  looks for a pending, unowned, unblocked task matching its role (from its
-  name prefix or `SUPERTEAM_ROLE_<NAME>`); if one exists, exits 2 with
+  looks for a pending, unowned, unblocked task matching its role (read from
+  the team config member's `agentType`, `superteam:<role>`, and falling back
+  to `SUPERTEAM_ROLE_<NAME>`); if one exists, exits 2 with
   `claim "<subject>"` so the teammate claims it; otherwise exits 0. Never
   names another role's task.
 - **`task-completed-verify`** (`TaskCompleted`) — refuses completion (exit
