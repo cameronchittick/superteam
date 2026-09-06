@@ -219,6 +219,46 @@ cat > "$ids_dir/2.json" <<'EOF'
 EOF
 assert_stderr "task ids are ordered numerically, so id 2 wins over id 10" 2 'claim "Task 2: implement \[implementer\]"' "$idle" SUPERTEAM_TASKS_DIR="$ids_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
 
+echo "Team hooks: no repeat-nudge loops"
+
+# TaskCompleted also fires when a teammate ends a turn with an in-progress
+# task, so the same rejection can repeat forever. Second rejection of an
+# unchanged state says so in one line instead of the full feedback.
+gate_dir="$TEST_ROOT/gate-tasks"; mkdir -p "$gate_dir"
+gate_payload='{"task_id":"4","task_subject":"Task 4: x","teammate_name":"anna","task_description":"waiting on the lead"}'
+gate_payload2='{"task_id":"4","task_subject":"Task 4: x","teammate_name":"anna","task_description":"waiting on the lead, still"}'
+assert_stderr "first rejection of a state gives the full feedback" 2 'No verification evidence' "$gate_payload" SUPERTEAM_TASKS_DIR="$gate_dir" -- "$VERIFY_HOOK"
+assert_stderr "repeat rejection of the same state is one line" 2 'Gate already rejected this state' "$gate_payload" SUPERTEAM_TASKS_DIR="$gate_dir" -- "$VERIFY_HOOK"
+assert_stderr "repeat rejection still exits 2, never silently completes" 2 'TaskUpdate status=pending' "$gate_payload" SUPERTEAM_TASKS_DIR="$gate_dir" -- "$VERIFY_HOOK"
+assert_stderr "an edited description is a new state and gets the full feedback" 2 'No verification evidence' "$gate_payload2" SUPERTEAM_TASKS_DIR="$gate_dir" -- "$VERIFY_HOOK"
+
+# The idle hook must not re-nudge for the same task while nothing has changed.
+loop_dir="$TEST_ROOT/loop-tasks"; mkdir -p "$loop_dir"
+cat > "$loop_dir/7.json" <<'EOF'
+{"id":"7","subject":"Task 7: implement [implementer]","description":"Files owned: skills/seven\nDone: report","status":"pending","owner":"","blockedBy":[]}
+EOF
+L=(SUPERTEAM_TASKS_DIR="$loop_dir" SUPERTEAM_TEAMS_DIR="$teams_dir")
+assert_stderr "idle hook nudges once for a new claimable task" 2 'claim "Task 7' "$idle" "${L[@]}" -- "$IDLE_HOOK"
+assert_exit "idle hook does not re-nudge while nothing has changed" 0 "$idle" "${L[@]}" -- "$IDLE_HOOK"
+
+# A teammate already holding work is never nudged.
+busy_dir="$TEST_ROOT/busy-tasks"; mkdir -p "$busy_dir"
+cat > "$busy_dir/1.json" <<'EOF'
+{"id":"1","subject":"Task 1: implement [implementer]","description":"Files owned: skills/one\nDone: report","status":"in_progress","owner":"anna","blockedBy":[]}
+EOF
+cat > "$busy_dir/2.json" <<'EOF'
+{"id":"2","subject":"Task 2: implement [implementer]","description":"Files owned: skills/two\nDone: report","status":"pending","owner":"","blockedBy":[]}
+EOF
+assert_exit "a teammate owning an in_progress task is never nudged" 0 "$idle" SUPERTEAM_TASKS_DIR="$busy_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+
+# A task the teammate declined is never offered again.
+declined_dir="$TEST_ROOT/declined-tasks"; mkdir -p "$declined_dir/.declined"
+cat > "$declined_dir/3.json" <<'EOF'
+{"id":"3","subject":"Task 3: implement [implementer]","description":"Files owned: skills/three\nDone: report","status":"pending","owner":"","blockedBy":[]}
+EOF
+echo "3" > "$declined_dir/.declined/anna"
+assert_exit "a declined task id is never nudged again" 0 "$idle" SUPERTEAM_TASKS_DIR="$declined_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+
 idle_help_lines="$({ "$IDLE_HOOK" --help 2>/dev/null || true; } | wc -l | tr -d ' ')"
 if [ "$idle_help_lines" -eq 5 ]; then
     pass "teammate-idle-claim --help prints 5 lines"

@@ -128,5 +128,26 @@ if [ -n "$report_found" ]; then
     exit 0
 fi
 
+# TaskCompleted also fires when a teammate ends a turn with an in-progress
+# task, so an unchanged rejection can repeat every turn (seen live: ~30 times
+# for one teammate waiting on its lead). Remember the rejected state and say
+# it once. The state key changes whenever the description changes, so real
+# progress always gets the full feedback again. Never exit 0 without
+# evidence: a repeat is still a rejection, just a quieter one.
+teammate_name="$(json_unescape "$(json_field "$input" "teammate_name")")"
+team_name="$(json_unescape "$(json_field "$input" "team_name")")"
+tasks_dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team_name}}"
+state_key="$(printf '%s-%s-%s' \
+    "$(printf '%s' "${teammate_name:-none}" | tr -c 'A-Za-z0-9_.-' '_')" \
+    "$(printf '%s' "$task_id" | tr -c 'A-Za-z0-9_.-' '_')" \
+    "$(printf '%s' "$task_description" | cksum | tr -d ' ')")"
+marker="$tasks_dir/.gate/$state_key"
+
+if [ -f "$marker" ]; then
+    echo "Gate already rejected this state. If you are waiting on the lead, run TaskUpdate status=pending (keep owner) and end your turn; otherwise add the Verified: line." >&2
+    exit 2
+fi
+mkdir -p "$tasks_dir/.gate" 2>/dev/null && : > "$marker" 2>/dev/null
+
 echo "No verification evidence for this task: add a 'Verified: <what you ran>' or 'Evidence: <what you ran>' line to the task description, or a 'Tests:'/'Verified:'/'Evidence:' line with a value to \${cwd}/.superteam/sdd/*/task-${digits:-N}-report.md." >&2
 exit 2

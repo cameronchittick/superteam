@@ -6,6 +6,15 @@
 # unowned, unblocked "Task N:" task tagged with that role exists, exits 2
 # with 'claim "<subject>"' so the teammate keeps working. Never names
 # another role's task. Fails open (exit 0) on anything unexpected.
+#
+# Three ways it stays quiet, so a teammate is never nudged in a loop:
+#   - it owns an in_progress task (it already has work);
+#   - nothing changed: <tasks dir>/.idle/<teammate> records the last nudged
+#     task id and the tasks dir mtime, and an unchanged pair exits 0;
+#   - the task is declined: <tasks dir>/.declined/<teammate> holds one task
+#     id per line, written by the teammate itself when it declines a task for
+#     a stated reason. This hook only reads that file, never writes it, and a
+#     listed id is never offered to that teammate again.
 
 usage() {
     cat <<'EOF'
@@ -62,6 +71,34 @@ esac
 dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
 [ -d "$dir" ] || exit 0
 
+safe_name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9_.-' '_')"
+
+# Declined tasks: one task id per line in <tasks dir>/.declined/<teammate>.
+# A teammate writes its own file when it declines a task for a stated reason;
+# nothing here ever writes it. An id listed there is never offered again.
+declined_file="$dir/.declined/$safe_name"
+
+# Idle state: <tasks dir>/.idle/<teammate> holds "<last nudged id> <dir mtime>".
+# Created before the mtime is read so making the directory does not itself
+# look like a change.
+mkdir -p "$dir/.idle" 2>/dev/null
+idle_file="$dir/.idle/$safe_name"
+dir_mtime="$(date -r "$dir" +%s 2>/dev/null || echo 0)"
+last_id=""
+last_mtime=""
+if [ -f "$idle_file" ]; then
+    read -r last_id last_mtime < "$idle_file" || true
+fi
+
+# A teammate already holding work is never nudged.
+for f in "$dir"/*.json; do
+    [ -f "$f" ] || continue
+    t="$(tr '\n' ' ' < "$f")"
+    [ "$(json_field "$t" "status")" = "in_progress" ] || continue
+    [ "$(json_field "$t" "owner")" = "$name" ] || continue
+    exit 0
+done
+
 # id -> 0 if that task file is completed (or missing)
 is_done() {
     local f="$dir/$1.json"
@@ -79,11 +116,20 @@ for id in $(ls "$dir" 2>/dev/null | sed -n 's/\.json$//p' | sort -n); do
     [ -z "$(json_field "$t" "owner")" ] || continue
     subj="$(json_unescape "$(json_field "$t" "subject")")"
     printf '%s' "$subj" | grep -qE "^Task [0-9]+:.*\[$role\]$" || continue
+    if [ -f "$declined_file" ] && grep -qx "$id" "$declined_file"; then
+        continue
+    fi
     blocked=0
     for dep in $(printf '%s' "$t" | sed -n 's/.*"blockedBy"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | tr -d '" ' | tr ',' ' '); do
         is_done "$dep" || { blocked=1; break; }
     done
     [ "$blocked" -eq 0 ] || continue
+    # Same task, nothing changed on the list since the last nudge: let it idle
+    # rather than re-prompting a teammate that has already been told.
+    if [ "$id" = "$last_id" ] && [ "$dir_mtime" = "$last_mtime" ]; then
+        exit 0
+    fi
+    printf '%s %s\n' "$id" "$dir_mtime" > "$idle_file" 2>/dev/null
     echo "claim \"$subj\" — TaskUpdate owner=$name status=in_progress, then do it." >&2
     exit 2
 done
