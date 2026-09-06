@@ -135,10 +135,58 @@ else
 fi
 
 help_lines="$(bash "$GUARD" --help | wc -l | tr -d ' ')"
-if [ "$help_lines" -ge 5 ]; then
-    pass "bash-guard --help prints usage"
+if [ "$help_lines" -eq 5 ]; then
+    pass "bash-guard --help prints 5 lines"
 else
-    fail "bash-guard --help prints usage (got $help_lines lines, expected at least 5)"
+    fail "bash-guard --help prints 5 lines (got $help_lines)"
+fi
+
+echo "Bash guard: the deny payload is always parseable JSON"
+
+# A target carrying a double quote used to land unescaped in
+# permissionDecisionReason, so the deny emitted malformed JSON and Claude Code
+# could not read the decision - the one input class where the guard failed open
+# while believing it had denied.
+run_guard "$(payload 'rm -rf /tmp/a"b/..')"
+if printf '%s' "$GUARD_OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then
+    pass "a deny naming a path with a double quote is valid JSON"
+else
+    fail "a deny naming a path with a double quote is valid JSON"
+    printf '%s\n' "$GUARD_OUT" | sed 's/^/      /'
+fi
+
+run_guard "$(payload 'rm -rf /tmp/a\b\\c/..')"
+if printf '%s' "$GUARD_OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then
+    pass "a deny naming a path with backslashes is valid JSON"
+else
+    fail "a deny naming a path with backslashes is valid JSON"
+    printf '%s\n' "$GUARD_OUT" | sed 's/^/      /'
+fi
+
+# Same exposure through $PWD, which is interpolated into the same string.
+quoted_wt="$TEST_ROOT/we\"ird"
+mkdir -p "$quoted_wt"
+GUARD_RC=0
+GUARD_OUT="$(cd "$quoted_wt" && printf '%s' "$(payload 'rm -rf ~/x')" | \
+    env -i PATH="${PATH:-}" HOME="$TEST_ROOT/home" bash "$GUARD" 2>&1)" || GUARD_RC=$?
+if printf '%s' "$GUARD_OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2>/dev/null; then
+    pass "a deny is valid JSON when the worktree path itself contains a quote"
+else
+    fail "a deny is valid JSON when the worktree path itself contains a quote"
+    printf '%s\n' "$GUARD_OUT" | sed 's/^/      /'
+fi
+
+# The reason has to survive escaping intact, not just parse.
+run_guard "$(payload 'rm -rf /tmp/a"b/..')"
+if printf '%s' "$GUARD_OUT" | python3 -c '
+import json, sys
+reason = json.load(sys.stdin)["hookSpecificOutput"]["permissionDecisionReason"]
+sys.exit(0 if "/tmp/a\"b/.." in reason else 1)
+' 2>/dev/null; then
+    pass "the deny reason still names the offending path verbatim"
+else
+    fail "the deny reason still names the offending path verbatim"
+    printf '%s\n' "$GUARD_OUT" | sed 's/^/      /'
 fi
 
 echo "Bash guard: hooks.json wiring"

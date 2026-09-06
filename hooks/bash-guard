@@ -8,6 +8,12 @@
 # Everything else exits 0 in silence. Fails open: a payload it cannot read is
 # allowed. SUPERTEAM_SKIP_VERIFY_GATE=1 bypasses the whole guard.
 #
+# Known blind spots, stated plainly: this reads the command as text, it does
+# not run it. "cd /tmp && rm -rf ./x" reads as a relative target and is
+# allowed, and a symlink pointing out of the worktree is not resolved, because
+# the $PWD containment test is a literal prefix comparison. It is a guardrail
+# against the common destructive typo, not a sandbox.
+#
 # Deny is returned as the PreToolUse permissionDecision payload on stdout with
 # exit 0 (hooks.md, "PreToolUse decision control").
 
@@ -16,9 +22,8 @@ usage() {
 Usage: bash-guard
 PreToolUse hook: denies destructive Bash commands - tmux kill-server,
 git checkout . (or -- .), git reset --hard, and rm -rf aimed at a path
-outside the current worktree ($PWD). Reads the PreToolUse JSON payload
-from stdin and prints a permissionDecision "deny" payload when it matches.
-Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
+outside the current worktree ($PWD). Reads the PreToolUse JSON payload from
+stdin. Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this gate.
 EOF
 }
 
@@ -50,7 +55,16 @@ json_unescape() {
 command_text="$(json_unescape "$(json_field "$input" "command")")"
 [ -n "$command_text" ] || exit 0
 
+# Escape a value for embedding in a JSON string. The reason quotes back paths
+# taken from the command text, and a target carrying a double quote would
+# otherwise emit malformed JSON - the one input class where the guard would
+# fail open while believing it had denied.
+json_escape() {
+    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
 deny() {
+    set -- "$(json_escape "$1")"
     cat <<EOF
 {
   "hookSpecificOutput": {
