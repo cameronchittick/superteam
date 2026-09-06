@@ -159,18 +159,81 @@ worktree subagents, whenever self-claim is required.
 
 ---
 
+## Dogfood findings (2026-09-05, 2.1.263)
+
+- `TaskCompleted` fires not only when a task is explicitly marked completed
+  via `TaskUpdate`, but also when an agent-team teammate finishes its turn
+  while still holding an in-progress task
+  (`source: https://code.claude.com/docs/en/hooks.md#taskcompleted`). A gate
+  hook that `exit 2`s in that second case re-prompts the same teammate in a
+  loop — observed for roughly 30 rounds before the fix. Shipped fix: a
+  once-per-state marker in the hook plus a "set the task back to pending and
+  end the turn idle" protocol for a genuinely blocked teammate, instead of
+  retrying the same refused completion.
+- A split-pane teammate spawned with an explicit `tools:` allowlist gets only
+  the tools that list names — no `ToolSearch`, no Task tools, no
+  `SendMessage` unless the allowlist says so — while a `disallowedTools`
+  agent keeps everything else in its pool
+  (`source: https://code.claude.com/docs/en/sub-agents.md#available-tools`).
+  7.0.0's allowlisted agents (`agents/*.md` with `tools:` set) now name the
+  team tools explicitly so a split-pane teammate isn't silently cut off from
+  them.
+- Haiku cannot run in auto mode
+  (`source: https://code.claude.com/docs/en/permission-modes.md#eliminate-prompts-with-auto-mode`):
+  a haiku teammate prompts on every command instead, and that prompt lands in
+  the lead's pane. Never spawn a haiku teammate under this design.
+- A teammate's permission prompt appears only in the lead session's pane, and
+  only a human can answer it there; a teammate stopped mid-command leaves its
+  prompt standing until dismissed, stalling the lead
+  (`source: https://code.claude.com/docs/en/agent-teams.md#permissions`). The
+  lead loop must check its own pane for these, not assume a teammate resolves
+  its own prompts.
+- `source: observed` — a split-pane teammate reads the repo's
+  `.claude/settings.local.json` allow list like any Claude Code process, but
+  a compound command (`a && b`) does not match a bare `Bash(a)` rule, and the
+  tmux pane's `PATH` is the bare system `PATH` — no `timeout`/`gtimeout` —
+  so a test suite that shells out to either fails in a teammate pane even
+  though it passes for the lead or in a plain worktree subagent.
+- `source: observed` — `SendMessage` from a teammate to the lead succeeds
+  ("sent to inbox") but is not surfaced to the lead mid-turn; a busy lead
+  only sees it once its own turn ends, so the lead loop must end turns often
+  or read task descriptions directly for verdicts rather than assuming a
+  message will interrupt it.
+- `source: observed` — in-process teammates share the session's process
+  working directory, so one teammate's `EnterWorktree` moves the lead and
+  every other in-process teammate's cwd too; a split-pane teammate is its own
+  OS process, so its `EnterWorktree` pins only itself. (Already covered as
+  Finding 3 above; repeated here because it is also a dogfood-run
+  observation, not only a spec-review conclusion.)
+- `source: observed` — the 6.10.0 completion gate looked up
+  `task-<task_id>-report.md` by the task-list ID and truncated task
+  descriptions at an escaped quote inside `json_field`; 7.0.0's gate instead
+  takes `N` from the task's subject (`Task N: ...`) and fixes the
+  `json_field` parser so an escaped quote in the description no longer cuts
+  it short.
+
+---
+
 ## Anchor check
 
 ```
 $ fail=0
 $ grep -o 'source: https://code.claude.com/docs/en/[a-z-]*\.md#[a-z0-9-]*' docs/superteam/plans/2026-09-05-agent-team-audit.md | sort -u | while read -r _ url; do
     f=".superteam/src/$(basename "${url%%#*}")"; a="${url##*#}"
-    if ! grep -E '^#+ ' "$f" | sed -E 's/^#+ //; s/[^A-Za-z0-9 -]//g' | tr 'A-Z ' 'a-z-' | grep -qx "$a"; then echo "MISSING $url"; fail=1; fi
+    if grep -E '^#+ ' "$f" | sed -E 's/^#+ //; s/[^A-Za-z0-9 -]//g' | tr 'A-Z ' 'a-z-' | grep -qx "$a"; then continue; fi
+    if grep -q "id=\"$a\"" "$f"; then continue; fi
+    echo "MISSING $url"; fail=1
   done
 $ echo "anchor check done"
 anchor check done
 ```
 
-Actual run produced no `MISSING` lines, over 34 unique citations.
+`permission-modes.md` sets some anchors as an explicit `<h2 id="...">` rather
+than a plain `#`/`##` line (e.g. `#eliminate-prompts-with-auto-mode`, whose
+visible heading text is "Eliminate *permission* prompts with auto mode" —
+the id itself omits "permission"), so the loop above falls back to matching
+a literal `id="<anchor>"` attribute when the heading-text transform misses.
 
-Tests: anchor check — 0 MISSING of 34 citations.
+Actual run produced no `MISSING` lines, over 37 unique citations.
+
+Tests: anchor check — 0 MISSING of 37 citations.
