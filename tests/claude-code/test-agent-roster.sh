@@ -138,21 +138,44 @@ main() {
         echo "    tools line: ${integrator_tools:-<none>}"
     fi
 
-    # (k) implementer/writer/integrator tools: line omits SendMessage and
-    #     TaskUpdate — those are added mechanically at teammate spawn
-    local missing_omit=0 role
+    # (k) an explicit tools: allowlist is exact — Claude Code does not add
+    #     SendMessage, ToolSearch or the Task tools to an allowlisted agent
+    #     (verified 2.1.263), so every allowlisted agent must name them
+    local f role
+    for role in implementer writer reviewer integrator researcher skeptic; do
+        f="$AGENTS/$role.md"
+        grep -q '^maxTurns: [0-9]' "$f" && pass "agents/$role.md sets maxTurns" || fail "agents/$role.md sets maxTurns"
+        grep -q '^## Claiming work (teammate)' "$f" && pass "agents/$role.md carries the claim rule" || fail "agents/$role.md carries the claim rule"
+        grep -q "ends with \`\[$role\]\`" "$f" && pass "agents/$role.md claim rule names its own role tag" || fail "agents/$role.md claim rule names its own role tag"
+        grep -qi 'never edit `~/.claude/tasks/\*\*`' "$f" && pass "agents/$role.md forbids hand-editing tasks" || fail "agents/$role.md forbids hand-editing tasks"
+        grep -q 'model: inherit' "$f" && fail "agents/$role.md must not use model: inherit" || pass "agents/$role.md has an explicit model"
+    done
     for role in implementer writer integrator; do
-        local tools_line
-        tools_line="$(grep '^tools:' "$AGENTS/$role.md" || true)"
-        if grep -qw 'SendMessage' <<<"$tools_line" || grep -qw 'TaskUpdate' <<<"$tools_line"; then
-            echo "    $role.md tools: line wrongly lists SendMessage or TaskUpdate"
-            missing_omit=$((missing_omit + 1))
+        grep -q '^tools: .*ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage' "$AGENTS/$role.md" && pass "agents/$role.md allows the team tools" || fail "agents/$role.md allows the team tools"
+    done
+    for role in implementer writer; do
+        grep -q '^tools: .*EnterWorktree, ExitWorktree' "$AGENTS/$role.md" && pass "agents/$role.md allows EnterWorktree/ExitWorktree" || fail "agents/$role.md allows EnterWorktree/ExitWorktree"
+        grep -q '^## Isolating (teammate)' "$AGENTS/$role.md" && pass "agents/$role.md has the Isolating section" || fail "agents/$role.md has the Isolating section"
+        grep -q 'first command inside it is `git merge' "$AGENTS/$role.md" && pass "agents/$role.md merges the lane first" || fail "agents/$role.md merges the lane first"
+    done
+    for role in reviewer skeptic; do
+        grep -q '^memory: project' "$AGENTS/$role.md" && pass "agents/$role.md has memory: project" || fail "agents/$role.md has memory: project"
+    done
+
+    # (l) every body opens by saying who the agent is — in split-pane mode
+    #     the body replaces the system prompt and no dispatch template
+    #     reaches it
+    local opening=0 role
+    for role in "${ROSTER[@]}"; do
+        if ! sed -n '9,14p' "$AGENTS/$role.md" | grep -q "^You are "; then
+            echo "    $role.md has no 'You are ...' opening paragraph"
+            opening=$((opening + 1))
         fi
     done
-    if [[ "$missing_omit" -eq 0 ]]; then
-        pass "implementer/writer/integrator tools: lines omit SendMessage and TaskUpdate"
+    if [[ "$opening" -eq 0 ]]; then
+        pass "every roster agent opens by saying who it is"
     else
-        fail "implementer/writer/integrator tools: lines omit SendMessage and TaskUpdate ($missing_omit offending)"
+        fail "every roster agent opens by saying who it is ($opening missing)"
     fi
 
     echo ""
