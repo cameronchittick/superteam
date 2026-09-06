@@ -346,9 +346,6 @@ Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 <verbatim>
 ```
 
-`Depends on:` is printed after `Files owned:`; it is what the
-`task-created-check` hook reads to accept an overlap with the task it names.
-
 Review descriptions add `Reviews: worktree-task-N-impl` and the rubric
 pointer (`task-reviewer-prompt.md`); merge descriptions add
 `Merge: worktree-task-N-impl → <lane>`. `Files owned:` is the same list on
@@ -362,6 +359,10 @@ scripts/task-brief --taskcreate PLAN N review LANE      → TaskCreate; TaskUpda
 scripts/task-brief --taskcreate PLAN N merge LANE       → TaskCreate; TaskUpdate addBlockedBy=<review id>
 for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
 ```
+
+`Depends on:` is printed after `Files owned:`; it is what the
+`task-created-check` hook reads to accept an overlap with the task it names.
+The line alone is not the edge: you still make that `addBlockedBy` call.
 
 The `task-created-check` hook rejects a malformed task — a subject without a
 role tag, a description without a `Files owned:` or `Done:` line, or a
