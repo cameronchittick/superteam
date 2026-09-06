@@ -224,8 +224,9 @@ Agent:
 ```
 
 **Placeholders:**
-- `model` — omit; the agent file carries the default. Override only with a
-  reason from SKILL.md Model Selection (opus for a risky diff)
+- `model` — omit; the reviewer already defaults to `opus`, so a risky diff
+  has no tier left to climb. Raise `effort` instead and say why, per SKILL.md
+  Model Selection ("Override up")
 - `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
   prints the path; same file the implementer worked from). Its `Standards:`
   line is the rulebook.
