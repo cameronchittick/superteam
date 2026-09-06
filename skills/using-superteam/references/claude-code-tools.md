@@ -1,9 +1,7 @@
 # Claude Code Tool Notes
 
-No `claude-code-tools.md` existed before this note; it is added here because
-this directory already hosts the per-platform tool-name mappings the other
-reference files use, and Claude Code's Task tools are conditional in a way
-worth spelling out once rather than in every skill that touches the ledger.
+Claude Code's Task tools are conditional; this note spells the gate out once
+so the ledger-touching skills can point here.
 
 ## Task tools (TaskCreate, TaskGet, TaskList, TaskUpdate)
 
@@ -19,8 +17,8 @@ versions of those families, Claude Code leaves these four tools (and
 `TodoWrite`) out unless you opt in with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`
 (or name one in `--allowedTools`/`--tools`). Every other model gets them by
 default. Background sessions and Claude Code on the web get them
-regardless of model. `CLAUDE_CODE_TASK_LIST_ID` scopes the shared list to a
-session for cross-session sharing. See superteam-driven-development's
+regardless of model. `CLAUDE_CODE_TASK_LIST_ID` lets several sessions share one list (in this
+repo's pilot the on-disk directory still carried the session-derived name). See superteam-driven-development's
 "Ledger" section for which of the two ledgers (live task list vs.
 plan-file) applies in a given session.
 
