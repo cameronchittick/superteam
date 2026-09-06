@@ -81,6 +81,16 @@ Name the agent; never `general-purpose`; override `model` only with a written re
 - **Agents will edit files:** `subagent_type: "superteam:implementer"` with `isolation: "worktree"` on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
 - **Agents only investigate:** `subagent_type: "superteam:researcher"`, no `isolation`. With agent teams enabled, named agents become teammates and can message each other via `SendMessage`.
 
+A worktree agent gets its task inlined into the dispatch prompt, not a path
+into your checkout: `.superteam/` and other gitignored directories don't
+exist inside its worktree, and Claude Code's worktree guard refuses reads
+through the shared-checkout path even when you pass it as an absolute
+path. Every worktree dispatch states: "All paths are relative to your cwd
+(your worktree). Never use the main checkout's absolute path; never `cd`
+out of your worktree. One simple command per Bash call." Anything an agent
+must read by path is either committed before its worktree is created or
+copied in by you afterward.
+
 Other harnesses: the same pattern with your platform's subagent dispatch; see `../using-superteam/references/`.
 
 ### 4. Review and Integrate

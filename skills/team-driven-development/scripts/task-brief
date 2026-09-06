@@ -1,16 +1,32 @@
 #!/usr/bin/env bash
-# Extract one task's full text from an implementation plan into a file the
-# implementer reads in one call, so the task text never has to be pasted
-# through the controller's context.
+# Extract one task's full text from an implementation plan.
 #
-# Usage: task-brief PLAN_FILE TASK_NUMBER [OUTFILE]
+# Usage: task-brief --print PLAN_FILE TASK_NUMBER
+#        task-brief PLAN_FILE TASK_NUMBER [OUTFILE]
+#
+# --print writes the task text to stdout instead of a file. Use this for a
+# worktree implementer: the file-mode OUTFILE lives under the lead's
+# gitignored .superteam/ workspace, which does not exist inside the IC's
+# worktree and is refused by Claude Code's worktree guard even as an
+# absolute path back into the shared checkout. Printing lets the lead paste
+# the task text straight into the dispatch prompt instead.
+#
+# File mode is unchanged, for reviewers and other teammates that run in the
+# lead's own checkout and can read a path there.
 # Default OUTFILE: <repo-root>/.superteam/sdd/<plan-basename>/task-<N>-brief.md
 # (per plan and per worktree; concurrent runs of the SAME plan in the same
 # working tree share it).
 set -euo pipefail
 
-if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-  echo "usage: task-brief PLAN_FILE TASK_NUMBER [OUTFILE]" >&2
+print_mode=false
+if [ "${1:-}" = "--print" ]; then
+  print_mode=true
+  shift
+fi
+
+if [ $# -lt 2 ] || [ $# -gt 3 ] || { [ "$print_mode" = true ] && [ $# -ne 2 ]; }; then
+  echo "usage: task-brief --print PLAN_FILE TASK_NUMBER" >&2
+  echo "       task-brief PLAN_FILE TASK_NUMBER [OUTFILE]" >&2
   exit 2
 fi
 
@@ -18,7 +34,10 @@ plan=$1
 n=$2
 [ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
 
-if [ $# -eq 3 ]; then
+if [ "$print_mode" = true ]; then
+  out=$(mktemp)
+  trap 'rm -f "$out"' EXIT
+elif [ $# -eq 3 ]; then
   out=$3
 else
   dir=$("$(cd "$(dirname "$0")" && pwd)/sdd-workspace" "$plan")
@@ -38,4 +57,8 @@ if [ ! -s "$out" ]; then
   exit 3
 fi
 
-echo "wrote ${out}: $(wc -l < "$out" | tr -d ' ') lines"
+if [ "$print_mode" = true ]; then
+  cat "$out"
+else
+  echo "wrote ${out}: $(wc -l < "$out" | tr -d ' ') lines"
+fi
