@@ -39,7 +39,7 @@ different `model` with a reason; you do not choose it.
 
 ## Shared task list
 
-You usually do not have the Task tools in a worktree; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing.
+You usually do not have the Task tools in a worktree; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing. Never edit `~/.claude/tasks/**` by hand — a task changes state only through `TaskUpdate` (yours or the lead's); a hand-edited file skips the TaskCompleted gate and is a lie about being done.
 
 ## Worktree guard: known refusals
 

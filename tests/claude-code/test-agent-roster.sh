@@ -100,6 +100,20 @@ main() {
         fail "agents/reviewer.md mentions SendMessage"
     fi
 
+    # (h) implementer/writer/integrator warn against hand-editing task files
+    local missing_hand=0 role
+    for role in implementer writer integrator; do
+        if ! grep -qF '~/.claude/tasks' "$AGENTS/$role.md"; then
+            echo "    $role.md missing '~/.claude/tasks'"
+            missing_hand=$((missing_hand + 1))
+        fi
+    done
+    if [[ "$missing_hand" -eq 0 ]]; then
+        pass "implementer/writer/integrator warn against hand-editing ~/.claude/tasks"
+    else
+        fail "implementer/writer/integrator warn against hand-editing ~/.claude/tasks ($missing_hand missing)"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."

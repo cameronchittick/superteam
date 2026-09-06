@@ -42,7 +42,7 @@ runs in the shared checkout; implementers and writers never do.
 
 ## Shared task list
 
-You usually do not have the Task tools as a subagent; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing. As an in-process teammate you cannot run background subagents or spawn teammates; run helpers in the foreground.
+You usually do not have the Task tools as a subagent; the lead claims and completes your task on the list from your report. If `TaskUpdate` is in your tool list anyway, claim it (owner=<your name>, status=in_progress) and complete it only after your `Tests:` line is written, never with failing tests or partial work; do not claim other tasks unless the lead says so — lead-crafted briefs are load-bearing. Never edit `~/.claude/tasks/**` by hand — a task changes state only through `TaskUpdate` (yours or the lead's); a hand-edited file skips the TaskCompleted gate and is a lie about being done. As an in-process teammate you cannot run background subagents or spawn teammates; run helpers in the foreground.
 
 Final report, in this order: merge sha, branch and target, conflicts
 resolved (file list, or "none"), the test command and its full output,
