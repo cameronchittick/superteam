@@ -370,7 +370,7 @@ main() {
     fi
     local phrase
     for phrase in 'docs/superteam/research/' 'primary' 'URL + section' 'file:line'; do
-        grep -qF "$phrase" "$r" \
+        grep -qiF "$phrase" "$r" \
             && pass "agents/researcher.md states: $phrase" \
             || fail "agents/researcher.md states: $phrase"
     done
