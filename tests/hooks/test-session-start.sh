@@ -238,6 +238,55 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST"
 
+step0_home="$(make_home claude-code-step0)"
+assert_command_output \
+    "Claude Code injected content mentions Step 0" \
+    "nested" \
+    "Step 0" \
+    "" \
+    "$step0_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
+step0b_home="$(make_home claude-code-step0-taskcreate)"
+assert_command_output \
+    "Claude Code injected content mentions TaskCreate" \
+    "nested" \
+    "TaskCreate" \
+    "" \
+    "$step0b_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
+teamenv_missing_home="$(make_home claude-code-team-env-missing)"
+assert_command_output \
+    "Claude Code points at superteam:setup when the team env vars are unset" \
+    "nested" \
+    "superteam:setup" \
+    "" \
+    "$teamenv_missing_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash "$HOOK_UNDER_TEST"
+
+teamenv_set_home="$(make_home claude-code-team-env-set)"
+assert_command_output \
+    "Claude Code stays quiet about setup once both team env vars are set" \
+    "nested" \
+    "" \
+    "superteam:setup" \
+    "$teamenv_set_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 \
+    CLAUDE_CODE_ENABLE_TODO_TOOLS=1 \
+    bash "$HOOK_UNDER_TEST"
+
+skill_line_count="$(wc -l < "$REPO_ROOT/skills/using-superteam/SKILL.md")"
+if [[ "$skill_line_count" -le 67 ]]; then
+    pass "using-superteam SKILL.md is at most 67 lines (got $skill_line_count)"
+else
+    fail "using-superteam SKILL.md is at most 67 lines (got $skill_line_count)"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

@@ -50,15 +50,19 @@ fi
 
 input="$(cat 2>/dev/null || true)"
 
+# Placeholder for an escaped quote (\") inside a JSON string value. BSD
+# sed's BRE has no alternation, so [^"]* stops at the first escaped quote
+# and truncates the value -- a "Verified:" line after any quoted word in
+# the description was invisible. Swapping \" for a control character that
+# cannot appear in JSON text keeps the whole value; json_unescape puts it
+# back.
+JSON_ESCQ="$(printf '\001')"
+
 # Extract a JSON string field's raw (still-escaped) value from a
 # single-line-collapsed JSON blob. Tolerates pretty-printed (multi-line)
 # JSON since we collapse newlines to spaces first.
-# ponytail: doesn't handle a literal escaped quote (\") inside the value --
-# BSD sed's BRE has no alternation, so a fully quote-safe parse would need
-# a real JSON parser. Task metadata doesn't carry embedded quotes in
-# practice; revisit if that changes.
 json_field() {
-    printf '%s' "$1" | tr '\n' ' ' | \
+    printf '%s' "$1" | tr '\n' ' ' | sed "s/\\\\\"/$JSON_ESCQ/g" | \
         sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
         head -1
 }
@@ -66,7 +70,7 @@ json_field() {
 # Unescape the common JSON escapes so line-based grep works on the value.
 json_unescape() {
     printf '%s' "$1" | sed -e 's/\\n/\
-/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g'
+/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g' -e "s/$JSON_ESCQ/\"/g"
 }
 
 task_id="$(json_field "$input" "task_id")"
@@ -96,14 +100,19 @@ cwd="$(json_unescape "$(json_field "$input" "cwd")")"
 # Numeric part of task_id: "4" -> "4", "task-004" -> "004" (also try the
 # leading-zero-stripped form so both naming conventions match a report
 # named task-4-report.md or task-004-report.md).
+# The plan number in the subject wins over the list id: once review and
+# merge tasks exist, list ids and plan numbers diverge (task_id 17 can be
+# "Task 4: review", whose report is task-4-report.md).
+subj_n="$(printf '%s' "$task_subject" | sed -n 's/^Task \([0-9]*\):.*/\1/p')"
 digits="$(printf '%s' "$task_id" | sed 's/[^0-9]//g')"
 digits_stripped="$(printf '%s' "$digits" | sed 's/^0*//')"
 [ -n "$digits_stripped" ] || digits_stripped="0"
 
 report_found=""
-if [ -n "$digits" ]; then
+if [ -n "$digits" ] || [ -n "$subj_n" ]; then
     shopt -s nullglob
-    for n in "$digits" "$digits_stripped"; do
+    for n in "$subj_n" "$digits" "$digits_stripped"; do
+        [ -n "$n" ] || continue
         for f in "$cwd"/.superteam/sdd/*/task-"$n"-report.md; do
             [ -f "$f" ] || continue
             if grep -qE '^(Tests|Verified|Evidence):[[:space:]]*[^[:space:]]' "$f"; then
@@ -118,6 +127,27 @@ fi
 if [ -n "$report_found" ]; then
     exit 0
 fi
+
+# TaskCompleted also fires when a teammate ends a turn with an in-progress
+# task, so an unchanged rejection can repeat every turn (seen live: ~30 times
+# for one teammate waiting on its lead). Remember the rejected state and say
+# it once. The state key changes whenever the description changes, so real
+# progress always gets the full feedback again. Never exit 0 without
+# evidence: a repeat is still a rejection, just a quieter one.
+teammate_name="$(json_unescape "$(json_field "$input" "teammate_name")")"
+team_name="$(json_unescape "$(json_field "$input" "team_name")")"
+tasks_dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team_name}}"
+state_key="$(printf '%s-%s-%s' \
+    "$(printf '%s' "${teammate_name:-none}" | tr -c 'A-Za-z0-9_.-' '_')" \
+    "$(printf '%s' "$task_id" | tr -c 'A-Za-z0-9_.-' '_')" \
+    "$(printf '%s' "$task_description" | cksum | tr -d ' ')")"
+marker="$tasks_dir/.gate/$state_key"
+
+if [ -f "$marker" ]; then
+    echo "Gate already rejected this state. If you are waiting on the lead, run TaskUpdate status=pending (keep owner) and end your turn; otherwise add the Verified: line." >&2
+    exit 2
+fi
+mkdir -p "$tasks_dir/.gate" 2>/dev/null && : > "$marker" 2>/dev/null
 
 echo "No verification evidence for this task: add a 'Verified: <what you ran>' or 'Evidence: <what you ran>' line to the task description, or a 'Tests:'/'Verified:'/'Evidence:' line with a value to \${cwd}/.superteam/sdd/*/task-${digits:-N}-report.md." >&2
 exit 2

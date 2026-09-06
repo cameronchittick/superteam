@@ -13,6 +13,28 @@
         ]
       }
     ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" task-created-check",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" teammate-idle-claim",
+            "shell": "bash"
+          }
+        ]
+      }
+    ],
     "TaskCompleted": [
       {
         "hooks": [

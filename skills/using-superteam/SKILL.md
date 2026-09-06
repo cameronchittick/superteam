@@ -23,6 +23,10 @@ This is not negotiable. You cannot rationalize your way out of this.
 
 Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it has a checklist, create a todo per item.
 
+## Step 0: how many agents
+
+Team mode = `TaskCreate` in your tools + interactive (not `-p`) + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; otherwise foreground subagents. One answer or one file set → a subagent (`isolation: worktree` when it edits); a worker that reports and stays → a teammate (named `Agent`, no isolation); 3+ plan tasks or 3+ hypotheses → a team of 3–5 role teammates on the task graph; another repo or a second lead → a cross-session peer via `SendMessage`. Cost: one context per agent, so a team is N contexts on one shared list.
+
 ## Skill Priority
 
 When multiple skills apply, process skills come first — they set the approach, then implementation skills (frontend-design, etc.) carry it out. Brainstorming and systematic-debugging are Superteam' most common process skills, but the rule holds for any of them.

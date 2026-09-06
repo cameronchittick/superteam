@@ -66,6 +66,14 @@ Present the two reports under `## Standards` and `## Spec` headings, verbatim or
 - Note Minor issues for later
 - Push back if reviewer is wrong (with reasoning)
 
+## Team mode
+
+**Detect:** `TaskCreate` in your tools, teams on, interactive — else use the fallback below.
+
+Spawn `review-spec` and `review-standards` as reviewer teammates (named `Agent`, no isolation) filling the same [standards-reviewer.md](standards-reviewer.md) and [spec-reviewer.md](spec-reviewer.md) prompts as the fallback. Add optional `lens-<name>` reviewers — security, performance, a11y — each carrying one extra lens sentence in its prompt. Each reviewer completes its own review task when the list is live; the lead concatenates findings in spawn order (`## Standards`, `## Spec`, one `## <lens>` per lens reviewer) and never reranks across them.
+
+**Fallback:** two `superteam:reviewer` subagents dispatched in one message, per "4. Dispatch BOTH reviewers in one message" above.
+
 ## Why two axes
 
 A change can pass one axis and fail the other:

@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# TeammateIdle hook for superteam. Role-aware: derives the idle teammate's
+# role from the team config member's agentType ("superteam:<role>") at
+# ${SUPERTEAM_TEAMS_DIR:-~/.claude/teams}/<team_name>/config.json, else
+# SUPERTEAM_ROLE_<NAME> (name upper-cased, "-" -> "_"); if a pending,
+# unowned, unblocked "Task N:" task tagged with that role exists, exits 2
+# with 'claim "<subject>"' so the teammate keeps working. Never names
+# another role's task. Fails open (exit 0) on anything unexpected.
+#
+# Three ways it stays quiet, so a teammate is never nudged in a loop:
+#   - it owns an in_progress task (it already has work);
+#   - nothing changed: <tasks dir>/.idle/<teammate> records the last nudged
+#     task id and the tasks dir mtime, and an unchanged pair exits 0;
+#   - the task is declined: <tasks dir>/.declined/<teammate> holds one task
+#     id per line, written by the teammate itself when it declines a task for
+#     a stated reason. This hook only reads that file, never writes it, and a
+#     listed id is never offered to that teammate again.
+
+usage() {
+    cat <<'EOF'
+Usage: teammate-idle-claim
+TeammateIdle hook: exits 2 with 'claim "<subject>"' when a pending, unowned,
+unblocked "Task N:" task of the idle teammate's role exists; else exit 0.
+Reads the TeammateIdle JSON payload from stdin.
+Set SUPERTEAM_SKIP_VERIFY_GATE=1 to bypass this hook.
+EOF
+}
+
+[ "${1:-}" = "--help" ] && { usage; exit 0; }
+[ "${SUPERTEAM_SKIP_VERIFY_GATE:-}" = "1" ] && exit 0
+
+input="$(cat 2>/dev/null || true)"
+
+# Placeholder for an escaped quote (\") inside a JSON string value; see the
+# same comment in hooks/task-completed-verify. BSD sed's BRE has no
+# alternation, so [^"]* would truncate a value at its first escaped quote.
+JSON_ESCQ="$(printf '\001')"
+
+json_field() {
+    printf '%s' "$1" | tr '\n' ' ' | sed "s/\\\\\"/$JSON_ESCQ/g" | \
+        sed -n 's/.*"'"$2"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | \
+        head -1
+}
+
+json_unescape() {
+    printf '%s' "$1" | sed -e 's/\\n/\
+/g' -e 's/\\"/"/g' -e 's/\\\\/\\/g' -e "s/$JSON_ESCQ/\"/g"
+}
+
+name="$(json_field "$input" "teammate_name")"
+[ -n "$name" ] || exit 0
+
+team="$(json_field "$input" "team_name")"
+cfg="${SUPERTEAM_TEAMS_DIR:-$HOME/.claude/teams}/$team/config.json"
+
+role=""
+if [ -f "$cfg" ]; then
+    # member object for this name -> its agentType; superteam:<role> -> <role>.
+    # [^}]* keeps the match inside one member object.
+    role="$(tr '\n' ' ' < "$cfg" | sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"'"$name"'"[^}]*"agentType"[[:space:]]*:[[:space:]]*"superteam:\([a-z]*\)".*/\1/p' | head -1)"
+fi
+if [ -z "$role" ]; then
+    envname="SUPERTEAM_ROLE_$(printf '%s' "$name" | tr 'a-z-' 'A-Z_')"
+    role="$(printenv "$envname" 2>/dev/null || true)"
+fi
+case "$role" in
+    implementer|writer|reviewer|integrator|researcher|skeptic) ;;
+    *) exit 0 ;;
+esac
+
+dir="${SUPERTEAM_TASKS_DIR:-$HOME/.claude/tasks/${CLAUDE_CODE_TASK_LIST_ID:-$team}}"
+[ -d "$dir" ] || exit 0
+
+safe_name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9_.-' '_')"
+
+# Declined tasks: one task id per line in <tasks dir>/.declined/<teammate>.
+# A teammate writes its own file when it declines a task for a stated reason;
+# nothing here ever writes it. An id listed there is never offered again.
+declined_file="$dir/.declined/$safe_name"
+
+# Idle state: <tasks dir>/.idle/<teammate> holds "<last nudged id> <dir mtime>".
+# Created before the mtime is read so making the directory does not itself
+# look like a change.
+mkdir -p "$dir/.idle" 2>/dev/null
+idle_file="$dir/.idle/$safe_name"
+dir_mtime="$(date -r "$dir" +%s 2>/dev/null || echo 0)"
+last_id=""
+last_mtime=""
+if [ -f "$idle_file" ]; then
+    read -r last_id last_mtime < "$idle_file" || true
+fi
+
+# A teammate already holding work is never nudged.
+for f in "$dir"/*.json; do
+    [ -f "$f" ] || continue
+    t="$(tr '\n' ' ' < "$f")"
+    [ "$(json_field "$t" "status")" = "in_progress" ] || continue
+    [ "$(json_field "$t" "owner")" = "$name" ] || continue
+    exit 0
+done
+
+# id -> 0 if that task file is completed (or missing)
+is_done() {
+    local f="$dir/$1.json"
+    [ -f "$f" ] || return 0
+    [ "$(json_field "$(tr '\n' ' ' < "$f")" "status")" = "completed" ]
+}
+
+# Task files are named by their id; lowest id wins. Sort the bare ids
+# numerically -- sorting whole paths is lexicographic, which puts 10 before 2.
+for id in $(ls "$dir" 2>/dev/null | sed -n 's/\.json$//p' | sort -n); do
+    f="$dir/$id.json"
+    [ -f "$f" ] || continue
+    t="$(tr '\n' ' ' < "$f")"
+    [ "$(json_field "$t" "status")" = "pending" ] || continue
+    [ -z "$(json_field "$t" "owner")" ] || continue
+    subj="$(json_unescape "$(json_field "$t" "subject")")"
+    printf '%s' "$subj" | grep -qE "^Task [0-9]+:.*\[$role\]$" || continue
+    if [ -f "$declined_file" ] && grep -qx "$id" "$declined_file"; then
+        continue
+    fi
+    blocked=0
+    for dep in $(printf '%s' "$t" | sed -n 's/.*"blockedBy"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' | tr -d '" ' | tr ',' ' '); do
+        is_done "$dep" || { blocked=1; break; }
+    done
+    [ "$blocked" -eq 0 ] || continue
+    # Same task, nothing changed on the list since the last nudge: let it idle
+    # rather than re-prompting a teammate that has already been told.
+    if [ "$id" = "$last_id" ] && [ "$dir_mtime" = "$last_mtime" ]; then
+        exit 0
+    fi
+    printf '%s %s\n' "$id" "$dir_mtime" > "$idle_file" 2>/dev/null
+    echo "claim \"$subj\" — TaskUpdate owner=$name status=in_progress, then do it." >&2
+    exit 2
+done
+
+exit 0

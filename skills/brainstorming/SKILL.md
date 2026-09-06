@@ -103,6 +103,14 @@ your path and complete them in order.
 9. **User reviews written spec** — ask user to review the spec file before proceeding
 10. **Transition to implementation** — invoke writing-plans skill to create implementation plan
 
+## Team mode
+
+**Detect:** `TaskCreate` in your tools, teams on, interactive — else use the fallback below.
+
+When your human partner accepts the skeptic pass offer (Architectural checklist step 5), spawn `skeptic-1` as a live teammate rather than a one-shot subagent. It stays for the rest of the session and re-runs its kill/keep/shrink pass on each revised approach as the design iterates, instead of being redispatched fresh each time.
+
+**Fallback:** dispatch `superteam:skeptic` as a subagent per pass, as written in checklist step 5 above.
+
 ## Process Flow
 
 ```dot

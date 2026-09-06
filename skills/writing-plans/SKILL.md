@@ -151,6 +151,11 @@ ledger parses this line and wires each dependency into `addBlockedBy` on
 the shared task list, so the exact format is what makes a task
 machine-mappable, not just human-readable.
 
+**Task subjects on that list.** Each plan task becomes `Task N: <step>
+[role]` — step in {implement, review, merge, fix <round>, review <round>};
+N is unique for the life of the list, never restarting at 1. Everything else
+is an imperative verb phrase — full rules in superteam-driven-development.
+
 ## No Placeholders
 
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:

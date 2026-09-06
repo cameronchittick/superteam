@@ -280,6 +280,10 @@ exit 0
 
 `chmod +x hooks/teammate-idle-claim`. Ordering: task files are named by numeric id; sort numerically so the lowest id wins. The sed for `agentType` assumes `name` precedes `agentType` inside one member object (it does in 2.1.263 configs); if the name appears in an earlier member's field the `[^}]*` bound keeps the match inside one object.
 
+- [ ] **Step 7a: json_field survives escaped quotes (all three hooks)**
+
+`json_field` stops at the first `\"` inside a value, so a `Verified:` line after any quoted word in the description is invisible (found in a spike: a description containing `"Hooks"` never passed the gate). In each hook, before extracting, replace the two-character sequence backslash-quote with a placeholder that cannot occur in JSON text, e.g. `sed 's/\\"/\x01/g'` (BSD sed: use a literal control char via `$(printf '\001')`), extract with the existing `[^"]*` pattern, then map the placeholder back to `"` in `json_unescape`. Test: a TaskCompleted payload whose description is `"see the \"Hooks\" section\nVerified: ran tests"` → exit 0; the same payload without the Verified line → exit 2.
+
 - [ ] **Step 7b: task-completed-verify takes N from the subject**
 
 Before the `digits=` line add: `subj_n="$(printf '%s' "$task_subject" | sed -n 's/^Task \([0-9]*\):.*/\1/p')"` and loop `for n in "$subj_n" "$digits" "$digits_stripped"` (skip empty). Add one assertion: subject `Task 4: implement [implementer]` with `task_id` `17` and a report at `task-4-report.md` → exit 0. Existing 11 assertions stay green.
@@ -418,10 +422,10 @@ Frontmatter after this task:
 
 | agent | model | effort | maxTurns | memory | tools / disallowedTools | isolation |
 | --- | --- | --- | --- | --- | --- | --- |
-| implementer | sonnet | medium | 60 | — | `tools: Read, Edit, Write, Bash, Glob, Grep, Skill, EnterWorktree, ExitWorktree` | worktree |
+| implementer | sonnet | medium | 60 | — | `tools: Read, Edit, Write, Bash, Glob, Grep, Skill, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage, EnterWorktree, ExitWorktree` | worktree |
 | writer | sonnet | medium | 60 | — | same as implementer | worktree |
 | reviewer | sonnet | high | 30 | project | `disallowedTools: Edit, Write, NotebookEdit` | — |
-| integrator | sonnet | medium | 20 | — | `tools: Bash, Read, Glob, Grep, Edit` | — |
+| integrator | sonnet | medium | 20 | — | `tools: Bash, Read, Glob, Grep, Edit, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage` | — |
 | researcher | sonnet | medium | 30 | — | `disallowedTools: Edit, Write, NotebookEdit` | — |
 | skeptic | opus | high | 30 | project | `disallowedTools: Edit, Write, NotebookEdit` | — |
 
@@ -443,6 +447,9 @@ for role in implementer writer reviewer integrator researcher skeptic; do
     grep -q "ends with \`\[$role\]\`" "$f" && pass "agents/$role.md claim rule names its own role tag" || fail "agents/$role.md claim rule names its own role tag"
     grep -qi 'never edit `~/.claude/tasks/\*\*`' "$f" && pass "agents/$role.md forbids hand-editing tasks" || fail "agents/$role.md forbids hand-editing tasks"
     grep -q 'model: inherit' "$f" && fail "agents/$role.md must not use model: inherit" || pass "agents/$role.md has an explicit model"
+done
+for role in implementer writer integrator; do
+    grep -q '^tools: .*ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md allows the team tools" || fail "agents/$role.md allows the team tools"
 done
 for role in implementer writer; do
     grep -q '^tools: .*EnterWorktree, ExitWorktree' "$REPO_ROOT/agents/$role.md" && pass "agents/$role.md allows EnterWorktree/ExitWorktree" || fail "agents/$role.md allows EnterWorktree/ExitWorktree"
@@ -468,7 +475,7 @@ Structure (same for writer, with "prose" in place of "code" and `Verified:` in p
 4. Existing numbered work rules 2–8 (keep the guard section and the "relative paths" text verbatim — `tests/claude-code/test-dispatch-template.sh` greps `relative to your cwd` and `mkdir -p` in the prompt file, not here, but keep them anyway).
 5. `## Report`: existing final-report order; report file at `.superteam/sdd/<plan>/task-N-report.md`; ends with `Tests:` line; as a teammate, complete the task after the file is written.
 6. `## Never`: existing list plus "run anything with `background`", "spawn teammates or a nested team (foreground subagents only)", "edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand", "end a turn with a command running".
-7. Last line: "As a teammate you run at the lead's effort, not this file's `effort`; Claude Code adds SendMessage, the Task tools and the worktree tools when the lead has them; the `skills` field is ignored — invoke skills by name with `Skill`."
+7. Last line: "As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; the `skills` field is ignored — invoke skills by name with `Skill`."
 
 Delete the old `## Shared task list` section and the old "When spawned as a teammate…" line.
 
@@ -535,7 +542,7 @@ Run: `bash tests/claude-code/test-superteam-driven-development.sh`
 
 Replace `## Setup`, `## Ledger`, `## The Task Loop` and `## The Process` graph with:
 
-- `## Modes` — the spec's "Modes" paragraph verbatim; the lead states the mode once.
+- `## Modes` — the spec's "Modes" paragraph verbatim; the lead states the mode once. Team mode requires split-pane teammates (`teammateMode: "tmux"` in the repo's `.claude/settings.local.json` or `--teammate-mode tmux`), because an in-process teammate's `EnterWorktree` moves the whole session's cwd; in-process teammates are only for roles that never enter a worktree (reviewer, integrator, researcher, skeptic).
 - `## Setup` — lane branch and workspace (keep the existing text); then in team mode: pre-approval (write the allow-list of the plan's test/lint/git commands to `.claude/settings.local.json`; ask the lead before touching committed `.claude/settings.json`; never `--dangerously-skip-permissions`; never ask a peer session to run a command you were denied); build the graph; spawn the role pool; state the mode.
 - `## Task graph` — the spec's table and description block (minus `Role:`/`Model:`, which the emitter does not print); the exact commands:
   ```
@@ -546,7 +553,7 @@ Replace `## Setup`, `## Ledger`, `## The Task Loop` and `## The Process` graph w
   ```
   The `task-created-check` hook rejects a malformed task: fix the description and recreate. Fix rounds: `Task N: fix <r> [implementer]` blockedBy review, `Task N: review <r> [reviewer]` blockedBy fix, merge addBlockedBy the new review. Files owned on fix/review tasks repeat the family's list.
 - `## Role pool` — sizing default (1 implementer + 1 reviewer + 1 integrator ≤ 6 tasks; +1 implementer per 5; cap 5; writer replaces implementer for prose plans); spawn each with a named `Agent` call, no `isolation`, `subagent_type: "superteam:<role>"`, prompt = "You are `<name>`. Your tasks are on the shared list; claim per your agent body. Lane: `<lane>`. Model: `<model>`."; names `impl-1`, `writer-1`, `reviewer-1`, `integrator-1`; model precedence spawn prompt > definition > `CLAUDE_CODE_SUBAGENT_MODEL` > lead.
-- `## Monitor loop` — idle notification is the report; `TaskList`; nudge by name when in_progress and no commit/report after one monitor pass; reassign by resetting to pending and messaging; on a review verdict create fix/review pairs; rulings still go to `progress.md`; the lead never implements, never claims an implement/review/merge task. Keep the existing fix-loop breaker (5 rounds) and the rulings text.
+- `## Monitor loop` — completion is two `TaskUpdate` calls: first the description with the `Verified:` line, then `status=completed` (a combined call that the gate rejects loses the description too); idle notification is the report; `TaskList`; nudge by name when in_progress and no commit/report after one monitor pass; reassign by resetting to pending and messaging; on a review verdict create fix/review pairs; rulings still go to `progress.md`; the lead never implements, never claims an implement/review/merge task. Keep the existing fix-loop breaker (5 rounds) and the rulings text.
 - `## Restart` — the spec's restart paragraph.
 - `## Fallback` — "Task tools absent, teams off, or `-p`": the current 6.10.0 text (worktree subagents, lead claims/completes, plan-file ledger) moved here verbatim.
 - Update the dot graph so nodes read "Lead creates Task N graph", "implementer self-claims, EnterWorktree, git merge lane", "reviewer self-claims", "integrator self-claims, merges", and the fix-round nodes.
@@ -622,7 +629,7 @@ Team mode = `TaskCreate` in your tools + interactive (not `-p`) + `CLAUDE_CODE_E
 
 The full decision table lives in `references/claude-code-tools.md` (Step 4). Remove nothing else; verify `wc -l` ≤ 67.
 
-- [ ] **Step 4: references/claude-code-tools.md** — rewrite: `## Step 0 decision table` (Need / Use / Cost rows: one answer → subagent, 1 context; a worker that stays → teammate, 1 context + mailbox; 3+ tasks or hypotheses → team of 3–5, N contexts on one list; another repo → cross-session peer PM, separate session); Task tools table (keep); availability gate (keep, fix the pilot parenthetical: `CLAUDE_CODE_TASK_LIST_ID` names the on-disk dir, verified 2.1.263); launch rule (keep); add sections `## Team files` (`~/.claude/teams/<team>/config.json` with `members`, per-teammate mailboxes, task dir `~/.claude/tasks/<list>/`; never hand-edit; teammates discover peers via config.json and may message across roles), `## Model precedence` (spawn prompt > definition `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > lead), `## teammateMode` (`auto|in-process|tmux`; in split-pane/tmux mode the agent body replaces the system prompt — bodies must be self-sufficient), `## Effort` (frontmatter honoured for subagents, inherited for teammates), `## Known bug` (subagents never receive Task tools on 2.1.263; repro: agent with `tools: Read, TaskList` gets only Read).
+- [ ] **Step 4: references/claude-code-tools.md** — rewrite: `## Step 0 decision table` (Need / Use / Cost rows: one answer → subagent, 1 context; a worker that stays → teammate, 1 context + mailbox; 3+ tasks or hypotheses → team of 3–5, N contexts on one list; another repo → cross-session peer PM, separate session); Task tools table (keep); availability gate (keep, fix the pilot parenthetical: `CLAUDE_CODE_TASK_LIST_ID` names the on-disk dir, verified 2.1.263); launch rule (keep); add sections `## Team files` (`~/.claude/teams/<team>/config.json` with `members`, per-teammate mailboxes, task dir `~/.claude/tasks/<list>/`; never hand-edit; teammates discover peers via config.json and may message across roles), `## Model precedence` (spawn prompt > definition `model` > `CLAUDE_CODE_SUBAGENT_MODEL` > lead), `## teammateMode` (`auto|in-process|tmux`; in split-pane/tmux mode the agent body replaces the system prompt — bodies must be self-sufficient; a split-pane teammate is its own process: it gets its env from the tmux SESSION environment, not from the lead process, so `CLAUDE_CODE_TASK_LIST_ID` must be set on the tmux session (or in settings `env`) or the teammate claims on the wrong list; Task tools arrive deferred and load via ToolSearch; Glob and Grep are absent; its permission prompts surface in the lead pane, so pre-approve in `.claude/settings.local.json`; in-process teammates share the session cwd, so `EnterWorktree` from one moves everyone), `## Effort` (frontmatter honoured for subagents, inherited for teammates), `## Known bug` (subagents never receive Task tools on 2.1.263; repro: agent with `tools: Read, TaskList` gets only Read).
 - [ ] **Step 5: README.md** — in the setup section require both env vars (with a `~/.zshrc` export block), recommend `"subagentPromptCacheTtl": "1h"` in settings, team size 3–5, 5–6 tasks per teammate; update "### Agent-team hooks" to list the three hooks and what each rejects; state that other harnesses use the fallback path.
 - [ ] **Step 6: hooks/session-start** — no logic change unless the Step 0 header must be stripped for other harnesses: the Claude Code branch injects SKILL.md minus "## Platform Adaptation"; other branches inject the full file. Leave as is unless the test in Step 1 fails on it.
 - [ ] **Step 7: Run** `bash tests/hooks/test-session-start.sh && test "$(wc -l < skills/using-superteam/SKILL.md)" -le 67` — expect PASS.

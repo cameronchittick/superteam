@@ -2,7 +2,14 @@
 # Extract one task's full text from an implementation plan.
 #
 # Usage: task-brief --print PLAN_FILE TASK_NUMBER
+#        task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]
 #        task-brief PLAN_FILE TASK_NUMBER [OUTFILE]
+#
+# --taskcreate emits a ready-to-paste TaskCreate subject (line 1) and
+# description (from line 3) for one node of the task graph: the implement,
+# review or merge task for plan task N. The subject's [role] tag carries the
+# role and the pool's model is set at spawn, so the body has no Role:/Model:
+# line.
 #
 # --print writes the task text to stdout instead of a file. Use this for a
 # worktree implementer: the file-mode OUTFILE lives under the lead's
@@ -18,6 +25,90 @@
 # working tree share it).
 set -euo pipefail
 
+if [ "${1:-}" = "--taskcreate" ]; then
+  shift
+  if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+    echo "usage: task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]" >&2
+    exit 2
+  fi
+  plan=$1
+  n=$2
+  kind=$3
+  if [ $# -eq 4 ]; then
+    lane=$4
+  else
+    lane=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
+  fi
+  [ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+  case "$kind" in
+    implement|review|merge) ;;
+    *) echo "kind must be implement, review or merge" >&2; exit 2 ;;
+  esac
+
+  brief=$(awk -v n="$n" '
+    /^```/ { infence = !infence }
+    !infence && /^#+[ \t]/ {
+      hashes = $0; sub(/[^#].*/, "", hashes); level = length(hashes)
+      if ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)")) {
+        intask = 1; tasklevel = level
+      } else if (intask && (level <= tasklevel || $0 ~ /^#+[ \t]+Task[ \t]+[0-9]+/)) {
+        intask = 0
+      }
+    }
+    intask { print }
+  ' "$plan")
+  [ -n "$brief" ] || { echo "task ${n} not found in ${plan}" >&2; exit 3; }
+
+  constraints=$(awk '
+    /^## Global Constraints/ { on = 1; next }
+    on && /^(## |---)/ { exit }
+    on { print }
+  ' "$plan")
+
+  owned=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Files owned:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  tier=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Model tier:\*\*[[:space:]]*//p' | head -1)
+  role=implementer
+  if printf '%s' "$tier" | grep -qw prose; then
+    role=writer
+  fi
+  spec=$(sed -n 's/^\*\*Spec:\*\*[[:space:]]*//p' "$plan" | head -1 | tr -d '`')
+  [ -n "$spec" ] || spec=none
+  base=$(basename "$plan" .md)
+  wt="task-${n}-impl"
+
+  case "$kind" in
+    implement)
+      echo "Subject: Task ${n}: implement [${role}]"
+      echo
+      ;;
+    review)
+      echo "Subject: Task ${n}: review [reviewer]"
+      echo
+      echo "Reviews: worktree-${wt}"
+      echo "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md"
+      ;;
+    merge)
+      echo "Subject: Task ${n}: merge [integrator]"
+      echo
+      echo "Merge: worktree-${wt} → ${lane}"
+      ;;
+  esac
+  echo "Plan: ${plan}   Spec: ${spec}"
+  echo "Lane: ${lane}"
+  echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
+  echo "Files owned: ${owned}"
+  case "$kind" in
+    implement) echo "Done: report at .superteam/sdd/${base}/task-${n}-report.md with a \`Tests:\` line" ;;
+    review)    echo "Done: verdict in .superteam/sdd/${base}/task-${n}-review.md with a \`Verified:\` line" ;;
+    merge)     echo "Done: merge sha of worktree-${wt} into ${lane} with a \`Tests:\` line from the full suite" ;;
+  esac
+  echo "## Task Brief"
+  printf '%s\n' "$brief"
+  echo "## Global Constraints"
+  printf '%s\n' "$constraints"
+  exit 0
+fi
+
 print_mode=false
 if [ "${1:-}" = "--print" ]; then
   print_mode=true
@@ -26,6 +117,7 @@ fi
 
 if [ $# -lt 2 ] || [ $# -gt 3 ] || { [ "$print_mode" = true ] && [ $# -ne 2 ]; }; then
   echo "usage: task-brief --print PLAN_FILE TASK_NUMBER" >&2
+  echo "       task-brief --taskcreate PLAN_FILE TASK_NUMBER implement|review|merge [LANE]" >&2
   echo "       task-brief PLAN_FILE TASK_NUMBER [OUTFILE]" >&2
   exit 2
 fi
@@ -44,10 +136,17 @@ else
   out="$dir/task-${n}-brief.md"
 fi
 
+# A task block ends at the next heading of the same or higher level, whatever
+# its text — otherwise the last task swallows a trailing "## Finish" section.
 awk -v n="$n" '
   /^```/ { infence = !infence }
-  !infence && /^#+[ \t]+Task[ \t]+[0-9]+/ {
-    intask = ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)"))
+  !infence && /^#+[ \t]/ {
+    hashes = $0; sub(/[^#].*/, "", hashes); level = length(hashes)
+    if ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)")) {
+      intask = 1; tasklevel = level
+    } else if (intask && (level <= tasklevel || $0 ~ /^#+[ \t]+Task[ \t]+[0-9]+/)) {
+      intask = 0
+    }
   }
   intask { print }
 ' "$plan" > "$out"
