@@ -42,22 +42,23 @@ stop and ask.
 digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
     "Tasks mostly independent?" [shape=diamond];
-    "Stay in this session?" [shape=diamond];
+    "Harness has agent teams?" [shape=diamond];
     "superteam-driven-development" [shape=box];
-    "executing-plans" [shape=box];
+    "executing-plans (fallback)" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
     "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
     "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
-    "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
+    "Tasks mostly independent?" -> "Harness has agent teams?" [label="yes"];
     "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
-    "Stay in this session?" -> "superteam-driven-development" [label="yes"];
-    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+    "Harness has agent teams?" -> "superteam-driven-development" [label="yes"];
+    "Harness has agent teams?" -> "executing-plans (fallback)" [label="no"];
 }
 ```
 
-**vs. Executing Plans (parallel session):**
-- Same session (no context switch)
+**What this adds over superteam:executing-plans, the fallback for harnesses
+without agent teams:**
+- One seat per role, all in this session (no context switch)
 - Fresh IC per task, each in its own worktree (no context pollution, no
   file collisions)
 - Review after each task (spec compliance + code quality), broad review at the end
@@ -66,13 +67,13 @@ digraph when_to_use {
 ## Two kinds of IC
 
 The roster (`agents/*.md`, invoked as `superteam:<name>`) has two shapes.
-Worktree subagents that write: **implementer** (code, TDD, commits) and
-**writer** (prose deliverables — docs, drafts — same call shape, no TDD).
-Read-only seats with no isolation: **reviewer** (a teammate; every review
-seat in this skill), **researcher** (investigation that returns a
-conclusion), **skeptic** (pre-build objections; never sees a diff), and
-**integrator** (the one seat that mutates your checkout: merges, cleanup,
-version bumps — one at a time). Four rules bind every dispatch:
+Seats that write: **implementer** (code, TDD, commits) and **writer** (prose
+deliverables — docs, drafts — the same seat, no TDD). Read-only seats with no
+isolation: **reviewer** (every review seat in this skill), **researcher**
+(investigation that returns a conclusion), **skeptic** (pre-build objections;
+never sees a diff), and **integrator** (the one seat that mutates your
+checkout: merges, cleanup, version bumps — one at a time). Five rules bind
+every seat:
 
 1. **Name the agent.** Every `Agent` call uses `subagent_type: "superteam:<role>"`; the harness-generic agent name appears only in the other-harness fallback comment.
 2. **The agent carries the model.** Each agent file sets `model` and `effort`; a call overrides `model` only with a reason from Model Selection written next to it.
@@ -83,40 +84,34 @@ version bumps — one at a time). Four rules bind every dispatch:
 The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
 
-**In team mode the same roster spawns once, as a pool of teammates that
-self-claim** (see "## Role pool"), and the call shapes below describe the
-fallback dispatch. The one change team mode makes to a seat: the implementer
-and writer take no `isolation` on the call and isolate themselves with
-`EnterWorktree` after claiming, which is why they must be split-pane
-teammates.
+**Implementer and writer — the writing seat.** In team mode this seat is a
+split-pane teammate, spawned once into the role pool with **no `isolation`**
+(see "## Role pool"). It claims `Task N: implement` (or `[writer]`) from the
+shared list, runs `EnterWorktree` with the description's `Worktree:` name,
+and makes `git merge <lane>` the first command inside it. It commits on its
+own branch and reports; the integrator merges. Split panes are not optional
+for this seat: an in-process teammate shares your session's process cwd, so
+its `EnterWorktree` moves you and every other teammate with it — a dogfood
+run landed three implementers' edits in one worktree that way.
 
-**Implementer** — a named subagent with worktree isolation. It writes code,
-commits on its own branch, and reports; the integrator merges. The call shape:
+Fallback mode dispatches the same seat as a named subagent that carries
+`isolation: "worktree"` on the call; that call shape appears once, at
+"1. Dispatch the implementer — Fallback mode".
 
-```
-Agent:
-  name: "task-3-impl"            # its SendMessage address for fix rounds
-  isolation: "worktree"          # branch worktree-task-3-impl, from the repo default branch
-  model: [omit to take the agent's default; override only with a Model Selection reason written here]
-  subagent_type: "superteam:implementer"  # general-purpose if the plugin agent is not loaded
-  description: "Implement Task 3: [task name]"
-  prompt: [implementer-prompt.md, filled]
-```
-
-`isolation: "worktree"` gives it `.claude/worktrees/<name>` on branch
+Either way the seat works in `.claude/worktrees/<name>` on branch
 `worktree-<name>`, branched from the repo default branch, with git guarded
-so it cannot touch your checkout. It commits there and its final report
-names the branch, the commit, and the diff stat. If the task depends on
-tasks you have already merged, its first step is `git merge <lane>` (your
-lane branch) so it starts from the merged prior work — say so in the
-dispatch. Never dispatch two implementers on the same files at once.
+so it cannot touch your checkout. Its final report names the branch, the
+commit, and the diff stat. When the task depends on tasks you have already
+merged, `git merge <lane>` (your lane branch) is what starts it from the
+merged prior work — say so in the brief. Never put two writing seats on the
+same files at once.
 
 A worktree IC never receives an absolute path into your checkout:
 `.superteam/` is gitignored and absent from the worktree, and the guard
 refuses the shared-checkout path. Anything an IC must read by path is
 either committed before the worktree is created or copied into the
-worktree by you. This is why the dispatch inlines the task brief and
-global constraints as text instead of pointing at a brief file, and why
+worktree by you. This is why the brief inlines the task text and
+global constraints instead of pointing at a brief file, and why
 the IC's report lives at a path relative to its own cwd.
 
 **Reviewer** — a named agent with NO `isolation`. Review is read-only, so it
@@ -231,12 +226,10 @@ teammates, no hooks fire on subagents. Other harnesses are always fallback.
 
 Team mode also requires **split-pane teammates** — `teammateMode: "tmux"` in
 this repo's `.claude/settings.local.json`, or `--teammate-mode tmux` at
-launch. An in-process teammate shares your session's process cwd, so its
-`EnterWorktree` moves you and every other teammate with it; a dogfood run
-landed three implementers' edits in one worktree that way. In-process
-teammates are only for roles that never enter a worktree: reviewer,
-integrator, researcher, skeptic. If split panes are unavailable, run the
-implement and write tasks in fallback mode.
+launch — because the writing seat enters a worktree (see "## Two kinds of
+IC"). In-process teammates are only for roles that never enter one:
+reviewer, integrator, researcher, skeptic. If split panes are unavailable,
+run the implement and write tasks in fallback mode.
 
 ## Setup
 
@@ -345,6 +338,7 @@ Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
 Lane: <lane branch>
 Worktree: task-N-impl        (EnterWorktree name; branch worktree-task-N-impl)
 Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
+Depends on: Task M (or "none")
 Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 ## Task Brief
 <verbatim plan task text>
@@ -365,6 +359,10 @@ scripts/task-brief --taskcreate PLAN N review LANE      → TaskCreate; TaskUpda
 scripts/task-brief --taskcreate PLAN N merge LANE       → TaskCreate; TaskUpdate addBlockedBy=<review id>
 for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
 ```
+
+`Depends on:` is printed after `Files owned:`; it is what the
+`task-created-check` hook reads to accept an overlap with the task it names.
+The line alone is not the edge: you still make that `addBlockedBy` call.
 
 The `task-created-check` hook rejects a malformed task — a subject without a
 role tag, a description without a `Files owned:` or `Done:` line, or a
@@ -399,8 +397,8 @@ Team mode. Sizing default: 1 implementer + 1 reviewer + 1 integrator covers
 up to 6 plan tasks; add one more implementer per further 5 tasks; at most 5
 teammates. A writer replaces the implementer when the plan's tasks are prose.
 
-Spawn each with a named `Agent` call and **no `isolation`** — implementers
-isolate themselves with `EnterWorktree` after they claim. Names are
+Spawn each with a named `Agent` call and **no `isolation`** — the writing
+seat isolates itself after it claims (see "## Two kinds of IC"). Names are
 predictable: `impl-1`, `writer-1`, `reviewer-1`, `integrator-1`.
 
 ```
@@ -429,34 +427,36 @@ haiku is for subagents only.
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
 **Defaults live in the agent files.** Each roster agent sets the model its
-role needs (`sonnet` for implementer, writer, researcher, reviewer and
-integrator; `opus` for skeptic). Omit `model` on the call and the
-agent's default applies. This section governs the overrides: a call sets
-`model` only for one of the reasons below, with the reason written next to
-it. The session's model is never the fallback.
+role needs (`opus` for implementer, writer, reviewer and skeptic — the first
+three via the plugin's `worker_model`/`review_model` userConfig, default
+`opus`; `sonnet` for researcher and integrator). The model is set in
+`agents/*.md`; the `worker_model`/`review_model` userConfig keys document
+the defaults. Omit `model` on the call and the agent's default applies. This
+section governs the overrides: a call sets `model` only for one of the
+reasons below, with the reason written next to it. The session's model is
+never the fallback.
 
 **Override down to `haiku`** when the task's plan text contains the
 complete code to write — the implementation is transcription plus testing.
 Single-file mechanical fixes qualify too. Subagents only: a teammate never
 goes to haiku (see "## Role pool").
 
-**Override up to `opus`** for: the final whole-branch review (both axes);
-a review of a risky diff (concurrency, a function or API contract, shared
-mutable state); fix-loop rounds 4-5 (the fresh implementer goes at least
-one tier above the one that got stuck); a task that needs design judgment
-or broad codebase understanding across many files.
+**Override up.** Most of the seats that used to need this now default to
+`opus`. What remains: fix-loop rounds 4-5, where the fresh implementer goes
+at least one tier above the one that got stuck — a seat already on `opus`
+has no tier left, so raise its `effort` instead and say so.
 
 **Turn count beats token price.** Wall-clock and context cost scale with how
 many turns a subagent takes, and the cheapest models routinely take 2-3× the
 turns on multi-step work — costing more overall. That is why the roster
-defaults are mid-tier and why reviewers never go to `haiku`: a cheap
-reviewer misses subtle findings and costs a re-round. Implementers working
-from prose descriptions stay on the default.
+defaults sit high and why reviewers never go to `haiku`: a cheap reviewer
+misses subtle findings and costs a re-round. Implementers working from prose
+descriptions stay on the default.
 
 **Task complexity signals (implementation tasks):**
 - Touches 1-2 files with the complete code in the plan → `haiku`, reason written
 - Touches multiple files with integration concerns → default
-- Requires design judgment or broad codebase understanding → `opus`, reason written
+- Requires design judgment or broad codebase understanding → default (already `opus`)
 
 ## Monitor loop
 
@@ -518,13 +518,26 @@ children: list them, and chase any that finished without reporting.
 
 ### 1. Dispatch the implementer
 
-**Team mode:** there is no dispatch. `impl-1` claims `Task N: implement`
-itself, runs `EnterWorktree` with the description's `Worktree:` name and
-`git merge <lane>` as its first two acts, and the task description is its
-whole brief. Skip to "3. Review the task"; the rest of this subsection is
-the fallback dispatch.
+**Team mode:** there is no dispatch. `impl-1` (or `writer-1`) claims
+`Task N: implement` itself, runs `EnterWorktree` with the description's
+`Worktree:` name and `git merge <lane>` as its first two acts, and the task
+description is its whole brief. Skip to "3. Review the task"; the rest of
+this subsection is the fallback dispatch.
 
-**Fallback mode:** claim the task you created at Setup before you dispatch —
+**Fallback mode** — the writing seat becomes a named subagent that carries
+worktree isolation on the call:
+
+```
+Agent:
+  name: "task-3-impl"            # its SendMessage address for fix rounds
+  isolation: "worktree"          # branch worktree-task-3-impl, from the repo default branch
+  model: [omit to take the agent's default; override only with a Model Selection reason written here]
+  subagent_type: "superteam:implementer"  # superteam:writer for prose tasks; general-purpose if the plugin agent is not loaded
+  description: "Implement Task 3: [task name]"
+  prompt: [implementer-prompt.md, filled]
+```
+
+Claim the task you created at Setup before you dispatch —
 `TaskUpdate` owner=<IC name>, status=in_progress. The implementer is a
 worktree subagent and never sees `TaskUpdate` itself, so you are its hands
 on the list. Without the Task tools, rely on the plan-file ledger alone.
@@ -536,11 +549,10 @@ default branch tip before it has). Its diff is
 `git diff <lane>..worktree-<name>`. The review package and fix-round
 diffs need BASE — never `HEAD~1`.
 
-Dispatch with the Implementer call shape from "Two kinds of IC": `name`,
-`isolation: "worktree"`, `subagent_type: "superteam:implementer"`, and
-`model` only with a written Model Selection reason. If the task
-depends on merged prior tasks, the dispatch says
-"first run `git merge <lane>`".
+Fill the call shape above: `name`, `isolation: "worktree"`, the role's
+`subagent_type`, and `model` only with a written Model Selection reason. If
+the task depends on merged prior tasks, the dispatch says "first run
+`git merge <lane>`".
 
 - **Task brief:** before dispatching an implementer, run this skill's
   `scripts/task-brief --print PLAN_FILE N` and paste its stdout into the
