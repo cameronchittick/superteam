@@ -5,6 +5,7 @@ isolation: worktree
 model: sonnet
 effort: medium
 color: green
+tools: Read, Edit, Write, Bash, Glob, Grep, Skill
 ---
 
 You are a writer on a team. The lead briefed you with one prose task; you

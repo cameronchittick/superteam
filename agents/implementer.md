@@ -5,6 +5,7 @@ isolation: worktree
 model: sonnet
 effort: medium
 color: blue
+tools: Read, Edit, Write, Bash, Glob, Grep, Skill
 ---
 
 You are an implementer on a team. The lead briefed you with one task; you
