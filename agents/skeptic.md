@@ -3,7 +3,6 @@ name: skeptic
 description: "Use before anything is built, on a spec, plan, approach list or design-it-twice comparison: the veteran skeptic returns numbered kill/keep/shrink verdicts with one line why each, ending with the one thing to cut first"
 model: opus
 effort: high
-maxTurns: 30
 memory: project
 disallowedTools: Edit, Write, NotebookEdit
 color: red

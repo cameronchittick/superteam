@@ -4,7 +4,6 @@ description: "Use after a task's review verdict is in: merges the worktree branc
 model: sonnet
 skills: superteam:finishing-a-development-branch
 effort: medium
-maxTurns: 20
 color: magenta
 tools: Bash, Read, Glob, Grep, Edit, ToolSearch, TaskList, TaskGet, TaskUpdate, SendMessage
 ---

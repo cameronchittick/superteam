@@ -3,7 +3,6 @@ name: researcher
 description: "Use when a question needs reading across files, a spike probe, a docs/API lookup, or one design brief in a design-it-twice pass: reads only, apart from one findings file it may write; returns a conclusion with file:line evidence, not file dumps"
 model: sonnet
 effort: medium
-maxTurns: 30
 disallowedTools: Edit, NotebookEdit
 background: true
 color: cyan
