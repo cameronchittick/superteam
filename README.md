@@ -402,7 +402,7 @@ all four.
 
 A monitor ships too, in `monitors/monitors.json`:
 
-- **`stuck-tasks`** — names any task left `in_progress` with no update for
+- **`watchdog-in-progress-tasks`** (panel label `Watchdog: In-Progress Tasks (20min)`) — names any task left `in_progress` with no update for
   `SUPERTEAM_STUCK_MINUTES` (default 20) minutes, once per task until its
   file changes.
 

@@ -155,7 +155,7 @@ import json, sys
 with open('$MONITORS_JSON') as f:
     data = json.load(f)
 names = [m.get('name') for m in data]
-entry = [m for m in data if m.get('name') == 'stuck-tasks']
+entry = [m for m in data if m.get('name') == 'watchdog-in-progress-tasks']
 sys.exit(0 if entry and entry[0].get('command') and entry[0].get('description') else 1)
 " 2>/dev/null; then
     pass "monitors.json is valid JSON with a stuck-tasks entry"

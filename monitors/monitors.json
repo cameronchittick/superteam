@@ -1,7 +1,7 @@
 [
   {
-    "name": "stuck-tasks",
+    "name": "watchdog-in-progress-tasks",
     "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/run-hook.cmd task-monitor",
-    "description": "Tasks in_progress with no update for 20 minutes"
+    "description": "Watchdog: In-Progress Tasks (20min)"
   }
 ]
