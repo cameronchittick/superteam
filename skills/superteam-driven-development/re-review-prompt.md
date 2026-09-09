@@ -132,5 +132,7 @@ Agent:
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — the path `scripts/review-package PLAN_FILE FIX_BASE HEAD` printed
 
+Register: code specifics for the team lead — file:line, diff, severity — answer first; see agents/reviewer.md "Report register".
+
 **Re-reviewer returns:** per-finding verdicts (ADDRESSED / NOT ADDRESSED),
 new breakage in the fix diff, out-of-scope observations, and a round verdict.

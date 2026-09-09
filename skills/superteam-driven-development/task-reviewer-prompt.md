@@ -214,6 +214,8 @@ Agent:
   package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
   path it wrote; the package never enters the controller's context)
 
+Register: code specifics for the team lead — file:line, diff, severity — answer first; see agents/reviewer.md "Report register".
+
 **Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
 (Critical/Important/Minor), Spec verdict
 
