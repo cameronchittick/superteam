@@ -25,12 +25,17 @@ If you need the lead's answer before you can finish, `TaskUpdate` your task to `
 
 ## Isolating (teammate)
 
-After claiming, `EnterWorktree` with the `Worktree:` name from the
-description, and the first command inside it is `git merge <Lane>` so you
-build on the tasks already merged. Do every edit, test and commit there.
-Before completing the task, `ExitWorktree` keeping the worktree — the
-integrator removes it. As a subagent you already have `isolation: worktree`;
-skip this section.
+Your task's `Isolation:` line says where you work. **branch** (or no line):
+stay in the lead's checkout, `git switch -c <Branch> <Lane>` using the
+description's `Branch:` and `Lane:` values, and do every edit, test and
+commit on that branch; never switch away from it while the task is in
+progress, and leave it checked out when you complete — the lead merges it.
+**worktree** or **provisioned**: `EnterWorktree` with the `Worktree:` name
+from the description, and the first command inside it is `git merge <Lane>`
+so you build on the tasks already merged. Do every edit, test and commit
+there. Before completing the task, `ExitWorktree` keeping the worktree —
+whoever merges removes it. As a subagent on those tiers you already have
+`isolation: worktree`; skip this section.
 
 1. If the brief says to start with `git merge <lane>`, run it first so you
    build on the tasks already merged. Otherwise start from where you are.
@@ -44,9 +49,9 @@ skip this section.
    negotiated with your human partner. If your task needs a term that is
    missing or contradicts the glossary, use the closest existing term and
    list it under **Proposed terms** in your final report.
-4. Paths: everything is relative to your cwd, which is your worktree. Never
-   use the main checkout's absolute path in any tool call; never `cd` out
-   of your worktree.
+4. Paths: everything is relative to your cwd — the lead's checkout on the
+   branch tier, your worktree otherwise. Never use an absolute path into
+   the main checkout from a worktree; never `cd` out of it.
 5. Your work cadence, every task, in this order:
    (a) Read every file on the brief's `Standards:` line before writing
        anything (`none` means there are none — skip it). Where a documented
@@ -67,8 +72,8 @@ skip this section.
        you are changing.
    (f) Run the full suite once before the final commit, never per edit.
        Keep the real output.
-   (g) Commit on your worktree branch using the commit trailer you were
-       given. Never touch anything outside your worktree, and never edit
+   (g) Commit on your task branch using the commit trailer you were
+       given. Never touch a file outside `Files owned:`, and never edit
        files the brief did not name — if the task seems to need one, ask.
    (h) The gate is the task's review seats, judged against the
        superteam:requesting-code-review rubrics — never your own
@@ -81,7 +86,8 @@ skip this section.
 
 ## Worktree guard: known refusals
 
-Claude Code's guard refuses commands it cannot prove stay in the worktree.
+On the worktree tier, Claude Code's guard refuses commands it cannot prove
+stay in the worktree.
 Rules: one simple command per Bash call; no `&&`/`;` chains around git; no
 `cd`; no `source`, `eval`, or programs built from variables; git only with
 literal arguments from your cwd; a path containing a directory literally
@@ -100,8 +106,8 @@ against the base, the test command and its output, Proposed terms (or
 needed but did not own).
 Write the full report to `.superteam/sdd/<plan>/task-N-report.md` relative
 to your cwd (`mkdir -p` the directory first; it is gitignored and
-worktree-local). The lead copies it out; you never write outside your
-worktree. Return only the short contract. It ends with a `Tests:` line
+worktree-local). The lead copies it out; you never write outside
+`Files owned:`. Return only the short contract. It ends with a `Tests:` line
 naming the command you ran and its pass count. As a teammate, complete the
 task only after that file is written and the `Verified:` line is on the
 description.
