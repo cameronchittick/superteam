@@ -4,7 +4,7 @@
 
 **Goal:** Move the useful "lazy senior dev" judgement from the Ponytail plugin (4.9.0, MIT) into the superteam seats that judge — skeptic, standards reviewer, implementer — and nothing else.
 
-**Architecture:** Three prose edits to existing behaviour-shaping files, one attribution/changelog commit by the lead. No new skills, hooks, modes, commands or servers. The ladder is design-time judgement (skeptic); the reviewer gets three named findings in the smell-baseline shape; the implementer gets two lines of habit.
+**Architecture:** Three prose edits to existing behaviour-shaping files, one attribution commit by the lead. No new skills, hooks, modes, commands or servers. The ladder is design-time judgement (skeptic); the reviewer gets three named findings in the smell-baseline shape; the implementer gets two lines of habit.
 
 **Tech Stack:** Markdown agent and skill files; `bin/superteam-test`; `claude plugin validate .`
 
@@ -157,13 +157,12 @@ source: agents/implementer.md#5"
 
 ---
 
-### Task 4: Attribution, changelog, bump (lead)
+### Task 4: Attribution and bump (lead)
 
-**Files owned:** `LICENSE`, `README.md`, `CHANGELOG.md`, the nine version manifests
+**Files owned:** `LICENSE`, `README.md`, the nine version manifests
 **Depends on:** Task 1, Task 2, Task 3
 **Model tier:** cheap (lead does it: deletion-free, copy-exact)
 
 - [ ] LICENSE: append a section `## skills/requesting-code-review/smell-baseline.md (ladder findings), agents/skeptic.md (ladder), agents/implementer.md (ceiling marker)` with the Ponytail MIT text (Copyright (c) 2026 DietrichGebert), same shape as the Matt Pocock section.
 - [ ] README.md line 307: append one sentence: "The design-time ladder in the skeptic, the three ladder findings in the smell baseline and the `ceiling:` marker are adapted from the [Ponytail](https://github.com/DietrichGebert/ponytail) plugin (MIT)."
-- [ ] Create `CHANGELOG.md` with `# Changelog` and one entry: `## 7.2.0 — 2026-09-09` / `- Fold the Ponytail (MIT, DietrichGebert) ladder into the seats that judge: skeptic step 4, three smell-baseline findings (New Dependency, Symptom Fix, Unmarked Ceiling) with the \`ceiling:\` marker, two implementer habits. No mode, persona, commands or server ported.`
 - [ ] Bump all nine manifests 7.1.3 → 7.2.0; `bin/superteam-test`; `claude plugin validate .`; commit.
