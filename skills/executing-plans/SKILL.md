@@ -16,7 +16,7 @@ Load plan, review critically, execute all tasks, report when complete.
 ## The Process
 
 ### Step 1: Load and Review Plan
-1. Ensure an isolated workspace: use superteam:using-git-worktrees to create one or verify the existing one
+1. Work on a task branch in this checkout; use superteam:using-git-worktrees only when another writer is active in the same repo (docs/isolation-tiers.md)
 2. Read plan file
 3. Review critically - identify any questions or concerns about the plan
 4. If concerns: Raise them with your human partner before starting

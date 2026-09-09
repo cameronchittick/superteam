@@ -69,6 +69,8 @@ independently testable deliverable.
 **Spec:** [path to the spec/design doc this plan implements — the plan
 argues from the spec, so the spec travels with it; executors read both]
 
+**Integration:** trunk | lane/<name> — a lane only when two or more tasks merge before trunk
+
 ## Global Constraints
 
 [The spec's project-wide requirements — version floors, dependency limits,
@@ -89,6 +91,7 @@ include this section.]
 **Files owned:** `exact/path/to/file.py`, `tests/exact/path/to/test.py`
 **Depends on:** none (or: Task 2, Task 3)
 **Model tier:** cheap | standard | most capable
+**Isolation:** solo | branch | worktree | provisioned
 
 **Files:**
 - Create: `exact/path/to/file.py`
@@ -134,8 +137,8 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
-**The three header lines.** A lead hands each task to an IC in its own
-worktree, so `**Files owned:**` lists every file the task creates or edits —
+**The four header lines.** A lead hands each task to one IC, so
+`**Files owned:**` lists every file the task creates or edits —
 no two tasks that can run concurrently may share a file, or their branches
 collide at merge. `Files owned:` plus the `Interfaces:` block are the task's
 seam — the boundary its implementer tests at. When two tasks must share a
@@ -150,6 +153,20 @@ superteam:superteam-driven-development's Model Selection — cheap for 1-2 files
 with a complete spec, standard for multi-file integration, most capable for
 design judgment — and drives what each task costs.
 
+**Isolation: format.** Write `Isolation: solo`, `Isolation: branch`,
+`Isolation: worktree` or `Isolation: provisioned` — one word, in the
+header. Branch is the default and what a missing line means: the IC
+works on `task-N` in the lead's own checkout and the lead merges. Choose
+solo when the lead can carry the task alone — one task, no migration, no
+money/auth/security/data surface, no other writer active — and no
+reviewer is required. Choose worktree only when this task will be
+written at the same time as another task in the same repo; choose
+provisioned only when the task needs a second running dev server or
+database. A plan with two or more tasks merging before trunk names its
+lane in a header line `**Integration:** lane/<name>`; otherwise
+`**Integration:** trunk`. The rule and its evidence are in
+docs/isolation-tiers.md.
+
 **Depends on: format.** Write it as `Depends on: Task 2, Task 3` or
 `Depends on: none` — always task numbers, one line, in the header where
 it already sits. On Claude Code, superteam-driven-development's live
@@ -158,7 +175,7 @@ the shared task list, so the exact format is what makes a task
 machine-mappable, not just human-readable.
 
 **Task subjects on that list.** Each plan task becomes `Task N: <step>
-[role]` — step in {implement, review, merge, fix <round>, review <round>};
+[role]` — step in {implement, review spec, review standards (both only when the reviewer gate is on), merge (worktree tier only), fix <round>, review <round>};
 N is unique for the life of the list, never restarting at 1. Everything else
 is an imperative verb phrase — full rules in superteam-driven-development.
 
@@ -184,7 +201,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-On demand, or for large plans, dispatch `superteam:skeptic` on the task breakdown (kill / keep / shrink per task) before the plan review; the plan-document reviewer is `superteam:reviewer` (see `./plan-document-reviewer-prompt.md`).
+Dispatch `superteam:skeptic` on the task breakdown only when the plan changes a data model or a contract, or has three or more tasks (docs/isolation-tiers.md, Gates); the plan-document reviewer is `superteam:reviewer` (see `./plan-document-reviewer-prompt.md`).
 
 ## Execution Handoff
 
