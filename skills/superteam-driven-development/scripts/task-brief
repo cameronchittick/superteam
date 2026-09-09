@@ -20,6 +20,12 @@
 # absolute path back into the shared checkout. Printing lets the lead paste
 # the task text straight into the dispatch prompt instead.
 #
+# The emitted lines follow the task's isolation tier (its `**Isolation:**`
+# line, default branch): branch and solo emit `Branch: task-N` and no
+# `Worktree:` line, review the branch `task-N`, and have no merge task — the
+# lead merges. worktree and provisioned emit the `Worktree:` line and review
+# `worktree-task-N-impl`. Any other value is refused (exit 5).
+#
 # File mode is unchanged, for reviewers and other teammates that run in the
 # lead's own checkout and can read a path there.
 # Default OUTFILE: <repo-root>/.superteam/sdd/<plan-basename>/task-<N>-brief.md
@@ -84,6 +90,32 @@ if [ "${1:-}" = "--taskcreate" ]; then
   base=$(basename "$plan" .md)
   wt="task-${n}-impl"
 
+  # The task's isolation tier, chosen at intake. A task with no line is branch
+  # tier — the default. solo is written explicitly and emits exactly what the
+  # branch tier emits; provisioned is the worktree tier plus the repo's own
+  # provisioning script, so it emits the worktree lines unchanged.
+  iso=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Isolation:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
+  [ -n "$iso" ] || iso=branch
+  case "$iso" in
+    solo|branch)          seat=branch ;;
+    worktree|provisioned) seat=worktree ;;
+    *) echo "Isolation must be solo, branch, worktree or provisioned (got: ${iso})" >&2; exit 5 ;;
+  esac
+  if [ "$seat" = branch ] && [ "$kind" = merge ]; then
+    echo "branch tier has no merge task; the lead merges task-${n}" >&2
+    exit 4
+  fi
+  if [ "$iso" = solo ]; then
+    branch_line="Branch: task-${n}        (the lead works it in its own checkout)"
+  else
+    branch_line="Branch: task-${n}        (git switch -c in the lead's checkout, from Lane)"
+  fi
+  if [ "$seat" = branch ]; then
+    reviews="task-${n}"
+  else
+    reviews="worktree-${wt}"
+  fi
+
   # The repo's standards files, resolved once per plan: the well-known names
   # that exist at the repo root, plus every path on a "**Standards:**" line in
   # the plan header. The implementer and the standards review axis both read
@@ -117,13 +149,13 @@ if [ "${1:-}" = "--taskcreate" ]; then
     review-spec)
       echo "Subject: Task ${n}: review spec [reviewer]"
       echo
-      echo "Reviews: worktree-${wt}"
+      echo "Reviews: ${reviews}"
       echo "Rubric: skills/superteam-driven-development/task-reviewer-prompt.md"
       ;;
     review-standards)
       echo "Subject: Task ${n}: review standards [reviewer]"
       echo
-      echo "Reviews: worktree-${wt}"
+      echo "Reviews: ${reviews}"
       echo "Rubric: skills/superteam-driven-development/task-standards-prompt.md"
       ;;
     merge)
@@ -134,7 +166,12 @@ if [ "${1:-}" = "--taskcreate" ]; then
   esac
   echo "Plan: ${plan}   Spec: ${spec}"
   echo "Lane: ${lane}"
-  echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
+  echo "Isolation: ${iso}"
+  if [ "$seat" = branch ]; then
+    echo "$branch_line"
+  else
+    echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"
+  fi
   echo "Files owned: ${owned}"
   echo "Depends on: ${deps}"
   case "$kind" in

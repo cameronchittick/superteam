@@ -1,13 +1,14 @@
 ---
 name: superteam-driven-development
-description: Use when executing an implementation plan as the lead (PM) of a team — one implementer IC per task in its own worktree, a reviewer per task, an integrator merges
+description: Use when executing an implementation plan as the lead (PM) of a team — one implementer IC per task, isolated per the task's tier, a reviewer per task, an integrator merges
 ---
 
 # Superteam-Driven Development
 
 You are the lead (PM). Execute the plan as a task graph worked by one fresh
-implementer IC per task in its own worktree, a task review (spec compliance
-+ code quality) after each, and a broad whole-branch review at the end. The
+implementer IC per task, on its own branch, in a worktree only when its tier
+says so, a task review (spec compliance + code quality) after each when the
+reviewer gate is on, and a broad whole-branch review at the end. The
 lead never implements beyond a one-line fix: it briefs, reviews, rules, and
 leaves the merge to the integrator. Read "## Modes" first — team mode puts
 the graph on the shared task list and lets role teammates claim their own
@@ -59,10 +60,48 @@ digraph when_to_use {
 **What this adds over superteam:executing-plans, the fallback for harnesses
 without agent teams:**
 - One seat per role, all in this session (no context switch)
-- Fresh IC per task, each in its own worktree (no context pollution, no
-  file collisions)
-- Review after each task (spec compliance + code quality), broad review at the end
+- Fresh IC per task, each on its own branch, in a worktree only when its
+  tier says so (a fresh context per IC; file collisions are refused by the
+  task-created-check hook)
+- Review after each task (spec compliance + code quality) when the reviewer
+  gate is on, broad review at the end
 - Faster iteration (no human-in-loop between tasks)
+
+## Isolation tiers
+
+Every task carries an `**Isolation:**` line chosen at intake. **solo**: the
+lead does the task itself in its own checkout — one task, no migration, no
+money/auth/security/data surface, no other writer active, small enough for
+its own context; no implementer, no reviewer unless the brief asks.
+**branch** (the default, and what a missing line means): where solo ends — a
+second writer, a required reviewer, or a task too large for the lead — one
+writing seat at a time in this repo, on `task-N` in the lead's own checkout,
+the lead merges. **worktree**: two or more writing seats must write in this
+repo at once; a plain `git worktree add`, nothing provisioned.
+**provisioned**: the worktree tier plus the repo's own provisioning script,
+only when a second running dev server or database is required. `<base>` is
+trunk, or the lane the plan header names in `**Integration:**`. The table,
+triggers and evidence are in [docs/isolation-tiers.md](../../docs/isolation-tiers.md).
+
+A plan escalates a task from the branch to the worktree tier whenever two or
+more writing tasks are unblocked at the same time. The lead records in the
+ledger, per task, the maximum number of concurrent writers, any
+dirty-checkout collision, and wall-clock time from claim to merge, so the
+next run of six or more tasks can be judged against the 7.3.0 baseline.
+
+Gates scale with what breaks if wrong; they do not run by default. Skeptic:
+only on a spec or plan that changes a data model or a contract, or that has
+three or more tasks. Reviewer: only where a slip costs money, auth, security
+or data, or where the brief asks for one. A UI, copy or docs change your
+human partner can see for themselves gets neither: the lead verifies it
+running and your human partner looks. The ledger records, per task, its tier,
+which gates ran, and wall-clock time from claim to merge.
+
+The reviewer claims a branch-tier review only after the implement task is
+complete and judges commits — git diff <base>..task-N — never the working
+tree. While a branch-tier task is in progress no seat, the lead included,
+switches branch in the checkout; the guard has no arm for this, the rule and
+the escalation above are the containment.
 
 ## Two kinds of IC
 
@@ -85,20 +124,30 @@ The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
 
 **Implementer and writer — the writing seat.** In team mode this seat is a
-split-pane teammate, spawned once into the role pool with **no `isolation`**
-(see "## Role pool"). It claims `Task N: implement` (or `[writer]`) from the
-shared list, runs `EnterWorktree` with the description's `Worktree:` name,
-and makes `git merge <lane>` the first command inside it. It commits on its
-own branch and reports; the integrator merges. Split panes are not optional
-for this seat: an in-process teammate shares your session's process cwd, so
-its `EnterWorktree` moves you and every other teammate with it — a dogfood
-run landed three implementers' edits in one worktree that way.
+teammate spawned once into the role pool with **no `isolation`** (see
+"## Role pool"); how it isolates after it claims follows the task's
+`Isolation:` line (see "## Isolation tiers").
 
-Fallback mode dispatches the same seat as a named subagent that carries
-`isolation: "worktree"` on the call; that call shape appears once, at
-"1. Dispatch the implementer — Fallback mode".
+*Branch tier.* The seat claims `Task N: implement` (or `[writer]`) from the
+shared list, runs `git switch -c <Branch> <Lane>` in the lead's checkout,
+commits on that branch, stays on it, and reports; the lead merges. While a
+branch-tier task is `in_progress` no one, the lead included, changes branch
+in that checkout.
 
-Either way the seat works in `.claude/worktrees/<name>` on branch
+*Worktree and provisioned tiers.* The seat claims, runs `EnterWorktree` with
+the description's `Worktree:` name, and makes `git merge <lane>` the first
+command inside it. It commits on its own branch and reports; the integrator
+merges, or the lead does when the plan has no integrator seat. Split panes
+are required when any task in the plan is worktree tier: an in-process
+teammate shares your session's process cwd, so its `EnterWorktree` moves you
+and every other teammate with it — a dogfood run landed three implementers'
+edits in one worktree that way.
+
+Fallback mode dispatches the same seat as a named subagent, carrying
+`isolation: "worktree"` on the call when the task's tier calls for one; that
+call shape appears once, at "1. Dispatch the implementer — Fallback mode".
+
+A worktree seat works in `.claude/worktrees/<name>` on branch
 `worktree-<name>`, branched from the repo default branch, with git guarded
 so it cannot touch your checkout. Its final report names the branch, the
 commit, and the diff stat. When the task depends on tasks you have already
@@ -106,13 +155,14 @@ merged, `git merge <lane>` (your lane branch) is what starts it from the
 merged prior work — say so in the brief. Never put two writing seats on the
 same files at once.
 
-A worktree IC never receives an absolute path into your checkout:
+A worktree seat never receives an absolute path into your checkout:
 `.superteam/` is gitignored and absent from the worktree, and the guard
-refuses the shared-checkout path. Anything an IC must read by path is
+refuses the shared-checkout path. Anything such an IC must read by path is
 either committed before the worktree is created or copied into the
 worktree by you. This is why the brief inlines the task text and
 global constraints instead of pointing at a brief file, and why
-the IC's report lives at a path relative to its own cwd.
+the IC's report lives at a path relative to its own cwd. A branch-tier seat
+works in your checkout and reads the plan's committed path directly.
 
 **Reviewer** — a named agent with NO `isolation`. Review is read-only, so it
 needs no worktree; when agent teams are enabled it runs as a true teammate
@@ -134,8 +184,10 @@ implementer results arrive as completion notifications, reviewer verdicts
 as their final message.
 
 **Integrator** — `subagent_type: "superteam:integrator"`, no `isolation`,
-dispatched one at a time in your checkout after a task's review is clean
-("5. Complete the task") and again at Finish. It gets the branch to merge, the lane, the test
+dispatched only when the graph has merge tasks — worktree-tier tasks in a
+plan with three or more of them; otherwise the lead merges in "5. Complete
+the task". When it is dispatched, it goes one at a time in your checkout
+after a task's gate is clean ("5. Complete the task") and again at Finish. It gets the branch to merge, the lane, the test
 command, and whether to bump; it reports the merge commit and the suite
 result. You never merge inline when the integrator is available.
 
@@ -147,6 +199,12 @@ lane branch directly. Platform mappings live in
 
 ## The Process
 
+The per-task review seats, the fix-round loop and the final two-axis review
+run only when the reviewer gate is on for that task or plan (money, auth,
+security, data, or the brief asks — see "## Isolation tiers"). Otherwise the
+implementer's report plus the suite is the gate and the merge follows the
+report.
+
 ```dot
 digraph process {
     rankdir=TB;
@@ -154,10 +212,11 @@ digraph process {
     subgraph cluster_per_task {
         label="Per Task";
         "Lead creates Task N graph: implement, review, merge" [shape=box];
-        "implementer self-claims, EnterWorktree, git merge lane" [shape=box];
+        "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)" [shape=box];
         "Implementer asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer implements, tests, commits, self-reviews, appends Verified: line" [shape=box];
+        "Reviewer gate on?" [shape=diamond];
         "reviewer self-claims, reads the branch diff, verdicts spec and quality" [shape=box];
         "Spec ✅ and quality approved?" [shape=diamond];
         "Finding conflicts with plan text?" [shape=diamond];
@@ -171,7 +230,7 @@ digraph process {
         "Any load-bearing finding?" [shape=diamond];
         "Rule and continue; stop only if every path forward is a guess" [shape=box];
         "Park findings in ledger with rulings" [shape=box];
-        "integrator self-claims, merges the branch into lane, removes worktree" [shape=box];
+        "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [shape=box];
     }
 
     "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" [shape=box];
@@ -182,14 +241,16 @@ digraph process {
     "Use superteam:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" -> "Lead creates Task N graph: implement, review, merge";
-    "Lead creates Task N graph: implement, review, merge" -> "implementer self-claims, EnterWorktree, git merge lane";
-    "implementer self-claims, EnterWorktree, git merge lane" -> "Implementer asks questions?";
+    "Lead creates Task N graph: implement, review, merge" -> "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)";
+    "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)" -> "Implementer asks questions?";
     "Implementer asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line";
     "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line" [label="no"];
-    "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality";
+    "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "Reviewer gate on?";
+    "Reviewer gate on?" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality" [label="yes"];
+    "Reviewer gate on?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="no - report + suite is the gate"];
     "reviewer self-claims, reads the branch diff, verdicts spec and quality" -> "Spec ✅ and quality approved?";
-    "Spec ✅ and quality approved?" -> "integrator self-claims, merges the branch into lane, removes worktree" [label="yes"];
+    "Spec ✅ and quality approved?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="yes"];
     "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
     "Finding conflicts with plan text?" -> "Rule on the conflict, ledger the ruling" [label="yes"];
     "Rule on the conflict, ledger the ruling" -> "Lead creates fix round R of 5: Task N fix R, Task N review R";
@@ -197,15 +258,15 @@ digraph process {
     "Lead creates fix round R of 5: Task N fix R, Task N review R" -> "implementer self-claims the fix, fixes in the same worktree branch";
     "implementer self-claims the fix, fixes in the same worktree branch" -> "reviewer self-claims the re-review, verdicts each finding";
     "reviewer self-claims the re-review, verdicts each finding" -> "All findings addressed?";
-    "All findings addressed?" -> "integrator self-claims, merges the branch into lane, removes worktree" [label="yes"];
+    "All findings addressed?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="yes"];
     "All findings addressed?" -> "R = 5?" [label="no"];
     "R = 5?" -> "Lead creates fix round R of 5: Task N fix R, Task N review R" [label="no - next round"];
     "R = 5?" -> "Adjudicate each open finding" [label="yes - breaker trips"];
     "Adjudicate each open finding" -> "Any load-bearing finding?";
     "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
     "Any load-bearing finding?" -> "Park findings in ledger with rulings" [label="no"];
-    "Park findings in ledger with rulings" -> "integrator self-claims, merges the branch into lane, removes worktree";
-    "integrator self-claims, merges the branch into lane, removes worktree" -> "More tasks remain?";
+    "Park findings in ledger with rulings" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>";
+    "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" -> "More tasks remain?";
     "More tasks remain?" -> "Lead creates Task N graph: implement, review, merge" [label="yes"];
     "More tasks remain?" -> "Dispatch two-axis final review (superteam:requesting-code-review)" [label="no"];
     "Dispatch two-axis final review (superteam:requesting-code-review)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
@@ -224,22 +285,24 @@ Setup. Anything else is **fallback mode** = 6.10.0 behaviour: worktree
 subagents, you claim and complete tasks or keep the plan-file ledger, no
 teammates, no hooks fire on subagents. Other harnesses are always fallback.
 
-Team mode also requires **split-pane teammates** — `teammateMode: "tmux"` in
-this repo's `.claude/settings.local.json`, or `--teammate-mode tmux` at
-launch — because the writing seat enters a worktree (see "## Two kinds of
-IC"). In-process teammates are only for roles that never enter one:
+Team mode requires **split-pane teammates** whenever a task is worktree
+tier — `teammateMode: "tmux"` in this repo's `.claude/settings.local.json`,
+or `--teammate-mode tmux` at launch — because that writing seat enters a
+worktree (see "## Two kinds of IC"). In-process teammates are only for roles that never enter one:
 reviewer, integrator, researcher, skeptic. If split panes are unavailable,
 run the implement and write tasks in fallback mode.
 
 ## Setup
 
-Ensure the work happens in an isolated workspace: use
-superteam:using-git-worktrees to create one or verify the existing one.
-Your branch is the **lane branch** — the integration branch every task
-merges into. ICs do not branch from it: `isolation: "worktree"` and
-`EnterWorktree` both branch them from the repo default branch, and every
-task catches up with `git merge <lane>` as its first step. Never start implementation on a
-main/master branch without your human partner's explicit consent.
+The integration branch — `<base>` — is trunk, unless the plan header says
+`**Integration:** lane/<name>`; create the lane only then (via
+superteam:using-git-worktrees when the lead itself needs isolation,
+otherwise `git switch -c`). Branch-tier seats branch from `<base>` in the
+lead's checkout. Worktree seats branch from the repo default branch —
+`isolation: "worktree"` and `EnterWorktree` both do — and catch up with
+`git merge <base>` as their first step. Never start implementation on a
+main/master branch without your human partner's explicit consent; a
+branch-tier task branch is not main.
 
 Conversation memory does not survive compaction. In real sessions,
 controllers that lost their place have re-dispatched entire completed task
@@ -251,8 +314,8 @@ a ledger file, not only in todos.
   directory, `.superteam/sdd/<plan-basename>/` under the repo root, home to
   every artifact for THIS plan in your own checkout: ledger, review
   packages, and any file-mode brief you generate for a reviewer. Another
-  plan's directory is never yours to read or write. A worktree implementer
-  never receives a path into this directory (see "Two kinds of IC" above)
+  plan's directory is never yours to read or write. A worktree-tier
+  implementer never receives a path into this directory (see "Two kinds of IC" above)
   — it does not exist inside the worktree.
 - Resolve the standards files once per plan: `scripts/task-brief` does it on
   its first run and caches the list at `<workspace>/standards` — every
@@ -269,6 +332,11 @@ a ledger file, not only in todos.
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
   `# SDD ledger — plan: <plan file path>`.
+- Per task, the ledger records wall-clock time from claim to merge, the
+  maximum number of writing seats active at once, and any dirty-checkout
+  collision (a seat finding uncommitted changes it did not make) — the
+  measurement the Escalation paragraph promises. Its per-task line also
+  records `tier` and `gates: none | reviewer | skeptic+reviewer`.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
@@ -302,6 +370,10 @@ its own text agrees with itself — the tests it specifies against the code it
 specifies, the files it creates against the files it later touches. "The scan
 is clean" without those rows is not a scan you ran.
 
+The scan is your own conflict table, not a seat: `superteam:skeptic` is
+dispatched from superteam:writing-plans under its own gate, never from this
+skill.
+
 Write the table to the ledger. Rule on everything you find before execution
 begins — each finding against the plan text that mandates it — and record
 each ruling in the ledger. If the scan is clean, proceed without comment.
@@ -326,15 +398,20 @@ With the scan ruled on, team mode has four more Setup steps, in this order:
 
 ## Task graph
 
-Team mode. For plan task N create four tasks, in this order — review is two
-axes, and they run in parallel:
+Team mode. For plan task N create the tasks its gates and tier call for, in
+this order — review is two axes, and they run in parallel:
 
 | Subject | Role tag | blockedBy |
 | --- | --- | --- |
 | `Task N: implement [implementer]` (or `[writer]` for prose tasks) | implementer/writer | `Task M: merge` for each plan `Depends on: M` |
 | `Task N: review spec [reviewer]` | reviewer | `Task N: implement` |
 | `Task N: review standards [reviewer]` | reviewer | `Task N: implement` |
-| `Task N: merge [integrator]` | integrator | `Task N: review spec` AND `Task N: review standards` |
+| `Task N: merge [integrator]` (worktree tier only, when an integrator seat exists; otherwise the lead merges after both reviews) | integrator | `Task N: review spec` AND `Task N: review standards` |
+
+The `review spec` and `review standards` tasks are created only when the
+reviewer gate is on for that task or plan; a gated-off task's family is
+implement, then merge or the lead's merge. A branch-tier family has three
+tasks; the review completing is the lead's cue to merge.
 
 The description is the whole brief — no pointers, because a teammate in a
 worktree cannot read a file in your checkout. Emit it with this skill's
@@ -344,7 +421,9 @@ which prints the subject and the description body:
 ```
 Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
 Lane: <lane branch>
-Worktree: task-N-impl        (EnterWorktree name; branch worktree-task-N-impl)
+Isolation: branch            (the task's tier; a task with no line is branch)
+Branch: task-N               (branch and solo tiers: git switch -c in the lead's checkout)
+Worktree: task-N-impl        (worktree and provisioned tiers only: EnterWorktree name; branch worktree-task-N-impl)
 Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
 Depends on: Task M (or "none")
 Standards: CLAUDE.md, CONTRIBUTING.md   (implement and review-standards only)
@@ -355,7 +434,8 @@ Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 <verbatim>
 ```
 
-Both review descriptions add `Reviews: worktree-task-N-impl` and their
+Both review descriptions add `Reviews: <the task's branch>` — `task-N` on
+the branch and solo tiers, `worktree-task-N-impl` otherwise — and their
 rubric pointer — `task-reviewer-prompt.md` for the spec axis,
 `task-standards-prompt.md` for the standards axis; merge descriptions add
 `Merge: worktree-task-N-impl → <lane>`. `Files owned:` is the same list on
@@ -367,7 +447,7 @@ The exact calls:
 scripts/task-brief --taskcreate PLAN N implement LANE         → TaskCreate(subject, description)
 scripts/task-brief --taskcreate PLAN N review-spec LANE       → TaskCreate; TaskUpdate addBlockedBy=<implement id>
 scripts/task-brief --taskcreate PLAN N review-standards LANE  → TaskCreate; TaskUpdate addBlockedBy=<implement id>
-scripts/task-brief --taskcreate PLAN N merge LANE             → TaskCreate; TaskUpdate addBlockedBy=<both review ids>
+scripts/task-brief --taskcreate PLAN N merge LANE             → TaskCreate; TaskUpdate addBlockedBy=<both review ids>   # worktree tier with an integrator only
 for each "Depends on: M": TaskUpdate <implement N> addBlockedBy=<merge M>
 ```
 
@@ -409,9 +489,10 @@ Four rules bind every subject on the list:
 
 ## Role pool
 
-Team mode. Sizing default: 1 implementer + 1 reviewer + 1 integrator covers
-up to 6 plan tasks; add one more implementer per further 5 tasks; at most 5
-teammates. A writer replaces the implementer when the plan's tasks are prose.
+Team mode. Sizing: 1 writing seat; a reviewer only when some task's reviewer
+gate is on; add one writing seat per concurrent worktree-tier task; an
+integrator only when the plan has three or more worktree-tier merges; at
+most 5 teammates. A writer replaces the implementer when the plan's tasks are prose.
 
 Spawn each with a named `Agent` call and **no `isolation`** — the writing
 seat isolates itself after it claims (see "## Two kinds of IC"). Names are
@@ -546,7 +627,7 @@ worktree isolation on the call:
 ```
 Agent:
   name: "task-3-impl"            # its SendMessage address for fix rounds
-  isolation: "worktree"          # branch worktree-task-3-impl, from the repo default branch
+  isolation: "worktree"          # worktree/provisioned tier only; omit for branch tier — branch worktree-task-3-impl, from the repo default branch
   model: [omit to take the agent's default; override only with a Model Selection reason written here]
   subagent_type: "superteam:implementer"  # superteam:writer for prose tasks; general-purpose if the plugin agent is not loaded
   description: "Implement Task 3: [task name]"
@@ -613,8 +694,8 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 is needed for it; copy the report out anyway before the integrator removes
 the worktree. The four statuses below still describe what a report can say.
 
-First, copy the implementer's report out of the worktree into this plan's
-workspace, so the reviewer (a teammate in your checkout) can read it:
+Worktree tier: first, copy the implementer's report out of the worktree into
+this plan's workspace, so the reviewer (a teammate in your checkout) can read it:
 `cp .claude/worktrees/<name>/.superteam/sdd/<plan-basename>/task-N-report.md <workspace>/task-N-report.md`.
 Do this before dispatching any reviewer, and again after every fix round
 (the fix report is appended to the same worktree-relative file).
@@ -805,14 +886,23 @@ a silent discard is forbidden.
 
 ### 5. Complete the task
 
-**Team mode:** the review completing unblocks `Task N: merge`, which
-`integrator-1` claims; the merge details are already in its description.
-You do nothing but read the completion. The dispatch below is fallback mode.
+**Team mode:** on the worktree tier with an integrator seat, the gate
+clearing unblocks `Task N: merge`, which `integrator-1` claims; the merge
+details are already in its description and you do nothing but read the
+completion. On the branch tier — and on the worktree tier with no integrator
+seat — the gate clearing is your cue to merge, below. The dispatch shape is
+fallback mode's.
 
-When the review comes back clean — or every open finding is parked with a
-ruling at the cap — dispatch the integrator to merge the IC's branch into
-the lane. One dispatch per merge, never two at once (it mutates your
-checkout), no `isolation`:
+**Branch tier.** The lead merges: `git switch <base>`,
+`git merge --no-ff task-N` with the commit trailer, run the full suite,
+`git branch -d task-N`, and record the merge sha, wall clock and
+concurrent-writer count in the ledger. There is no integrator seat.
+
+**Worktree tier.** When the gate is clean — the review came back clean, or
+every open finding is parked with a ruling at the cap — dispatch the
+integrator to merge the IC's branch into `<base>`, or merge it yourself when
+the plan has no integrator seat. One dispatch per merge, never two at once
+(it mutates your checkout), no `isolation`:
 
 ```
 Agent:
@@ -900,7 +990,9 @@ plan-file ledger from Setup: `<workspace>/progress.md` with
 
 ## Final Review
 
-The final whole-branch review gets a package too: run
+The final two-axis review runs only when the reviewer gate is on for the
+plan; otherwise the tasks' own evidence is the record and you go straight to
+Finish. When it runs, it gets a package too: run
 `scripts/review-package PLAN_FILE MERGE_BASE HEAD` (MERGE_BASE = the commit the
 branch started from, e.g. `git merge-base main HEAD`) and include the
 printed path in the final review dispatch, so the final reviewer reads
@@ -945,7 +1037,9 @@ made in secret. Next to it list **Proposed terms** — every term ICs
 proposed, collected from the ledger — so your human partner can decide
 whether to run superteam:domain-modeling; the lead never edits `CONTEXT.md`.
 
-When the final whole-branch review is clean and its fixes are merged
+The final review runs only when the reviewer gate is on for the plan; with
+the gate off, the tasks' reports and the suite are what your human partner
+reads. When the final whole-branch review is clean and its fixes are merged
 (the fix wave's branch goes through the integrator like any task), dispatch
 the integrator once more to delete this plan's workspace
 (`rm -rf <workspace>`) — the git history is the record now. Sibling
@@ -954,8 +1048,8 @@ directories belong to other plans; the dispatch names exactly one path.
 Use superteam:finishing-a-development-branch. In team mode its "Team
 teardown" section is what shuts the pool down: when a role has no pending
 tasks left, `SendMessage` a `shutdown_request` to each idle teammate of that
-role; when every merge is done, merge the lane into trunk and shut down the
-rest. Never shut down a teammate whose role still has an unclaimed task.
+role; when every merge is done, merge the lane into trunk when the plan used one,
+and shut down the rest. Never shut down a teammate whose role still has an unclaimed task.
 
 ## Common Rationalizations
 
@@ -1041,4 +1135,14 @@ Standards: no findings. Spec: all requirements met. Deferred minors triaged: non
 [Agent subagent_type=superteam:integrator: delete this plan's workspace — the record now lives in git]
 
 Done! Using superteam:finishing-a-development-branch.
+```
+
+A one-task plan on the branch tier is five lines:
+
+```
+[Setup: <base> is trunk — no lane; three tasks on the list: Task 1 implement, review spec, review standards]
+[impl-1 claims Task 1, runs git switch -c task-1 main in this checkout, commits on task-1, reports]
+[reviewer-1 claims both review seats in turn, diffs main..task-1, both Approved]
+[Lead merges: git switch main; git merge --no-ff task-1; full suite green; git branch -d task-1]
+[Ledger: Task 1: complete (tier branch, gates reviewer, 41 min claim→merge, 1 concurrent writer)]
 ```
