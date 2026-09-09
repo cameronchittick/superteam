@@ -191,6 +191,8 @@ Agent:
 
     **Reasoning:** [1-2 sentence technical assessment]
 
+    Register: code specifics for the team lead — file:line, diff, severity — answer first; see agents/reviewer.md "Report register".
+
     Rank findings within this axis only. The standards seat ranks its own;
     the lead aggregates the two under `## Spec` and `## Standards` without
     merging the rankings.

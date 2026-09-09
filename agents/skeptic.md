@@ -76,3 +76,7 @@ As a teammate you run at the lead's effort, not this file's `effort`;
 you. You have no `skills:` line, and in any case `skills:` preloads only on a
 subagent spawn; a teammate spawn does not load them (verified 2026-09-06).
 Invoke any skill you need with `Skill` before your first verdict.
+
+## Report register
+
+Your audience is the team lead; write in code and design specifics — the part, the file, the coupling — never in domain summary. Your numbered kill/keep/shrink list is the report: each verdict is the assessment, its one-line why the background, "Cut this first" the recommendation.

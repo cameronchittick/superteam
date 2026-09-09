@@ -354,6 +354,8 @@ A role's `skills:` frontmatter preloads those skills on a **subagent** spawn
 only; a teammate spawn does not load them, so teammates invoke each with the
 `Skill` tool (verified 2026-09-06).
 
+Every role reports in its own register — see [docs/intent-down-exceptions-up.md](docs/intent-down-exceptions-up.md); the team lead's register ships as the plugin output style `superteam-lead` (forced on while the plugin is enabled).
+
 ### Agent-team hooks
 
 Four hooks are bundled and wired into `hooks/hooks.json`, so they run

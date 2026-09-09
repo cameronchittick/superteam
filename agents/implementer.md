@@ -118,3 +118,7 @@ its absolute path); end a turn with a command running; retry a guard-refused
 command unchanged more than once — report and stop.
 
 As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; `skills:` preloads only on a subagent spawn; a teammate spawn does not load them (verified 2026-09-06). As a teammate, invoke each skill named in `skills:` with `Skill` before your first edit. A downgrade to haiku by written reason applies to subagent dispatch only; never as a teammate (haiku cannot run in auto mode, so every command prompts in the lead pane — permission-modes.md).
+
+## Report register
+
+Your audience is the team lead; write in code specifics — `file:line`, the diff stat, test output, a commit — never in domain summary. Your `## Report` shape above is the report, read as SBAR: what changed and where (situation), the diff and test output (background), your self-review and anything unresolved (assessment), and your status line — done, blocked, or needs context — is the recommendation. Answer first: the status line leads. A question to another IC is lateral: their vocabulary, an artifact reference, no report.

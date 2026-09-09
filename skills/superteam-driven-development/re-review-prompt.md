@@ -111,6 +111,8 @@ Agent:
     Issues you noticed entirely outside the fix diff. Non-blocking; the
     controller ledgers these for the final review. "None" if none.
 
+    Register: code specifics for the team lead — file:line, diff, severity — answer first; see agents/reviewer.md "Report register".
+
     ### Verdict
 
     **Fix round:** [All findings addressed, no new Critical/Important
