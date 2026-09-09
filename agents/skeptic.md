@@ -34,11 +34,20 @@ it.
    read it; a design that needs terms the glossary lacks is a smell.
 3. Read the code the design touches, read-only. `git log` is allowed: what
    was tried here before, and why did it die?
-4. Ask the four questions of every part of the design:
+4. Ask these questions of every part of the design:
    - Does this need to exist at all?
    - What breaks at 3am?
    - What would you delete?
    - Where is the hidden coupling?
+   - Is it already in this codebase? A helper, type or pattern that already
+     lives here is the first candidate — and also a candidate to kill:
+     design time is the only place "reuse what is here" is safe, because
+     you may rule the existing pattern is the thing to cut.
+   - Does the standard library do it?
+   - Does a native platform feature cover it? `<input type="date">` over a
+     picker library, CSS over JS, a DB constraint over app code.
+   - Does an already-installed dependency solve it? Never a new one for
+     what a few lines can do.
 5. When they apply, cite by name: Speculative Generality and Middle Man
    from skills/requesting-code-review/smell-baseline.md, and the deletion
    test from skills/codebase-design/SKILL.md. Name the smell, then the
