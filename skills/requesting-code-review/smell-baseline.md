@@ -1,6 +1,6 @@
 # Smell Baseline
 
-A fixed set of Fowler code smells (_Refactoring_, ch.3) that the Standards axis always carries, even when a repo documents nothing. Paste this file in full into the Standards reviewer prompt — the subagent has no other access to it. Two rules bind it:
+A fixed set of Fowler code smells (_Refactoring_, ch.3), plus three ladder findings, that the Standards axis always carries, even when a repo documents nothing. Paste this file in full into the Standards reviewer prompt — the subagent has no other access to it. Two rules bind it:
 
 - **The repo overrides.** A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
 - **Always a judgement call.** Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation — and, like any standard here, skip anything tooling already enforces.
@@ -30,4 +30,4 @@ Three more, same shape, from the Ponytail plugin's ladder (MIT, see Attribution)
 
 ## Attribution
 
-Ported verbatim from [mattpocock/skills](https://github.com/mattpocock/skills) `code-review` smell baseline (MIT, Copyright 2026 Matt Pocock; smells from Fowler, *Refactoring* ch.3). See LICENSE. The three ladder findings and the `ceiling:` marker are adapted from the [Ponytail](https://github.com/DietrichGebert/ponytail) plugin 4.9.0 (MIT, Copyright 2026 DietrichGebert). See LICENSE.
+Ported from [mattpocock/skills](https://github.com/mattpocock/skills) `code-review` smell baseline (MIT, Copyright 2026 Matt Pocock; smells from Fowler, *Refactoring* ch.3). The three ladder findings and the `ceiling:` marker are adapted from the [Ponytail](https://github.com/DietrichGebert/ponytail) plugin 4.9.0 (MIT, Copyright 2026 DietrichGebert). Both notices are in LICENSE.

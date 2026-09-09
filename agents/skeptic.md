@@ -48,7 +48,7 @@ it.
      picker library, CSS over JS, a DB constraint over app code.
    - Does an already-installed dependency solve it? Never a new one for
      what a few lines can do.
-5. When they apply, cite by name: Speculative Generality and Middle Man
+5. When they apply, cite by name: Speculative Generality, Middle Man and New Dependency
    from skills/requesting-code-review/smell-baseline.md, and the deletion
    test from skills/codebase-design/SKILL.md. Name the smell, then the
    part of the design that has it.

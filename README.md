@@ -304,7 +304,7 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 ## Credit
 
-Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent and Prime Radiant, used under the MIT license (see LICENSE). It is maintained by Cameron Chittick as a private plugin: trimmed to Claude Code agent teams while keeping other-harness support. The `domain-modeling` and `codebase-design` skills and the code-review smell baseline are ported from Matt Pocock's [skills](https://github.com/mattpocock/skills) (MIT), with their cross-skill plumbing mapped onto superteam's equivalents.
+Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) by Jesse Vincent and Prime Radiant, used under the MIT license (see LICENSE). It is maintained by Cameron Chittick as a private plugin: trimmed to Claude Code agent teams while keeping other-harness support. The `domain-modeling` and `codebase-design` skills and the code-review smell baseline are ported from Matt Pocock's [skills](https://github.com/mattpocock/skills) (MIT), with their cross-skill plumbing mapped onto superteam's equivalents. The design-time ladder in the skeptic, the three ladder findings in the smell baseline and the `ceiling:` marker are adapted from the [Ponytail](https://github.com/DietrichGebert/ponytail) plugin (MIT).
 
 ## What's Inside
 
