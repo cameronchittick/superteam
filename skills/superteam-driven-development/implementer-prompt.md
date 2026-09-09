@@ -9,7 +9,7 @@ Use this template when dispatching an implementer IC into its worktree.
 ```
 Agent:
   name: "task-N-impl"            # SendMessage address for fix rounds
-  isolation: "worktree"          # commits land on branch worktree-task-N-impl
+  isolation: "worktree"          # worktree/provisioned tier only; omit for branch tier — commits land on branch worktree-task-N-impl
   subagent_type: "superteam:implementer"  # general-purpose if the plugin agent is not loaded
   description: "Implement Task N: [task name]"
   model: [omit to take the agent's default; override only with a Model Selection reason written here]
@@ -30,8 +30,10 @@ Agent:
 
     ## Paths
 
-    All paths are relative to your cwd (your worktree). Never use the main
-    checkout's absolute path; never `cd` out of your worktree. One simple
+    All paths are relative to your cwd — your worktree on the worktree
+    tier, the lead's checkout on the branch tier. A worktree seat never
+    uses the main checkout's absolute path and never `cd`s out of its
+    worktree. One simple
     command per Bash call. If a path in this prompt starts with `/`, it is
     the lead's mistake — report NEEDS_CONTEXT with the path instead of
     using it.

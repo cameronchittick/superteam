@@ -44,7 +44,8 @@ Agent:
 
     Read the implementer's report (fix reports are appended at the end;
     the lead copied it out of the worktree to [REPORT_FILE] in this
-    checkout before dispatching you):
+    checkout before dispatching you — worktree tier; on the branch tier the
+    report is already in the checkout):
     [REPORT_FILE]
 
     **Fix base:** [FIX_BASE_SHA] (the head the previous review saw)
@@ -129,7 +130,8 @@ Agent:
 - `[FINDINGS]` — the Critical/Important findings and spec gaps from the
   previous review, copied verbatim, one per bullet
 - `[REPORT_FILE]` — the implementer's report file, copied out of the
-  worktree into this checkout (fix reports appended)
+  worktree into this checkout, fix reports appended (worktree tier; on the
+  branch tier the report is already in the checkout)
 - `[FIX_BASE_SHA]` — the head the previous review saw
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — the path `scripts/review-package PLAN_FILE FIX_BASE HEAD` printed
