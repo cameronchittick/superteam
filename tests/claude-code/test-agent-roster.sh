@@ -427,7 +427,7 @@ main() {
         fi
     done
 
-    if [[ -s "$AGENTS/implementer.md" ]] && \
+    if grep -q '^## Report register' "$AGENTS/implementer.md" && grep -q '^## Report register' "$AGENTS/writer.md" && \
        cmp -s <(sed -n '/^## Report register/,$p' "$AGENTS/implementer.md") \
               <(sed -n '/^## Report register/,$p' "$AGENTS/writer.md"); then
         pass "implementer.md and writer.md carry the same Report register text"
