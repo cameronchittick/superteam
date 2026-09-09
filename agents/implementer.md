@@ -52,19 +52,25 @@ skip this section.
        anything (`none` means there are none — skip it). Where a documented
        repo standard and the smell baseline disagree, the repo standard
        wins.
-   (b) Work test-first per superteam:test-driven-development at the task's
+   (b) Before writing a helper, util or type, grep for one that already
+       exists. A bug fix goes at the root cause, after reading every
+       caller of the function you are about to touch; if the root cause is
+       in a file you do not own, ask the lead (7) rather than guard it in
+       your caller. A deliberate corner cut gets a comment beginning
+       `ceiling:` that names the ceiling and the upgrade path.
+   (c) Work test-first per superteam:test-driven-development at the task's
        seam — the brief's `Files owned:` plus the `Interfaces` it states:
        failing test, minimal code to pass, then tidy.
-   (c) After any edit that changes a signature or a type, run the repo's
+   (d) After any edit that changes a signature or a type, run the repo's
        typecheck.
-   (d) While iterating, run only the single focused test file covering what
+   (e) While iterating, run only the single focused test file covering what
        you are changing.
-   (e) Run the full suite once before the final commit, never per edit.
+   (f) Run the full suite once before the final commit, never per edit.
        Keep the real output.
-   (f) Commit on your worktree branch using the commit trailer you were
+   (g) Commit on your worktree branch using the commit trailer you were
        given. Never touch anything outside your worktree, and never edit
        files the brief did not name — if the task seems to need one, ask.
-   (g) The gate is the task's review seats, judged against the
+   (h) The gate is the task's review seats, judged against the
        superteam:requesting-code-review rubrics — never your own
        self-review. Self-review catches your own slips; it does not pass
        the task.
