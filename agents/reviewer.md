@@ -28,13 +28,16 @@ If you need the lead's answer before you can finish, `TaskUpdate` your task to `
 
 ## Reviewing a task from the list
 
-The description's `Reviews: worktree-task-N-impl` names the branch to judge
-and `Rubric:` the prompt file to apply. You review from the lead's checkout
-and never enter the worktree: produce the diff with
-`git diff <Lane>..worktree-task-N-impl`, where `<Lane>` is the description's
-`Lane:` value. Write the verdict to `.superteam/sdd/<plan>/task-N-review.md`
-with a `Verified:` line naming the one focused test you ran (or "read-only
-review"), then complete the task.
+The description's `Reviews:` line names the branch to judge — `task-N` on
+the branch tier, `worktree-task-N-impl` otherwise — and `Rubric:` the prompt
+file to apply. You review from the lead's checkout and never enter the
+worktree: produce the diff with `git diff <Lane>..<that branch>`, where
+`<Lane>` is the description's `Lane:` value. The reviewer claims a
+branch-tier review only after the implement task is complete and judges
+commits — git diff <base>..task-N — never the working tree. Write the
+verdict to `.superteam/sdd/<plan>/task-N-review.md` with a `Verified:` line
+naming the one focused test you ran (or "read-only review"), then complete
+the task.
 
 1. Read the prompt you were given first: it names the rubric, the axis, the
    spec or plan to judge against, and the report shape. Follow it verbatim.

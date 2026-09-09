@@ -157,6 +157,7 @@ main() {
         grep -q '^tools: .*EnterWorktree, ExitWorktree' "$AGENTS/$role.md" && pass "agents/$role.md allows EnterWorktree/ExitWorktree" || fail "agents/$role.md allows EnterWorktree/ExitWorktree"
         grep -q '^## Isolating (teammate)' "$AGENTS/$role.md" && pass "agents/$role.md has the Isolating section" || fail "agents/$role.md has the Isolating section"
         grep -q 'first command inside it is `git merge' "$AGENTS/$role.md" && pass "agents/$role.md merges the lane first" || fail "agents/$role.md merges the lane first"
+        grep -q 'git switch -c <Branch> <Lane>' "$AGENTS/$role.md" && pass "agents/$role.md has the branch-tier path" || fail "agents/$role.md has the branch-tier path"
     done
     for role in reviewer skeptic; do
         grep -q '^memory: project' "$AGENTS/$role.md" && pass "agents/$role.md has memory: project" || fail "agents/$role.md has memory: project"
