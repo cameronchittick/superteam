@@ -36,8 +36,7 @@
 - [ ] **Step 1: Replace step 4** so it reads, verbatim:
 
 ```
-4. Ask these questions of every part of the design, in this order, and
-   stop at the first that settles it:
+4. Ask these questions of every part of the design:
    - Does this need to exist at all?
    - What breaks at 3am?
    - What would you delete?
@@ -108,8 +107,8 @@ The three ladder findings and the `ceiling:` marker are adapted from the [Ponyta
 
 - [ ] **Step 4: Verify and commit**
 
-Run: `grep -c "^- \*\*" skills/requesting-code-review/smell-baseline.md`
-Expected: `15`
+Run: `grep -c "^- \*\*\(New Dependency\|Symptom Fix\|Unmarked Ceiling\)\*\*" skills/requesting-code-review/smell-baseline.md`
+Expected: `3`
 
 ```bash
 git add skills/requesting-code-review/smell-baseline.md
@@ -138,14 +137,13 @@ source: skills/requesting-code-review/smell-baseline.md#ladder-findings"
 ```
    (b) Before writing a helper, util or type, grep for one that already
        exists. A bug fix goes at the root cause, after reading every
-       caller of the function you are about to touch. A deliberate corner
-       cut gets a comment beginning `ceiling:` that names the ceiling and
-       the upgrade path.
+       caller of the function you are about to touch; if the root cause is
+       in a file you do not own, ask the lead (7) rather than guard it in
+       your caller. A deliberate corner cut gets a comment beginning
+       `ceiling:` that names the ceiling and the upgrade path.
 ```
 
-- [ ] **Step 2: Fix the cross-reference** in (h) (was (g)) — none needed; it names no letters. Confirm with `grep -n "(b)\|(g)\|(h)" agents/implementer.md`.
-
-- [ ] **Step 3: Run the roster test and commit**
+- [ ] **Step 2: Run the roster test and commit**
 
 Run: `bash tests/claude-code/test-agent-roster.sh`
 Expected: all PASS for `agents/implementer.md`.
