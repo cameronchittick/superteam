@@ -46,6 +46,7 @@ tests/hooks/test-session-start.sh|node
 tests/hooks/test-bash-guard.sh|python3
 tests/claude-code/test-agent-roster.sh|
 tests/claude-code/test-output-style.sh|
+tests/claude-code/test-isolation-tiers.sh|
 tests/claude-code/test-dispatch-template.sh|
 tests/claude-code/test-sdd-workspace.sh|
 tests/claude-code/test-worktree-path-policy.sh|

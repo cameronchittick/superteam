@@ -192,12 +192,12 @@ fi
 
 echo ""
 
-# Test 8: Verify worktree requirement
-echo "Test 8: Worktree requirement..."
+# Test 8: Isolation rule
+echo "Test 8: Isolation rule..."
 
 output=$(run_claude "What workflow skills are required before using superteam-driven-development? List any prerequisites or required skills." "$CLAUDE_PROMPT_TIMEOUT")
 
-if assert_contains "$output" "using-git-worktrees\|worktree" "Mentions worktree requirement"; then
+if assert_contains "$output" "isolation\|tier\|branch\|worktree" "Mentions isolation tier requirement"; then
     : # pass
 else
     exit 1
