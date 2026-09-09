@@ -331,6 +331,7 @@ cat > "$fixture_plan" <<'EOF'
 
 **Files owned:** `a.sh`, `b.sh`
 **Depends on:** Task 1
+**Isolation:** worktree
 **Model tier:** most capable
 
 - [ ] Step 1: do it too.
