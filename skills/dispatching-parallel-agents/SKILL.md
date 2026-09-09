@@ -78,7 +78,7 @@ Multiple dispatch calls in one response = parallel execution. One per response =
 
 Name the agent; never `general-purpose`; override `model` only with a written reason.
 
-- **Agents will edit files:** `subagent_type: "superteam:implementer"` with `isolation: "worktree"` on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
+- **Agents will edit files:** `subagent_type: "superteam:implementer"` with `isolation: "worktree"` (parallel writers are the worktree tier; see docs/isolation-tiers.md) on each call so they cannot overwrite each other. Each works on its own `worktree-<name>` branch; you merge after review (Step 4).
 - **Agents only investigate:** `subagent_type: "superteam:researcher"`, no `isolation`. With agent teams enabled, named agents become teammates and can message each other via `SendMessage`.
 
 A worktree agent gets its task inlined into the dispatch prompt, not a path

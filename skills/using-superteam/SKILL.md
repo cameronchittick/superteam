@@ -25,7 +25,7 @@ Then announce "Using [skill] to [purpose]" and follow the skill exactly. If it h
 
 ## Step 0: how many agents
 
-Team mode = `TaskCreate` in your tools + interactive (not `-p`) + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; otherwise foreground subagents. One answer or one file set → a subagent (`isolation: worktree` when it edits); a worker that reports and stays → a teammate (named `Agent`, no isolation); 3+ plan tasks or 3+ hypotheses → a team of 3–5 role teammates on the task graph; another repo or a second lead → a cross-session peer via `SendMessage`. Cost: one context per agent, so a team is N contexts on one shared list. Not a team when the work is sequential steps, same-file edits, or many dependencies — one session or subagents (agent-teams.md, When to use agent teams).
+Team mode = `TaskCreate` in your tools + interactive (not `-p`) + `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; otherwise foreground subagents. One answer or one file set → a subagent (`isolation: worktree` only when it edits while another writer is active); a worker that reports and stays → a teammate (named `Agent`, no isolation); 3+ plan tasks or 3+ hypotheses → a team of 3–5 role teammates on the task graph; another repo or a second lead → a cross-session peer via `SendMessage`. Cost: one context per agent, so a team is N contexts on one shared list. Not a team when the work is sequential steps, same-file edits, or many dependencies — one session or subagents (agent-teams.md, When to use agent teams).
 
 ## Skill Priority
 
