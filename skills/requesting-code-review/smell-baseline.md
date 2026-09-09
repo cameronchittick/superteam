@@ -15,11 +15,19 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Repeated Switches** — the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
 - **Shotgun Surgery** — one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
 - **Divergent Change** — one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
-- **Speculative Generality** — abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
+- **Speculative Generality** — abstraction, parameters, or hooks added for needs the spec doesn't have: an interface with one implementation, a factory for one product, config for a value that never changes. → delete it; inline back until a real need shows.
 - **Message Chains** — long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
 - **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
+## Ladder findings
+
+Three more, same shape, from the Ponytail plugin's ladder (MIT, see Attribution). Same two rules bind them: the repo overrides, and each is a judgement call.
+
+- **New Dependency** — a package added for what a few lines, the standard library, a native platform feature, or an already-installed dependency does. → remove it; use what is already there.
+- **Symptom Fix** — a guard or special case added in one caller when the shared function every caller routes through is where the defect lives. → move the fix into the shared function; delete the caller-side guard.
+- **Unmarked Ceiling** — a deliberate corner cut (a global lock, an O(n²) scan, a naive heuristic) with no comment naming the ceiling and the upgrade path. → add a `ceiling:` comment: `# ceiling: global lock; per-account locks if throughput matters`. A cut with no honest ceiling is a defect, not a shortcut.
+
 ## Attribution
 
-Ported verbatim from [mattpocock/skills](https://github.com/mattpocock/skills) `code-review` smell baseline (MIT, Copyright 2026 Matt Pocock; smells from Fowler, *Refactoring* ch.3). See LICENSE.
+Ported verbatim from [mattpocock/skills](https://github.com/mattpocock/skills) `code-review` smell baseline (MIT, Copyright 2026 Matt Pocock; smells from Fowler, *Refactoring* ch.3). See LICENSE. The three ladder findings and the `ceiling:` marker are adapted from the [Ponytail](https://github.com/DietrichGebert/ponytail) plugin 4.9.0 (MIT, Copyright 2026 DietrichGebert). See LICENSE.
