@@ -32,6 +32,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 #   tests/claude-code/test-helpers.sh    - a helper, not a suite
 #   tests/claude-code/run-skill-tests.sh - a runner over the above
 #   tests/claude-code/test-superteam-driven-development-integration.sh - needs timeout, drives a live session
+#   tests/claude-code/test-superteam-driven-development.sh - drives live claude -p sessions, grades prose with regexes
+#   tests/claude-code/test-worktree-native-preference.sh - drives live claude -p sessions (RED/GREEN eval)
 #   tests/explicit-skill-requests/       - drives live Claude sessions, not a static suite
 #   tests/brainstorm-server/*.test.js    - node runtime, run with npm test in that directory
 #   tests/hermes/*.py                    - python/pytest runtime
@@ -46,11 +48,9 @@ tests/hooks/test-task-monitor.sh|python3
 tests/claude-code/test-agent-roster.sh|
 tests/claude-code/test-dispatch-template.sh|
 tests/claude-code/test-sdd-workspace.sh|
-tests/claude-code/test-superteam-driven-development.sh|timeout
-tests/claude-code/test-worktree-native-preference.sh|timeout
 tests/claude-code/test-worktree-path-policy.sh|
 tests/codex/test-marketplace-manifest.sh|python3
-tests/codex/test-package-codex-plugin.sh|python3
+tests/codex/test-package-codex-plugin.sh|python3,zip,unzip
 tests/devin/test-devin-plugin.sh|python3
 tests/kimi/run-tests.sh|python3
 tests/version-bump/test-bump-version.sh|yq
@@ -112,7 +112,7 @@ run_suite() {
         return
     fi
 
-    if output="$(cd "$ROOT" && bash "$ROOT/$suite" 2>&1)"; then
+    if output="$(cd "$ROOT" && bash "$ROOT/$suite" 2>&1 </dev/null)"; then
         report PASS "$suite"
         passed=$((passed + 1))
     else

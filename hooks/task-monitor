@@ -43,9 +43,9 @@ fi
 STUCK_MINUTES="${SUPERTEAM_STUCK_MINUTES:-20}"
 EMITTED="$DIR/.monitor-emitted"
 
-# mtime SECONDS-since-epoch, BSD stat then GNU stat.
+# mtime SECONDS-since-epoch, GNU stat then BSD stat (GNU stat -f prints filesystem info to stdout, so it cannot go first).
 mtime() {
-    stat -f %m "$1" 2>/dev/null || stat -c %Y "$1" 2>/dev/null || echo 0
+    stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0
 }
 
 # json_line FILE KEY -- value of a top-level pretty-printed "key": "value".
