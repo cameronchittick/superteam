@@ -288,7 +288,7 @@ turn loses the bootstrap — start a fresh session if skills stop triggering.
 
 3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps.
 
-4. **superteam-driven-development** or **executing-plans** - Activates with plan. Dispatches one implementer IC per task, in its own worktree, with a two-axis per-task review, or executes in batches with human checkpoints.
+4. **superteam-driven-development** or **executing-plans** - Activates with plan. Dispatches one implementer IC per task, isolated per the task's tier (branch by default), with a two-axis per-task review, or executes in batches with human checkpoints.
 
    Per-task review is two reviewer seats running in parallel off the same diff: `Task N: review spec` judges the change against the plan task and the spec, `Task N: review standards` judges it against the repo's standards files and the smell baseline, citing file + rule. Merge waits on both, and the two axes are never reranked against each other.
 
@@ -338,12 +338,14 @@ Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) b
 
 Named roles the skills dispatch as `superteam:<name>`; each carries its own model so nothing inherits the session's.
 
-- **implementer** — owns one plan task's files in an isolated worktree, TDD, commits, reports a diff summary — opus
+Where each task runs — the lead alone, an IC on the lead's own branch, a worktree, or a provisioned lane — and which gates (skeptic, reviewer) run are chosen per task at intake by what breaks if the task is wrong; see [docs/isolation-tiers.md](docs/isolation-tiers.md).
+
+- **implementer** — owns one plan task's files on its own branch, in a worktree only when the task's tier says so, TDD, commits, reports a diff summary — opus
 - **researcher** — investigation that returns a conclusion with file:line evidence, or one design-it-twice brief; never edits an existing file, and may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`) — sonnet
 - **reviewer** — reads a diff or document once and returns a verdict by severity; the prompt file it is filled with sets the rubric — opus
 - **skeptic** — pre-build veteran skeptic: numbered kill/keep/shrink verdicts on a spec, plan or approach list — opus
-- **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) in an isolated worktree, self-review instead of TDD — opus
-- **integrator** — merges a reviewed branch, runs the full suite, removes the worktree, bumps manifests when told — sonnet
+- **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) on its own branch, in a worktree only when the task's tier says so, self-review instead of TDD — opus
+- **integrator** — merges a reviewed branch, runs the full suite, removes the worktree when there was one, bumps manifests when told — sonnet
 
 The plugin's `worker_model` and `review_model` userConfig keys name the
 intended knob for the three `opus` seats, but Claude Code does not substitute
@@ -387,20 +389,17 @@ all four.
   file (see
   [verification-before-completion](skills/verification-before-completion/SKILL.md#evidence-line)
   for the exact format).
-- **`bash-guard`** (`PreToolUse`, matcher `Bash`) — denies four commands that
+- **`bash-guard`** (`PreToolUse`, matcher `Bash`) — denies three commands that
   destroy work nobody asked to destroy: `tmux kill-server`, `git checkout .`,
-  `git reset --hard`, and `rm -rf` reaching outside the working directory.
-  Everything else passes in silence, and it fails open. A forbidden command
+  and `git reset --hard`. Everything else passes in silence, and it fails
+  open. A forbidden command
   counts only in command position — at the start of a line or right after a
   separator — so quoting one in text (an `echo`, a `grep` pattern, a heredoc
   writing a report) is allowed. A backtick is not a separator here, which
   means backtick-quoted prose passes and a backtick command substitution
   passes with it; the mirror is that a heredoc line *beginning* with one of
   these commands is still denied, so put a word or a backtick in front of it.
-  It reads the command
-  as text rather than running it — `cd /tmp && rm -rf ./x` reads as a relative
-  target and a symlink out of the worktree is not resolved — so it is a
-  guardrail against the common destructive typo, not a sandbox.
+  It is a guardrail against three destructive typos, not a sandbox.
 
 
 ### Tests
