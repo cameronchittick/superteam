@@ -79,12 +79,28 @@ Keep responses short by default: lead with the result, skip preamble and recap, 
 **Depends on:** none
 **Model tier:** standard
 
-- [ ] **Step 1: Append a closing section to each agent file** (last section in the file, after everything else). Implementer, writer, integrator and researcher get this, verbatim:
+- [ ] **Step 1: Append a closing section to each agent file** (last section in the file, after everything else). The section states audience and register and maps the file's existing report shape onto SBAR; it never adds a second template. Implementer and writer get this, verbatim:
 
 ```
 ## Report register
 
-Your audience is the team lead. Write in code specifics — `file:line`, the diff, test output, a merge sha — never in domain summary. Shape every report SBAR: **Situation** what changed; **Background** the evidence; **Assessment** your verdict or the severity of what you found; **Recommendation** one of merge, fix, or decision needed, with the decision stated. Answer first, evidence after. Peers (another IC) get their own vocabulary and an artifact reference, not a report.
+Your audience is the team lead; write in code specifics — `file:line`, the diff stat, test output, a commit — never in domain summary. Your `## Report` shape above is the report, read as SBAR: what changed and where (situation), the diff and test output (background), your self-review and anything unresolved (assessment), and your status line — done, blocked, or needs context — is the recommendation. Answer first: the status line leads. A question to another IC is lateral: their vocabulary, an artifact reference, no report.
+```
+
+  Integrator gets this, verbatim:
+
+```
+## Report register
+
+Your audience is the team lead; write in code specifics — the merge sha, the `Tests:` line, the conflict you resolved — never in domain summary. Your completion message is the report, read as SBAR: what merged (situation), the suite output (background), clean or blocked (assessment), and the next action — bump, hold, or decision needed — is the recommendation. Answer first: merged or blocked leads.
+```
+
+  Researcher gets this, verbatim:
+
+```
+## Report register
+
+Your audience is the team lead; write in code specifics — `file:line`, URL + section — never in domain summary. Your Conclusion / Evidence / Open / Findings file shape is the report, read as SBAR: the conclusion is situation and assessment in one, the evidence is background, and Open — what would settle it — is the recommendation. Answer first: the conclusion leads. A message to a peer investigator is lateral: their vocabulary, an artifact reference, no report.
 ```
 
   Reviewer gets this, verbatim:
@@ -92,7 +108,7 @@ Your audience is the team lead. Write in code specifics — `file:line`, the dif
 ```
 ## Report register
 
-Your audience is the team lead. Your report shape is the one the rubric prompt defines — severity groups, per-axis worst finding, verdict line — and that already is SBAR: findings are the situation, `file:line` the background, severity the assessment, the verdict the recommendation. Write in code specifics, never in domain summary; the verdict line comes first if the prompt lets you order it. A question to the implementer is lateral: their vocabulary, an artifact reference, no report.
+Your audience is the team lead; write in code specifics — `file:line`, severity, the one test you ran — never in domain summary. The shape the rubric prompt defines is the report: findings are the situation, their evidence the background, severity the assessment, the verdict line the recommendation. A question to the implementer is lateral: their vocabulary, an artifact reference, no report.
 ```
 
   Skeptic gets this, verbatim:
@@ -100,7 +116,7 @@ Your audience is the team lead. Your report shape is the one the rubric prompt d
 ```
 ## Report register
 
-Your audience is the team lead. Your report shape stays the numbered kill/keep/shrink list with "Cut this first" — that is the assessment and the recommendation in one; the one-line why is the background. Write in code and design specifics, never in domain summary. Nothing else is added to the shape.
+Your audience is the team lead; write in code and design specifics — the part, the file, the coupling — never in domain summary. Your numbered kill/keep/shrink list is the report: each verdict is the assessment, its one-line why the background, "Cut this first" the recommendation.
 ```
 
 - [ ] **Step 2: Echo the shape in the SDD prompts.** In `implementer-prompt.md`, change the cadence line `8. Report back` to `8. Report back — SBAR: what changed, evidence, your assessment, merge / fix / decision needed`. In each of `task-reviewer-prompt.md`, `task-standards-prompt.md`, `re-review-prompt.md`, add one line immediately before the prompt's final report-shape instruction: `Register: code specifics for the team lead — file:line, diff, severity — answer first; see agents/reviewer.md "Report register".`
@@ -112,10 +128,10 @@ Your audience is the team lead. Your report shape stays the numbered kill/keep/s
 ### Task 4: Tests
 
 **Files owned:** `tests/claude-code/test-agent-roster.sh`, `tests/claude-code/test-output-style.sh`, `bin/superteam-test`
-**Depends on:** none
+**Depends on:** Task 2, Task 3
 **Model tier:** cheap
 
-- [ ] **Step 1: Roster assertion.** In the `for role in implementer writer reviewer integrator researcher skeptic` loop of `test-agent-roster.sh`, add after the claim-rule line: `grep -q '^## Report register' "$f" && pass "agents/$role.md closes with Report register" || fail "agents/$role.md closes with Report register"`. It fails until Task 3 merges; that is the red step.
+- [ ] **Step 1: Roster assertion.** In the `for role in implementer writer reviewer integrator researcher skeptic` loop of `test-agent-roster.sh`, add after the claim-rule line: `grep -q '^## Report register' "$f" && pass "agents/$role.md closes with Report register" || fail "agents/$role.md closes with Report register"`. Task 3 is merged before this runs, so it passes.
 - [ ] **Step 2: Style test.** Create `tests/claude-code/test-output-style.sh` in the roster test's style (same `pass`/`fail` helpers from `test-helpers.sh`, `set -euo pipefail`, exit non-zero on any fail): assert `output-styles/superteam-lead.md` exists and each of `name:`, `description:`, `keep-coding-instructions: true`, `force-for-plugin: true` appears once at line start inside the frontmatter (between the first two `---` lines). Make it executable.
 - [ ] **Step 3: Runner row.** Add `tests/claude-code/test-output-style.sh|` after the roster row in `bin/superteam-test`.
 - [ ] **Step 4: Commit** — "Tests: every agent closes with Report register; output style frontmatter" with `source: tests/claude-code/test-output-style.sh`.
