@@ -69,7 +69,7 @@ Agent:
     5. Verify implementation works
     6. Commit your work
     7. Self-review (see below) — your own check, never the gate
-    8. Report back
+    8. Report back — SBAR: what changed, evidence, your assessment, merge / fix / decision needed
 
     Work from your cwd (your worktree).
 

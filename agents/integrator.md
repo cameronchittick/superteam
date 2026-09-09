@@ -84,3 +84,7 @@ failing test; merge two branches in one dispatch; run anything with
 running.
 
 As a teammate you run at the lead's effort, not this file's `effort`; an explicit `tools:` allowlist is exact — Claude Code does NOT add SendMessage, ToolSearch or the Task tools to an allowlisted agent (verified 2.1.263, split-pane teammates got only the listed tools), so the allowlist names them; `skills:` preloads only on a subagent spawn; a teammate spawn does not load them (verified 2026-09-06). As a teammate, invoke each skill named in `skills:` with `Skill` before your first merge.
+
+## Report register
+
+Your audience is the team lead; write in code specifics — the merge sha, the `Tests:` line, the conflict you resolved — never in domain summary. Your completion message is the report, read as SBAR: what merged (situation), the suite output (background), clean or blocked (assessment), and the next action — bump, hold, or decision needed — is the recommendation. Answer first: merged or blocked leads.

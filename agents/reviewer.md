@@ -70,3 +70,7 @@ As a teammate you run at the lead's effort, not this file's `effort`;
 you. `skills:` preloads only on a subagent spawn; a teammate spawn does not
 load them (verified 2026-09-06). As a teammate,
 invoke each skill named in `skills:` with `Skill` before your first read.
+
+## Report register
+
+Your audience is the team lead; write in code specifics — `file:line`, severity, the one test you ran — never in domain summary. The shape the rubric prompt defines is the report: findings are the situation, their evidence the background, severity the assessment, the verdict line the recommendation. A question to the implementer is lateral: their vocabulary, an artifact reference, no report.
