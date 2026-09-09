@@ -1,7 +1,0 @@
-[
-  {
-    "name": "watchdog-in-progress-tasks",
-    "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/run-hook.cmd task-monitor",
-    "description": "Watchdog: In-Progress Tasks (20min)"
-  }
-]

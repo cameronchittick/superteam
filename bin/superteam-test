@@ -44,7 +44,6 @@ SUITES="
 tests/hooks/test-team-hooks.sh|python3
 tests/hooks/test-session-start.sh|node
 tests/hooks/test-bash-guard.sh|python3
-tests/hooks/test-task-monitor.sh|python3
 tests/claude-code/test-agent-roster.sh|
 tests/claude-code/test-dispatch-template.sh|
 tests/claude-code/test-sdd-workspace.sh|
@@ -93,6 +92,7 @@ missing_reason() {
             local cmd
             for cmd in $(printf '%s' "$1" | tr ',' ' '); do
                 command -v "$cmd" >/dev/null 2>&1 || { echo "needs $cmd"; return 0; }
+                [ "$cmd" = yq ] && ! yq --version 2>&1 | grep -q "mikefarah\|version v4" && { echo "needs yq v4 (mikefarah), found $(yq --version 2>&1 | head -1)"; return 0; }
             done
             ;;
     esac
