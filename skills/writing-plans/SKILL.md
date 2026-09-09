@@ -211,5 +211,5 @@ After saving the plan, hand it off:
 superteam:superteam-driven-development (REQUIRED SUB-SKILL). On a harness
 without agent teams, superteam:executing-plans is the fallback."**
 
-You act as lead: one IC per task in its own worktree, a task review after
+You act as lead: one IC per task, isolated per its tier, a task review after
 each, and the integrator merges.

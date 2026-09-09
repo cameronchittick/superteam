@@ -136,7 +136,7 @@ assert_denied "\$( command substitution is command position" \
 assert_allowed "a heredoc quoting commands in backticks is allowed" \
     'cat > report.md <<EOF
 The guard denies `git reset --hard` and `tmux kill-server` in command position.
-It also denies `rm -rf ../x`.
+It no longer looks at `rm -rf` at all.
 EOF'
 
 echo "Bash guard: .. is a path segment, not a substring"

@@ -9,8 +9,9 @@ You are the lead (PM). Execute the plan as a task graph worked by one fresh
 implementer IC per task, on its own branch, in a worktree only when its tier
 says so, a task review (spec compliance + code quality) after each when the
 reviewer gate is on, and a broad whole-branch review at the end. The
-lead never implements beyond a one-line fix: it briefs, reviews, rules, and
-leaves the merge to the integrator. Read "## Modes" first — team mode puts
+lead implements nothing beyond a one-line fix except a solo-tier task: it
+briefs, reviews, rules, and merges (an integrator merges only when worktree
+merges need serialising). Read "## Modes" first — team mode puts
 the graph on the shared task list and lets role teammates claim their own
 work; fallback mode dispatches the same roles as subagents.
 
@@ -646,7 +647,7 @@ default branch tip before it has). Its diff is
 `git diff <lane>..worktree-<name>`. The review package and fix-round
 diffs need BASE — never `HEAD~1`.
 
-Fill the call shape above: `name`, `isolation: "worktree"`, the role's
+Fill the call shape above: `name`, `isolation: "worktree"` (worktree tier only), the role's
 `subagent_type`, and `model` only with a written Model Selection reason. If
 the task depends on merged prior tasks, the dispatch says "first run
 `git merge <lane>`".
@@ -827,7 +828,7 @@ you made in this plan's workspace, and the findings — the report file is
 the persistent memory either way.
 
 **Rounds 4-5 — dispatch a fresh implementer on a more capable model** — a
-new `superteam:implementer` call with a new `name`, `isolation: "worktree"`,
+new `superteam:implementer` call with a new `name`, `isolation: "worktree"` (worktree tier only),
 and a `model` at least one tier up, the reason written on the call (per
 Model Selection). Its first step is
 `git merge worktree-<old-name>` so it starts from the prior attempt; it gets
