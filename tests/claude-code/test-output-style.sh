@@ -60,6 +60,13 @@ main() {
         fail "frontmatter declares name: superteam-lead"
     fi
 
+    # (e) the body carries both register rules, not just the frontmatter
+    if grep -q '^\*\*Reports go up' "$STYLE" && grep -q '^\*\*Briefs go down as intent' "$STYLE"; then
+        pass "body carries both register rules"
+    else
+        fail "body carries both register rules"
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."

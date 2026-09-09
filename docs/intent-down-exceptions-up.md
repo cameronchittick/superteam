@@ -22,7 +22,7 @@ The pattern exists because both directions fail in the same way when register is
 
 ## The two levers
 
-**ICs — a closing `## Report register` section in each `agents/*.md`.** Output styles apply to the main conversation and its forks only; they never reach subagents or teammates (Claude Code docs, output-styles page). So an IC's register has to live in the file that defines the seat. Each section names the audience and the register, then maps the report shape the file already defines onto SBAR — it never introduces a second template.
+**ICs — a closing `## Report register` section in each `agents/*.md`.** Output styles apply to the main conversation and its forks only; they never reach subagents or teammates (Claude Code docs, output-styles page, verified 2026-09-09). So an IC's register has to live in the file that defines the seat. Each section names the audience and the register, then maps the report shape the file already defines onto SBAR — it never introduces a second template.
 
 **Team lead — the plugin output style `output-styles/superteam-lead.md`.** Plugin output styles are auto-discovered from `output-styles/`, and this one carries `force-for-plugin: true`, so its text is sent with every request in the lead's session. That is the level that talks to your human partner, and the only level an output style can reach.
 
