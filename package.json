@@ -1,6 +1,6 @@
 {
   "name": "superteam",
-  "version": "7.1.1",
+  "version": "7.1.2",
   "description": "Skills, hooks and an agent roster for Claude Code agent teams: brainstorm, plan, TDD, review and merge as a lead with implementer, reviewer and integrator teammates; other harnesses supported.",
   "type": "module",
   "main": ".opencode/plugins/superteam.js",
