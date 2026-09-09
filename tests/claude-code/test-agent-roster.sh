@@ -407,6 +407,37 @@ main() {
         fail "every roster agent opens by saying who it is ($opening missing)"
     fi
 
+    # (m) every agent closes with a Report register section: it exists, it
+    #     is the last `## ` heading in the file, and the implementer and
+    #     writer copies are byte-identical (the two share one text and
+    #     nothing else keeps them in sync)
+    local role last_heading
+    for role in "${ROSTER[@]}"; do
+        if grep -q '^## Report register' "$AGENTS/$role.md"; then
+            pass "agents/$role.md closes with Report register"
+        else
+            fail "agents/$role.md closes with Report register"
+        fi
+        last_heading="$(grep '^## ' "$AGENTS/$role.md" | tail -1)"
+        if [[ "$last_heading" == "## Report register" ]]; then
+            pass "agents/$role.md Report register is the last ## heading"
+        else
+            fail "agents/$role.md Report register is the last ## heading"
+            echo "    last ## heading: ${last_heading:-(none)}"
+        fi
+    done
+
+    if [[ -s "$AGENTS/implementer.md" ]] && \
+       cmp -s <(sed -n '/^## Report register/,$p' "$AGENTS/implementer.md") \
+              <(sed -n '/^## Report register/,$p' "$AGENTS/writer.md"); then
+        pass "implementer.md and writer.md carry the same Report register text"
+    else
+        fail "implementer.md and writer.md carry the same Report register text"
+        diff <(sed -n '/^## Report register/,$p' "$AGENTS/implementer.md") \
+             <(sed -n '/^## Report register/,$p' "$AGENTS/writer.md") \
+            | sed 's/^/    /'
+    fi
+
     echo ""
     if [[ "$FAILURES" -ne 0 ]]; then
         echo "FAILED: $FAILURES assertion(s)."
