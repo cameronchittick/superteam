@@ -38,7 +38,7 @@ main() {
     # (b) required section headings, and the retired heading is gone
     local heading
     for heading in '^## The tiers' '^## Escalation and what the ledger records' \
-        '^## Gates' '^## The solo flow' '^## The branch-tier flow'; do
+        '^## Sizing the work' '^## The solo flow' '^## The branch-tier flow'; do
         if grep -qE "$heading" "$DOC"; then
             pass "docs/isolation-tiers.md has heading: $heading"
         else
@@ -72,17 +72,27 @@ main() {
     else
         fail "SDD SKILL.md states the escalation trigger"
     fi
-    if grep -qF 'they do not run by default' "$SDD_SKILL"; then
-        pass "SDD SKILL.md states gates do not run by default"
+    if grep -qF 'never a category the brief matches' "$SDD_SKILL"; then
+        pass "SDD SKILL.md states the sizing is a scale, not a category"
     else
-        fail "SDD SKILL.md states gates do not run by default"
+        fail "SDD SKILL.md states the sizing is a scale, not a category"
     fi
 
+    # the retired gate wording is gone from both rule texts
+    local rule_file
+    for rule_file in "$DOC" "$SDD_SKILL"; do
+        if grep -qF 'do not run by default' "$rule_file"; then
+            fail "$(basename "$rule_file") no longer says: do not run by default"
+        else
+            pass "$(basename "$rule_file") no longer says: do not run by default"
+        fi
+    done
+
     # (e) writing-plans skill: skeptic trigger phrase and Isolation header line
-    if grep -qF 'three or more tasks' "$PLAN_SKILL"; then
-        pass "writing-plans SKILL.md has: three or more tasks"
+    if grep -qF 'Sizing the work' "$PLAN_SKILL"; then
+        pass "writing-plans SKILL.md has: Sizing the work"
     else
-        fail "writing-plans SKILL.md has: three or more tasks"
+        fail "writing-plans SKILL.md has: Sizing the work"
     fi
     if grep -qE '^\*\*Isolation:\*\* solo \| branch \| worktree \| provisioned$' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has the Isolation header-line template"

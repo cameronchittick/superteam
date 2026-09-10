@@ -18,8 +18,8 @@ for the measurements and the accepted verdicts behind this page.
 
 | Tier | Choose it when | Mechanism | Review | Merge |
 |---|---|---|---|---|
-| **solo** | the brief is one task, no migration, no money/auth/security/data surface, no other writer active, and the change is small enough for the lead's own context | the lead does it in its own checkout on `task-N`: test-first at the seam, one focused test, commit | no reviewer seat unless the brief asks for one or the diff turns out to touch a listed surface; the lead verifies it running and your human partner looks | the lead: `git merge --no-ff task-N`, `git branch -d task-N` |
-| **branch** (default) | where solo ends — a second writer, a required reviewer, or a task too large for the lead to carry — and still one writing seat at a time in this repo | `git switch -c task-N <base>` in the lead's own checkout; the seat is a teammate with no isolation | reviewer diffs `<base>..task-N` | the lead: `git merge --no-ff task-N`, run the suite, `git branch -d task-N`; no integrator seat |
+| **solo** | the lead sized the brief at own hands — one small, safe, visible change, nothing else writing, small enough for its own context | the lead does it in its own checkout on `task-N`: test-first at the seam, one focused test, commit | no seat unless the sizing seats one; the lead verifies it running and your human partner looks | the lead: `git merge --no-ff task-N`, `git branch -d task-N` |
+| **branch** (default) | where own hands ends — one IC, a seated reviewer, or a change too large to carry — and still one writing seat at a time in this repo | `git switch -c task-N <base>` in the lead's own checkout; the seat is a teammate with no isolation | reviewer diffs `<base>..task-N` | the lead: `git merge --no-ff task-N`, run the suite, `git branch -d task-N`; no integrator seat |
 | **worktree** | two or more writing seats must write in this repo at the same time | `EnterWorktree` (teammate) or `isolation: "worktree"` (subagent) — a plain `git worktree add`, nothing provisioned | reviewer diffs `<base>..worktree-task-N-impl` | an integrator seat only when merges are frequent enough to need serialising (three or more worktree-tier tasks in the plan); otherwise the lead merges as in the branch tier |
 | **provisioned** | a second running dev server or database is required — a migration under test, a running app for review | the worktree tier plus the repo's own provisioning script, run here and nowhere else | as worktree | as worktree |
 
@@ -38,20 +38,26 @@ for the measurements and the accepted verdicts behind this page.
 
 A plan escalates a task from the branch to the worktree tier whenever two or more writing tasks are unblocked at the same time. The lead records in the ledger, per task, the maximum number of concurrent writers, any dirty-checkout collision, and wall-clock time from claim to merge, so the next run of six or more tasks can be judged against the 7.3.0 baseline.
 
-## Gates
+## Sizing the work
 
-Gates scale with what breaks if wrong; they do not run by default. Skeptic: only on a spec or plan that changes a data model or a contract, or that has three or more tasks. Reviewer: only where a slip costs money, auth, security or data, or where the brief asks for one. A UI, copy or docs change your human partner can see for themselves gets neither: the lead verifies it running and your human partner looks. The ledger records, per task, its tier, which gates ran, and wall-clock time from claim to merge.
+Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets who does the work and which seats sit. It is a scale the lead reads for every brief, never a category the brief matches:
 
-The two Run Wild UI changes that took 40 minutes through implementer and
-reviewer seats are the case for solo.
+1. **Own hands.** One small, safe, visible change with nothing else in flight: the lead does it (solo tier), test-first, and your human partner looks.
+2. **One IC.** One real task: one implementer or writer; the lead reviews its diff.
+3. **Add the seat that answers the risk.** A design choice seats a skeptic before building; a costly failure seats a reviewer after.
+4. **One IC per independent piece, at once.** Several independent pieces get a writing seat each, plus whatever step 3 seats each piece's own risk calls for.
+
+Examples are illustrations, never the rule: a copy change is usually own hands, but a copy change to a legal notice has a costly failure and gets a reviewer; a one-file schema migration is one task, but it has a design choice and a costly failure, so it gets both seats; three docs pages with nothing in common are three own-hands changes or three writers at once, depending on what else is in flight. The lead states the size it chose and the dimensions that drove it in its report and in the ledger, so the next brief can be calibrated against it.
+
+Two Run Wild UI changes that took 40 minutes through implementer and reviewer seats would have sized at own hands.
 
 ## The solo flow
 
-1. The lead writes `Isolation: solo` on the task at intake.
+1. The lead sizes the brief at own hands and writes `Isolation: solo` on the task.
 2. `git switch -c task-N` in its own checkout.
 3. A failing focused test at the seam, then the change.
 4. The lead runs it and your human partner looks.
-5. Merge and delete the branch, ledger tier, gates and wall clock.
+5. Merge and delete the branch; ledger tier, size, seats and wall clock.
 
 ## The branch-tier flow
 

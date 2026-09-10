@@ -8,7 +8,7 @@ description: Use when executing an implementation plan as the lead (PM) of a tea
 You are the lead (PM). Execute the plan as a task graph worked by one fresh
 implementer IC per task, on its own branch, in a worktree only when its tier
 says so, a task review (spec compliance + code quality) after each when the
-reviewer gate is on, and a broad whole-branch review at the end. The
+sizing seated a reviewer, and a broad whole-branch review at the end. The
 lead implements nothing beyond a one-line fix except a solo-tier task: it
 briefs, reviews, rules, and merges (an integrator merges only when worktree
 merges need serialising). Read "## Modes" first — team mode puts
@@ -64,18 +64,17 @@ without agent teams:**
 - Fresh IC per task, each on its own branch, in a worktree only when its
   tier says so (a fresh context per IC; file collisions are refused by the
   task-created-check hook)
-- Review after each task (spec compliance + code quality) when the reviewer
-  gate is on, broad review at the end
+- Review after each task (spec compliance + code quality) when the sizing
+  seated a reviewer, broad review at the end
 - Faster iteration (no human-in-loop between tasks)
 
 ## Isolation tiers
 
 Every task carries an `**Isolation:**` line chosen at intake. **solo**: the
-lead does the task itself in its own checkout — one task, no migration, no
-money/auth/security/data surface, no other writer active, small enough for
-its own context; no implementer, no reviewer unless the brief asks.
-**branch** (the default, and what a missing line means): where solo ends — a
-second writer, a required reviewer, or a task too large for the lead — one
+lead sized the brief at own hands and does the task itself in its own
+checkout; no implementer, no seat unless the sizing seats one.
+**branch** (the default, and what a missing line means): where own hands
+ends — one IC, a seated reviewer, or a change too large to carry — one
 writing seat at a time in this repo, on `task-N` in the lead's own checkout,
 the lead merges. **worktree**: two or more writing seats must write in this
 repo at once; a plain `git worktree add`, nothing provisioned.
@@ -90,13 +89,14 @@ ledger, per task, the maximum number of concurrent writers, any
 dirty-checkout collision, and wall-clock time from claim to merge, so the
 next run of six or more tasks can be judged against the 7.3.0 baseline.
 
-Gates scale with what breaks if wrong; they do not run by default. Skeptic:
-only on a spec or plan that changes a data model or a contract, or that has
-three or more tasks. Reviewer: only where a slip costs money, auth, security
-or data, or where the brief asks for one. A UI, copy or docs change your
-human partner can see for themselves gets neither: the lead verifies it
-running and your human partner looks. The ledger records, per task, its tier,
-which gates ran, and wall-clock time from claim to merge.
+Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets who does the work and which seats sit. It is a scale the lead reads for every brief, never a category the brief matches:
+
+1. **Own hands.** One small, safe, visible change with nothing else in flight: the lead does it (solo tier), test-first, and your human partner looks.
+2. **One IC.** One real task: one implementer or writer; the lead reviews its diff.
+3. **Add the seat that answers the risk.** A design choice seats a skeptic before building; a costly failure seats a reviewer after.
+4. **One IC per independent piece, at once.** Several independent pieces get a writing seat each, plus whatever step 3 seats each piece's own risk calls for.
+
+Examples are illustrations, never the rule: a copy change is usually own hands, but a copy change to a legal notice has a costly failure and gets a reviewer; a one-file schema migration is one task, but it has a design choice and a costly failure, so it gets both seats; three docs pages with nothing in common are three own-hands changes or three writers at once, depending on what else is in flight. The lead states the size it chose and the dimensions that drove it in its report and in the ledger, so the next brief can be calibrated against it.
 
 The reviewer claims a branch-tier review only after the implement task is
 complete and judges commits — git diff <base>..task-N — never the working
@@ -188,7 +188,7 @@ as their final message.
 dispatched only when the graph has merge tasks — worktree-tier tasks in a
 plan with three or more of them; otherwise the lead merges in "5. Complete
 the task". When it is dispatched, it goes one at a time in your checkout
-after a task's gate is clean ("5. Complete the task") and again at Finish. It gets the branch to merge, the lane, the test
+after a task's seats are clean ("5. Complete the task") and again at Finish. It gets the branch to merge, the lane, the test
 command, and whether to bump; it reports the merge commit and the suite
 result. You never merge inline when the integrator is available.
 
@@ -201,10 +201,10 @@ lane branch directly. Platform mappings live in
 ## The Process
 
 The per-task review seats, the fix-round loop and the final two-axis review
-run only when the reviewer gate is on for that task or plan (money, auth,
-security, data, or the brief asks — see "## Isolation tiers"). Otherwise the
-implementer's report plus the suite is the gate and the merge follows the
-report.
+run only when the sizing seated a reviewer for that task or plan (a costly
+failure, or the brief asks — see "## Isolation tiers"). Otherwise the
+implementer's report plus the suite is the evidence and the merge follows
+the report.
 
 ```dot
 digraph process {
@@ -217,7 +217,7 @@ digraph process {
         "Implementer asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer implements, tests, commits, self-reviews, appends Verified: line" [shape=box];
-        "Reviewer gate on?" [shape=diamond];
+        "Sizing seated a reviewer?" [shape=diamond];
         "reviewer self-claims, reads the branch diff, verdicts spec and quality" [shape=box];
         "Spec ✅ and quality approved?" [shape=diamond];
         "Finding conflicts with plan text?" [shape=diamond];
@@ -247,9 +247,9 @@ digraph process {
     "Implementer asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line";
     "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line" [label="no"];
-    "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "Reviewer gate on?";
-    "Reviewer gate on?" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality" [label="yes"];
-    "Reviewer gate on?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="no - report + suite is the gate"];
+    "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "Sizing seated a reviewer?";
+    "Sizing seated a reviewer?" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality" [label="yes"];
+    "Sizing seated a reviewer?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="no - report + suite is the gate"];
     "reviewer self-claims, reads the branch diff, verdicts spec and quality" -> "Spec ✅ and quality approved?";
     "Spec ✅ and quality approved?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="yes"];
     "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
@@ -337,7 +337,8 @@ a ledger file, not only in todos.
   maximum number of writing seats active at once, and any dirty-checkout
   collision (a seat finding uncommitted changes it did not make) — the
   measurement the Escalation paragraph promises. Its per-task line also
-  records `tier` and `gates: none | reviewer | skeptic+reviewer`.
+  records `tier`, `size: own hands | one IC | +skeptic | +reviewer | per
+  piece` and the dimensions that drove it.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
@@ -372,7 +373,7 @@ specifies, the files it creates against the files it later touches. "The scan
 is clean" without those rows is not a scan you ran.
 
 The scan is your own conflict table, not a seat: `superteam:skeptic` is
-dispatched from superteam:writing-plans under its own gate, never from this
+dispatched from superteam:writing-plans under its own sizing, never from this
 skill.
 
 Write the table to the ledger. Rule on everything you find before execution
@@ -399,7 +400,7 @@ With the scan ruled on, team mode has four more Setup steps, in this order:
 
 ## Task graph
 
-Team mode. For plan task N create the tasks its gates and tier call for, in
+Team mode. For plan task N create the tasks its seats and tier call for, in
 this order — review is two axes, and they run in parallel:
 
 | Subject | Role tag | blockedBy |
@@ -410,8 +411,8 @@ this order — review is two axes, and they run in parallel:
 | `Task N: merge [integrator]` (worktree tier only, when an integrator seat exists; otherwise the lead merges after both reviews) | integrator | `Task N: review spec` AND `Task N: review standards` |
 
 The `review spec` and `review standards` tasks are created only when the
-reviewer gate is on for that task or plan; a gated-off task's family is
-implement, then merge or the lead's merge. A branch-tier family has three
+the sizing seated a reviewer for that task or plan; a task with no reviewer
+seat has a family of implement, then merge or the lead's merge. A branch-tier family has three
 tasks; the review completing is the lead's cue to merge.
 
 The description is the whole brief — no pointers, because a teammate in a
@@ -490,8 +491,8 @@ Four rules bind every subject on the list:
 
 ## Role pool
 
-Team mode. Sizing: 1 writing seat; a reviewer only when some task's reviewer
-gate is on; add one writing seat per concurrent worktree-tier task; an
+Team mode. Sizing: 1 writing seat; a reviewer only when the sizing seated one on
+some task; add one writing seat per concurrent worktree-tier task; an
 integrator only when the plan has three or more worktree-tier merges; at
 most 5 teammates. A writer replaces the implementer when the plan's tasks are prose.
 
@@ -747,7 +748,7 @@ Critical standards finding never promotes a Minor spec finding, or the
 reverse. Both verdicts are required before merge; a task with one seat
 reporting is not reviewed.
 
-Per-task reviews are task-scoped gates. The broad review happens once, at the
+Per-task reviews are task-scoped. The broad review happens once, at the
 final whole-branch review. Never skip either seat. Implementer self-review
 never replaces the task review; both are needed.
 
@@ -887,11 +888,11 @@ a silent discard is forbidden.
 
 ### 5. Complete the task
 
-**Team mode:** on the worktree tier with an integrator seat, the gate
-clearing unblocks `Task N: merge`, which `integrator-1` claims; the merge
+**Team mode:** on the worktree tier with an integrator seat, the review
+seat clearing unblocks `Task N: merge`, which `integrator-1` claims; the merge
 details are already in its description and you do nothing but read the
 completion. On the branch tier — and on the worktree tier with no integrator
-seat — the gate clearing is your cue to merge, below. The dispatch shape is
+seat — that clearing is your cue to merge, below. The dispatch shape is
 fallback mode's.
 
 **Branch tier.** The lead merges: `git switch <base>`,
@@ -899,7 +900,7 @@ fallback mode's.
 `git branch -d task-N`, and record the merge sha, wall clock and
 concurrent-writer count in the ledger. There is no integrator seat.
 
-**Worktree tier.** When the gate is clean — the review came back clean, or
+**Worktree tier.** When the review seat is clean — the review came back clean, or
 every open finding is parked with a ruling at the cap — dispatch the
 integrator to merge the IC's branch into `<base>`, or merge it yourself when
 the plan has no integrator seat. One dispatch per merge, never two at once
@@ -991,8 +992,8 @@ plan-file ledger from Setup: `<workspace>/progress.md` with
 
 ## Final Review
 
-The final two-axis review runs only when the reviewer gate is on for the
-plan; otherwise the tasks' own evidence is the record and you go straight to
+The final two-axis review runs only when the sizing seated a reviewer for
+the plan; otherwise the tasks' own evidence is the record and you go straight to
 Finish. When it runs, it gets a package too: run
 `scripts/review-package PLAN_FILE MERGE_BASE HEAD` (MERGE_BASE = the commit the
 branch started from, e.g. `git merge-base main HEAD`) and include the
@@ -1038,9 +1039,9 @@ made in secret. Next to it list **Proposed terms** — every term ICs
 proposed, collected from the ledger — so your human partner can decide
 whether to run superteam:domain-modeling; the lead never edits `CONTEXT.md`.
 
-The final review runs only when the reviewer gate is on for the plan; with
-the gate off, the tasks' reports and the suite are what your human partner
-reads. When the final whole-branch review is clean and its fixes are merged
+The final review runs only when the sizing seated a reviewer for the plan;
+with no reviewer seated, the tasks' reports and the suite are what your
+human partner reads. When the final whole-branch review is clean and its fixes are merged
 (the fix wave's branch goes through the integrator like any task), dispatch
 the integrator once more to delete this plan's workspace
 (`rm -rf <workspace>`) — the git history is the record now. Sibling
@@ -1064,7 +1065,7 @@ and shut down the rest. Never shut down a teammate whose role still has an uncla
 | "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
 | "Reviews slow the loop down" | The loop without reviews is just unverified churn. Reviews are the loop's brakes and steering. |
 | "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences. |
-| "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag, not rigor. |
+| "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the seat. A worker-spawned reviewer is a defect to flag, not rigor. |
 
 ## Example Workflow
 
@@ -1145,5 +1146,5 @@ A one-task plan on the branch tier is five lines:
 [impl-1 claims Task 1, runs git switch -c task-1 main in this checkout, commits on task-1, reports]
 [reviewer-1 claims both review seats in turn, diffs main..task-1, both Approved]
 [Lead merges: git switch main; git merge --no-ff task-1; full suite green; git branch -d task-1]
-[Ledger: Task 1: complete (tier branch, gates reviewer, 41 min claim→merge, 1 concurrent writer)]
+[Ledger: Task 1: complete (tier branch, size one IC +reviewer (costly failure), 41 min claim→merge, 1 concurrent writer)]
 ```

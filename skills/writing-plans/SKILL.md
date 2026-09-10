@@ -157,9 +157,9 @@ design judgment — and drives what each task costs.
 `Isolation: worktree` or `Isolation: provisioned` — one word, in the
 header. Branch is the default and what a missing line means: the IC
 works on `task-N` in the lead's own checkout and the lead merges. Choose
-solo when the lead can carry the task alone — one task, no migration, no
-money/auth/security/data surface, no other writer active — and no
-reviewer is required. Choose worktree only when this task will be
+solo when the lead sized the brief at own hands — one small, safe,
+visible change, nothing else writing, small enough for its own context
+(docs/isolation-tiers.md, Sizing the work). Choose worktree only when this task will be
 written at the same time as another task in the same repo; choose
 provisioned only when the task needs a second running dev server or
 database. A plan with two or more tasks merging before trunk names its
@@ -175,7 +175,7 @@ the shared task list, so the exact format is what makes a task
 machine-mappable, not just human-readable.
 
 **Task subjects on that list.** Each plan task becomes `Task N: <step>
-[role]` — step in {implement, review spec, review standards (both only when the reviewer gate is on), merge (worktree tier only), fix <round>, review <round>};
+[role]` — step in {implement, review spec, review standards (both only when the sizing seated a reviewer), merge (worktree tier only), fix <round>, review <round>};
 N is unique for the life of the list, never restarting at 1. Everything else
 is an imperative verb phrase — full rules in superteam-driven-development.
 
@@ -201,7 +201,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-Dispatch `superteam:skeptic` on the task breakdown only when the plan changes a data model or a contract, or has three or more tasks (docs/isolation-tiers.md, Gates); the plan-document reviewer is `superteam:reviewer` (see `./plan-document-reviewer-prompt.md`).
+Dispatch `superteam:skeptic` on the task breakdown when the sizing finds a design choice worth an objection before building (docs/isolation-tiers.md, Sizing the work); the plan-document reviewer is `superteam:reviewer` (see `./plan-document-reviewer-prompt.md`).
 
 ## Execution Handoff
 
