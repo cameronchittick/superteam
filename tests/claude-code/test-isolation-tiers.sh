@@ -38,7 +38,7 @@ main() {
     # (b) required section headings, and the retired heading is gone
     local heading
     for heading in '^## The tiers' '^## Escalation and what the ledger records' \
-        '^## Sizing the work' '^## The solo flow' '^## The branch-tier flow'; do
+        '^## Sizing the work' '^## The branch-tier flow'; do
         if grep -qE "$heading" "$DOC"; then
             pass "docs/isolation-tiers.md has heading: $heading"
         else
@@ -53,7 +53,7 @@ main() {
 
     # (c) the tier table's four row labels
     local row
-    for row in '| **solo** |' '| **branch** (default) |' '| **worktree** |' '| **provisioned** |'; do
+    for row in '| **branch** (default) |' '| **worktree** |' '| **provisioned** |'; do
         if grep -qF "$row" "$DOC"; then
             pass "docs/isolation-tiers.md table has row: $row"
         else
@@ -88,13 +88,34 @@ main() {
         fi
     done
 
+    # (d2) both rule texts say the lead does not implement and that a
+    #      human-direct request is sized like any other brief; the retired
+    #      own-hands size and solo tier are gone from both
+    local phrase
+    for rule_file in "$DOC" "$SDD_SKILL"; do
+        for phrase in 'the lead does not implement' 'sized and delegated exactly like a brief from above'; do
+            if tr '\n' ' ' <"$rule_file" | grep -qF "$phrase"; then
+                pass "$(basename "$rule_file") states: $phrase"
+            else
+                fail "$(basename "$rule_file") states: $phrase"
+            fi
+        done
+        for phrase in 'Own hands' '| **solo** |'; do
+            if grep -qF "$phrase" "$rule_file"; then
+                fail "$(basename "$rule_file") no longer contains: $phrase"
+            else
+                pass "$(basename "$rule_file") no longer contains: $phrase"
+            fi
+        done
+    done
+
     # (e) writing-plans skill: skeptic trigger phrase and Isolation header line
     if grep -qF 'Sizing the work' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has: Sizing the work"
     else
         fail "writing-plans SKILL.md has: Sizing the work"
     fi
-    if grep -qE '^\*\*Isolation:\*\* solo \| branch \| worktree \| provisioned$' "$PLAN_SKILL"; then
+    if grep -qE '^\*\*Isolation:\*\* branch \| worktree \| provisioned$' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has the Isolation header-line template"
     else
         fail "writing-plans SKILL.md has the Isolation header-line template"

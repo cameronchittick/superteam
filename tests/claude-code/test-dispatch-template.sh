@@ -153,14 +153,18 @@ PLAN
     tm2="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 2 merge lane/x)"
     if printf '%s\n' "$tm2" | grep -q '^Subject: Task 2: merge \[integrator\]$' && printf '%s\n' "$tm2" | grep -q '^Merge: worktree-task-2-impl → lane/x$'; then pass "--taskcreate merge subject and Merge: line"; else fail "--taskcreate merge subject and Merge: line"; fi
 
-    # (c2c) solo behaves as branch in every emitted line; an unknown tier is
-    #       refused with exit 5
-    local tc3
-    tc3="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 3 implement lane/x)"
-    for line in '^Isolation: solo$' '^Branch: task-3'; do
-        if printf '%s\n' "$tc3" | grep -q "$line"; then pass "--taskcreate solo tier body has $line"; else fail "--taskcreate solo tier body has $line"; fi
-    done
-    if printf '%s\n' "$tc3" | grep -q '^Worktree:'; then fail "--taskcreate solo tier has no Worktree: line"; else pass "--taskcreate solo tier has no Worktree: line"; fi
+    # (c2c) the retired solo tier is refused like any other unknown tier: exit
+    #       5, with the three surviving tier names on stderr
+    local tc3 rc3
+    tc3="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 3 implement lane/x 2>&1 >/dev/null)"
+    rc3=$?
+    if [[ $rc3 -eq 5 ]]; then pass "--taskcreate rejects the retired solo tier with exit 5"; else fail "--taskcreate rejects the retired solo tier with exit 5 (got $rc3)"; fi
+    if printf '%s\n' "$tc3" | grep -qF 'Isolation must be branch, worktree or provisioned'; then
+        pass "--taskcreate names the three tiers on stderr"
+    else
+        fail "--taskcreate names the three tiers on stderr"
+        echo "    got: $tc3"
+    fi
     (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 4 implement lane/x) >/dev/null 2>&1
     if [[ $? -eq 5 ]]; then pass "--taskcreate rejects an unknown Isolation value with exit 5"; else fail "--taskcreate rejects an unknown Isolation value with exit 5"; fi
 

@@ -9,8 +9,8 @@ You are the lead (PM). Execute the plan as a task graph worked by one fresh
 implementer IC per task, on its own branch, in a worktree only when its tier
 says so, a task review (spec compliance + code quality) after each when the
 sizing seated a reviewer, and a broad whole-branch review at the end. The
-lead implements nothing beyond a one-line fix except a solo-tier task: it
-briefs, reviews, rules, and merges (an integrator merges only when worktree
+lead implements nothing, not even a one-line fix: it sizes, briefs, reviews,
+rules, and merges (an integrator merges only when worktree
 merges need serialising). Read "## Modes" first — team mode puts
 the graph on the shared task list and lets role teammates claim their own
 work; fallback mode dispatches the same roles as subagents.
@@ -70,13 +70,10 @@ without agent teams:**
 
 ## Isolation tiers
 
-Every task carries an `**Isolation:**` line chosen at intake. **solo**: the
-lead sized the brief at own hands and does the task itself in its own
-checkout; no implementer, no seat unless the sizing seats one.
-**branch** (the default, and what a missing line means): where own hands
-ends — one IC, a seated reviewer, or a change too large to carry — one
-writing seat at a time in this repo, on `task-N` in the lead's own checkout,
-the lead merges. **worktree**: two or more writing seats must write in this
+Every task carries an `**Isolation:**` line chosen at intake.
+**branch** (the default, and what a missing line means): one writing seat at
+a time in this repo, on `task-N` in the lead's own checkout, the lead
+merges. **worktree**: two or more writing seats must write in this
 repo at once; a plain `git worktree add`, nothing provisioned.
 **provisioned**: the worktree tier plus the repo's own provisioning script,
 only when a second running dev server or database is required. `<base>` is
@@ -89,14 +86,13 @@ ledger, per task, the maximum number of concurrent writers, any
 dirty-checkout collision, and wall-clock time from claim to merge, so the
 next run of six or more tasks can be judged against the 7.3.0 baseline.
 
-Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets who does the work and which seats sit. It is a scale the lead reads for every brief, never a category the brief matches:
+Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets which seats sit. It is a scale the lead reads for every brief, never a category the brief matches, and the lead's own hands are not on it: the lead does not implement, not even a one-line fix — a spawn costs seconds and keeps the lead's context for leading. A request that arrives straight from your human partner is sized and delegated exactly like a brief from above.
 
-1. **Own hands.** One small, safe, visible change with nothing else in flight: the lead does it (solo tier), test-first, and your human partner looks.
-2. **One IC.** One real task: one implementer or writer; the lead reviews its diff.
-3. **Add the seat that answers the risk.** A design choice seats a skeptic before building; a costly failure seats a reviewer after.
-4. **One IC per independent piece, at once.** Several independent pieces get a writing seat each, plus whatever step 3 seats each piece's own risk calls for.
+1. **One IC.** The smallest size: one implementer or writer on the branch tier, even for a one-line fix; the lead reviews its diff.
+2. **Add the seat that answers the risk.** A design choice seats a skeptic before building; a costly failure seats a reviewer after.
+3. **One IC per independent piece, at once.** Several independent pieces get a writing seat each, plus whatever step 2 seats each piece's own risk calls for.
 
-Examples are illustrations, never the rule: a copy change is usually own hands, but a copy change to a legal notice has a costly failure and gets a reviewer; a one-file schema migration is one task, but it has a design choice and a costly failure, so it gets both seats; three docs pages with nothing in common are three own-hands changes or three writers at once, depending on what else is in flight. The lead states the size it chose and the dimensions that drove it in its report and in the ledger, so the next brief can be calibrated against it.
+Examples are illustrations, never the rule: a copy change is usually one IC and nothing more, but a copy change to a legal notice has a costly failure and gets a reviewer; a one-file schema migration is one task, but it has a design choice and a costly failure, so it gets both seats; three docs pages with nothing in common are three writers at once. The lead states the size it chose and the dimensions that drove it in its report and in the ledger, so the next brief can be calibrated against it.
 
 The reviewer claims a branch-tier review only after the implement task is
 complete and judges commits — git diff <base>..task-N — never the working
@@ -337,7 +333,7 @@ a ledger file, not only in todos.
   maximum number of writing seats active at once, and any dirty-checkout
   collision (a seat finding uncommitted changes it did not make) — the
   measurement the Escalation paragraph promises. Its per-task line also
-  records `tier`, `size: own hands | one IC | +skeptic | +reviewer | per
+  records `tier`, `size: one IC | +skeptic | +reviewer | per
   piece` and the dimensions that drove it.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
@@ -424,7 +420,7 @@ which prints the subject and the description body:
 Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
 Lane: <lane branch>
 Isolation: branch            (the task's tier; a task with no line is branch)
-Branch: task-N               (branch and solo tiers: git switch -c in the lead's checkout)
+Branch: task-N               (branch tier: git switch -c in the lead's checkout)
 Worktree: task-N-impl        (worktree and provisioned tiers only: EnterWorktree name; branch worktree-task-N-impl)
 Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
 Depends on: Task M (or "none")
@@ -437,7 +433,7 @@ Done: report at .superteam/sdd/<plan>/task-N-report.md with a `Tests:` line
 ```
 
 Both review descriptions add `Reviews: <the task's branch>` — `task-N` on
-the branch and solo tiers, `worktree-task-N-impl` otherwise — and their
+the branch tier, `worktree-task-N-impl` otherwise — and their
 rubric pointer — `task-reviewer-prompt.md` for the spec axis,
 `task-standards-prompt.md` for the standards axis; merge descriptions add
 `Merge: worktree-task-N-impl → <lane>`. `Files owned:` is the same list on

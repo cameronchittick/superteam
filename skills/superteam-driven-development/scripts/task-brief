@@ -21,8 +21,8 @@
 # the task text straight into the dispatch prompt instead.
 #
 # The emitted lines follow the task's isolation tier (its `**Isolation:**`
-# line, default branch): branch and solo emit `Branch: task-N` and no
-# `Worktree:` line, review the branch `task-N`, and have no merge task — the
+# line, default branch): branch emits `Branch: task-N` and no
+# `Worktree:` line, reviews the branch `task-N`, and has no merge task — the
 # lead merges. worktree and provisioned emit the `Worktree:` line and review
 # `worktree-task-N-impl`. Any other value is refused (exit 5).
 #
@@ -91,25 +91,20 @@ if [ "${1:-}" = "--taskcreate" ]; then
   wt="task-${n}-impl"
 
   # The task's isolation tier, chosen at intake. A task with no line is branch
-  # tier — the default. solo is written explicitly and emits exactly what the
-  # branch tier emits; provisioned is the worktree tier plus the repo's own
+  # tier — the default. provisioned is the worktree tier plus the repo's own
   # provisioning script, so it emits the worktree lines unchanged.
   iso=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Isolation:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
   [ -n "$iso" ] || iso=branch
   case "$iso" in
-    solo|branch)          seat=branch ;;
+    branch)               seat=branch ;;
     worktree|provisioned) seat=worktree ;;
-    *) echo "Isolation must be solo, branch, worktree or provisioned (got: ${iso})" >&2; exit 5 ;;
+    *) echo "Isolation must be branch, worktree or provisioned (got: ${iso})" >&2; exit 5 ;;
   esac
   if [ "$seat" = branch ] && [ "$kind" = merge ]; then
     echo "branch tier has no merge task; the lead merges task-${n}" >&2
     exit 4
   fi
-  if [ "$iso" = solo ]; then
-    branch_line="Branch: task-${n}        (the lead works it in its own checkout)"
-  else
-    branch_line="Branch: task-${n}        (git switch -c in the lead's checkout, from Lane)"
-  fi
+  branch_line="Branch: task-${n}        (git switch -c in the lead's checkout, from Lane)"
   if [ "$seat" = branch ]; then
     reviews="task-${n}"
   else
