@@ -419,6 +419,7 @@ cat > "$axis_repo/plan.md" <<'EOF'
 **Files owned:** `a.sh`
 **Depends on:** Task 1
 **Model tier:** most capable
+**Isolation:** branch
 
 - [ ] Step 1: do it.
 
