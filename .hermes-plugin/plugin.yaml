@@ -1,5 +1,5 @@
 name: superteam
-version: 7.5.1
+version: 7.6.0
 description: "Skills, hooks and an agent roster for Claude Code agent teams: brainstorm, plan, TDD, review and merge as a lead with implementer, reviewer and integrator teammates; other harnesses supported."
 author: cameronchittick
 provides_hooks:
