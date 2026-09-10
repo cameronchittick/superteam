@@ -338,7 +338,7 @@ Superteam is a fork of [obra/superpowers](https://github.com/obra/superpowers) b
 
 Named roles the skills dispatch as `superteam:<name>`; each carries its own model so nothing inherits the session's.
 
-Where each task runs — the lead alone, an IC on the lead's own branch, a worktree, or a provisioned lane — and which seats sit (skeptic, reviewer, how many ICs) follow the lead's sizing of the brief — files touched, other writers, cost of a mistake, design choice, independent pieces; see [docs/isolation-tiers.md](docs/isolation-tiers.md).
+Where each task runs — an IC on the lead's own branch, a worktree, or a provisioned lane — and which seats sit (skeptic, reviewer, how many ICs) follow the lead's sizing of the brief — files touched, other writers, cost of a mistake, design choice, independent pieces; see [docs/isolation-tiers.md](docs/isolation-tiers.md).
 
 - **implementer** — owns one plan task's files on its own branch, in a worktree only when the task's tier says so, TDD, commits, reports a diff summary — opus
 - **researcher** — investigation that returns a conclusion with file:line evidence, or one design-it-twice brief; never edits an existing file, and may create exactly one findings file per task (`docs/superteam/research/<date>-<slug>.md`) — sonnet

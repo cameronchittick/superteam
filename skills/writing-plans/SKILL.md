@@ -91,7 +91,7 @@ include this section.]
 **Files owned:** `exact/path/to/file.py`, `tests/exact/path/to/test.py`
 **Depends on:** none (or: Task 2, Task 3)
 **Model tier:** cheap | standard | most capable
-**Isolation:** solo | branch | worktree | provisioned
+**Isolation:** branch | worktree | provisioned
 
 **Files:**
 - Create: `exact/path/to/file.py`
@@ -153,13 +153,10 @@ superteam:superteam-driven-development's Model Selection — cheap for 1-2 files
 with a complete spec, standard for multi-file integration, most capable for
 design judgment — and drives what each task costs.
 
-**Isolation: format.** Write `Isolation: solo`, `Isolation: branch`,
-`Isolation: worktree` or `Isolation: provisioned` — one word, in the
-header. Branch is the default and what a missing line means: the IC
-works on `task-N` in the lead's own checkout and the lead merges. Choose
-solo when the lead sized the brief at own hands — one small, safe,
-visible change, nothing else writing, small enough for its own context
-(docs/isolation-tiers.md, Sizing the work). Choose worktree only when this task will be
+**Isolation: format.** Write `Isolation: branch`, `Isolation: worktree` or
+`Isolation: provisioned` — one word, in the header. Branch is the default
+and what a missing line means: the IC works on `task-N` in the lead's own
+checkout and the lead merges. Choose worktree only when this task will be
 written at the same time as another task in the same repo; choose
 provisioned only when the task needs a second running dev server or
 database. A plan with two or more tasks merging before trunk names its
