@@ -21,10 +21,12 @@
 # the task text straight into the dispatch prompt instead.
 #
 # The emitted lines follow the task's isolation tier (its `**Isolation:**`
-# line, default branch): branch emits `Branch: task-N` and no
-# `Worktree:` line, reviews the branch `task-N`, and has no merge task — the
-# lead merges. worktree and provisioned emit the `Worktree:` line and review
-# `worktree-task-N-impl`. Any other value is refused (exit 5).
+# line, default trunk): trunk emits `Trunk: <lane>` and no `Branch:` or
+# `Worktree:` line, and has no review or merge task — a review seat means
+# branch tier. branch emits `Branch: task-N` and no `Worktree:` line, reviews
+# the branch `task-N`, and has no merge task — the lead merges. worktree and
+# provisioned emit the `Worktree:` line and review `worktree-task-N-impl`.
+# Any other value is refused (exit 5).
 #
 # File mode is unchanged, for reviewers and other teammates that run in the
 # lead's own checkout and can read a path there.
@@ -90,20 +92,31 @@ if [ "${1:-}" = "--taskcreate" ]; then
   base=$(basename "$plan" .md)
   wt="task-${n}-impl"
 
-  # The task's isolation tier, chosen at intake. A task with no line is branch
-  # tier — the default. provisioned is the worktree tier plus the repo's own
-  # provisioning script, so it emits the worktree lines unchanged.
+  # The task's isolation tier, chosen at intake. A task with no line is trunk
+  # tier — the default: the seat commits straight on the lane in the lead's
+  # own checkout, so there is nothing to review a branch of and nothing to
+  # merge. provisioned is the worktree tier plus the repo's own provisioning
+  # script, so it emits the worktree lines unchanged.
   iso=$(printf '%s\n' "$brief" | sed -n 's/^\*\*Isolation:\*\*[[:space:]]*//p' | head -1 | tr -d '`')
-  [ -n "$iso" ] || iso=branch
+  [ -n "$iso" ] || iso=trunk
   case "$iso" in
+    trunk)                seat=trunk ;;
     branch)               seat=branch ;;
     worktree|provisioned) seat=worktree ;;
-    *) echo "Isolation must be branch, worktree or provisioned (got: ${iso})" >&2; exit 5 ;;
+    *) echo "Isolation must be trunk, branch, worktree or provisioned (got: ${iso})" >&2; exit 5 ;;
   esac
+  if [ "$seat" = trunk ]; then
+    case "$kind" in
+      review-spec|review-standards|merge)
+        echo "trunk tier has no ${kind} task; a review seat means branch tier" >&2
+        exit 4 ;;
+    esac
+  fi
   if [ "$seat" = branch ] && [ "$kind" = merge ]; then
     echo "branch tier has no merge task; the lead merges task-${n}" >&2
     exit 4
   fi
+  trunk_line="Trunk: ${lane}        (commit straight on it in the lead's checkout)"
   branch_line="Branch: task-${n}        (git switch -c in the lead's checkout, from Lane)"
   if [ "$seat" = branch ]; then
     reviews="task-${n}"
@@ -162,7 +175,9 @@ if [ "${1:-}" = "--taskcreate" ]; then
   echo "Plan: ${plan}   Spec: ${spec}"
   echo "Lane: ${lane}"
   echo "Isolation: ${iso}"
-  if [ "$seat" = branch ]; then
+  if [ "$seat" = trunk ]; then
+    echo "$trunk_line"
+  elif [ "$seat" = branch ]; then
     echo "$branch_line"
   else
     echo "Worktree: ${wt}        (EnterWorktree name; branch worktree-${wt})"

@@ -295,6 +295,16 @@ main() {
         fi
     done
 
+    # (k7b) implementer.md and writer.md carry the trunk-tier path: the seat
+    #       commits straight on the description's Trunk: branch
+    for role in implementer writer; do
+        if grep -q 'commit straight on it' "$AGENTS/$role.md"; then
+            pass "agents/$role.md has the trunk-tier path"
+        else
+            fail "agents/$role.md has the trunk-tier path"
+        fi
+    done
+
     # (k8) implementer.md carries one work cadence, in order: TDD at the
     #      seam, typecheck, focused test file while iterating, full suite
     #      once before the commit, review seats as the gate

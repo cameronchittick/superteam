@@ -38,7 +38,7 @@ main() {
     # (b) required section headings, and the retired heading is gone
     local heading
     for heading in '^## The tiers' '^## Escalation and what the ledger records' \
-        '^## Sizing the work' '^## The branch-tier flow'; do
+        '^## Sizing the work' '^## The trunk flow' '^## The branch-tier flow'; do
         if grep -qE "$heading" "$DOC"; then
             pass "docs/isolation-tiers.md has heading: $heading"
         else
@@ -53,7 +53,7 @@ main() {
 
     # (c) the tier table's four row labels
     local row
-    for row in '| **branch** (default) |' '| **worktree** |' '| **provisioned** |'; do
+    for row in '| **trunk** (default) |' '| **branch** |' '| **worktree** |' '| **provisioned** |'; do
         if grep -qF "$row" "$DOC"; then
             pass "docs/isolation-tiers.md table has row: $row"
         else
@@ -109,13 +109,30 @@ main() {
         done
     done
 
+    # (d3) both rule texts carry the trunk-tier rule, and the retired
+    #      branch-as-default label is gone from both
+    for rule_file in "$DOC" "$SDD_SKILL"; do
+        for phrase in 'a merge commit for nothing' 'no review seat'; do
+            if tr '\n' ' ' <"$rule_file" | grep -qF "$phrase"; then
+                pass "$(basename "$rule_file") states: $phrase"
+            else
+                fail "$(basename "$rule_file") states: $phrase"
+            fi
+        done
+        if grep -qF '**branch** (default)' "$rule_file"; then
+            fail "$(basename "$rule_file") no longer contains: **branch** (default)"
+        else
+            pass "$(basename "$rule_file") no longer contains: **branch** (default)"
+        fi
+    done
+
     # (e) writing-plans skill: skeptic trigger phrase and Isolation header line
     if grep -qF 'Sizing the work' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has: Sizing the work"
     else
         fail "writing-plans SKILL.md has: Sizing the work"
     fi
-    if grep -qE '^\*\*Isolation:\*\* branch \| worktree \| provisioned$' "$PLAN_SKILL"; then
+    if grep -qE '^\*\*Isolation:\*\* trunk \| branch \| worktree \| provisioned$' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has the Isolation header-line template"
     else
         fail "writing-plans SKILL.md has the Isolation header-line template"

@@ -107,6 +107,15 @@ Do the third thing.
 **Model tier:** standard
 
 Do the fourth thing.
+
+## Task 5: Fifth thing
+
+**Files owned:** `src/f.py`
+**Depends on:** none
+**Isolation:** branch
+**Model tier:** standard
+
+Do the fifth thing.
 PLAN
 
     local out
@@ -128,18 +137,37 @@ PLAN
     local tc tr tm line
     tc="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 implement lane/x)"
     if printf '%s\n' "$tc" | sed -n 1p | grep -q '^Subject: Task 1: implement \[implementer\]$'; then pass "--taskcreate implement subject carries role tag"; else fail "--taskcreate implement subject carries role tag"; fi
-    for line in '^Lane: lane/x$' '^Isolation: branch$' '^Branch: task-1' '^Files owned: ' '^Done: report at \.superteam/sdd/' '^## Task Brief$' '^## Global Constraints$'; do
+    for line in '^Lane: lane/x$' '^Isolation: trunk$' '^Trunk: lane/x' '^Files owned: ' '^Done: report at \.superteam/sdd/' '^## Task Brief$' '^## Global Constraints$'; do
         if printf '%s\n' "$tc" | grep -q "$line"; then pass "--taskcreate body has $line"; else fail "--taskcreate body has $line"; fi
     done
-    if printf '%s\n' "$tc" | grep -q '^Worktree:'; then fail "--taskcreate branch tier has no Worktree: line"; else pass "--taskcreate branch tier has no Worktree: line"; fi
+    if printf '%s\n' "$tc" | grep -q '^Worktree:'; then fail "--taskcreate trunk tier has no Worktree: line"; else pass "--taskcreate trunk tier has no Worktree: line"; fi
+    if printf '%s\n' "$tc" | grep -q '^Branch:'; then fail "--taskcreate trunk tier has no Branch: line"; else pass "--taskcreate trunk tier has no Branch: line"; fi
     if printf '%s\n' "$tc" | grep -q '^Files owned: src/a.py, src/b.py$'; then pass "--taskcreate copies Files owned without backticks"; else fail "--taskcreate copies Files owned without backticks"; fi
     if printf '%s\n' "$tc" | grep -q '^Plan: plan.md   Spec: docs/spec.md$'; then pass "--taskcreate body has the Plan/Spec line"; else fail "--taskcreate body has the Plan/Spec line"; fi
     if printf '%s\n' "$tc" | grep -qE '^(Role|Model):'; then fail "--taskcreate body has no Role:/Model: line"; else pass "--taskcreate body has no Role:/Model: line"; fi
-    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-spec lane/x)"
-    if printf '%s\n' "$tr" | grep -q '^Subject: Task 1: review spec \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: task-1$' && printf '%s\n' "$tr" | grep -q '^Rubric: skills/superteam-driven-development/task-reviewer-prompt.md$'; then pass "--taskcreate review-spec subject, Reviews: and Rubric: lines"; else fail "--taskcreate review-spec subject, Reviews: and Rubric: lines"; fi
-    ts="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-standards lane/x)"
-    if printf '%s\n' "$ts" | grep -q '^Subject: Task 1: review standards \[reviewer\]$' && printf '%s\n' "$ts" | grep -q '^Rubric: skills/superteam-driven-development/task-standards-prompt.md$' && printf '%s\n' "$ts" | grep -q '^Standards: '; then pass "--taskcreate review-standards subject, Rubric: and Standards: lines"; else fail "--taskcreate review-standards subject, Rubric: and Standards: lines"; fi
-    if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 merge lane/x) >/dev/null 2>&1; then fail "--taskcreate merge is refused on the branch tier"; else pass "--taskcreate merge is refused on the branch tier"; fi
+    local rc_t
+    (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-spec lane/x) >/dev/null 2>&1
+    rc_t=$?
+    if [[ $rc_t -eq 4 ]]; then pass "--taskcreate review-spec is refused on the trunk tier with exit 4"; else fail "--taskcreate review-spec is refused on the trunk tier with exit 4 (got $rc_t)"; fi
+    (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 review-standards lane/x) >/dev/null 2>&1
+    rc_t=$?
+    if [[ $rc_t -eq 4 ]]; then pass "--taskcreate review-standards is refused on the trunk tier with exit 4"; else fail "--taskcreate review-standards is refused on the trunk tier with exit 4 (got $rc_t)"; fi
+    (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 1 merge lane/x) >/dev/null 2>&1
+    rc_t=$?
+    if [[ $rc_t -eq 4 ]]; then pass "--taskcreate merge is refused on the trunk tier with exit 4"; else fail "--taskcreate merge is refused on the trunk tier with exit 4 (got $rc_t)"; fi
+
+    # (c2a) an explicit "**Isolation:** branch" task keeps the branch lines
+    local tcb
+    tcb="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 5 implement lane/x)"
+    for line in '^Isolation: branch$' '^Branch: task-5'; do
+        if printf '%s\n' "$tcb" | grep -q "$line"; then pass "--taskcreate branch tier body has $line"; else fail "--taskcreate branch tier body has $line"; fi
+    done
+    if printf '%s\n' "$tcb" | grep -q '^Worktree:'; then fail "--taskcreate branch tier has no Worktree: line"; else pass "--taskcreate branch tier has no Worktree: line"; fi
+    tr="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 5 review-spec lane/x)"
+    if printf '%s\n' "$tr" | grep -q '^Subject: Task 5: review spec \[reviewer\]$' && printf '%s\n' "$tr" | grep -q '^Reviews: task-5$' && printf '%s\n' "$tr" | grep -q '^Rubric: skills/superteam-driven-development/task-reviewer-prompt.md$'; then pass "--taskcreate review-spec subject, Reviews: and Rubric: lines"; else fail "--taskcreate review-spec subject, Reviews: and Rubric: lines"; fi
+    ts="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 5 review-standards lane/x)"
+    if printf '%s\n' "$ts" | grep -q '^Subject: Task 5: review standards \[reviewer\]$' && printf '%s\n' "$ts" | grep -q '^Rubric: skills/superteam-driven-development/task-standards-prompt.md$' && printf '%s\n' "$ts" | grep -q '^Standards: '; then pass "--taskcreate review-standards subject, Rubric: and Standards: lines"; else fail "--taskcreate review-standards subject, Rubric: and Standards: lines"; fi
+    if (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 5 merge lane/x) >/dev/null 2>&1; then fail "--taskcreate merge is refused on the branch tier"; else pass "--taskcreate merge is refused on the branch tier"; fi
 
     # (c2b) an explicit "**Isolation:** worktree" task keeps the worktree lines
     local tc2 tr2 tm2
@@ -159,10 +187,10 @@ PLAN
     tc3="$(cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 3 implement lane/x 2>&1 >/dev/null)"
     rc3=$?
     if [[ $rc3 -eq 5 ]]; then pass "--taskcreate rejects the retired solo tier with exit 5"; else fail "--taskcreate rejects the retired solo tier with exit 5 (got $rc3)"; fi
-    if printf '%s\n' "$tc3" | grep -qF 'Isolation must be branch, worktree or provisioned'; then
-        pass "--taskcreate names the three tiers on stderr"
+    if printf '%s\n' "$tc3" | grep -qF 'Isolation must be trunk, branch, worktree or provisioned'; then
+        pass "--taskcreate names the four tiers on stderr"
     else
-        fail "--taskcreate names the three tiers on stderr"
+        fail "--taskcreate names the four tiers on stderr"
         echo "    got: $tc3"
     fi
     (cd "$repo" && "$TASK_BRIEF" --taskcreate plan.md 4 implement lane/x) >/dev/null 2>&1

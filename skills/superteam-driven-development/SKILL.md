@@ -71,24 +71,30 @@ without agent teams:**
 ## Isolation tiers
 
 Every task carries an `**Isolation:**` line chosen at intake.
-**branch** (the default, and what a missing line means): one writing seat at
-a time in this repo, on `task-N` in the lead's own checkout, the lead
-merges. **worktree**: two or more writing seats must write in this
+**trunk** (the default, and what a missing line means): one writing seat, the
+only thing writing, no review seat before landing; it commits straight on
+`<base>` in the lead's own checkout and the lead reads the commits after they
+land, reverting a bad one. **branch**: a review seat must sit between the work
+and trunk, or a second seat is live without both writing at once; one writing
+seat at a time on `task-N` in the lead's own checkout, the lead merges — a
+branch for a lone writer with no review seat is a merge commit for nothing.
+**worktree**: two or more writing seats must write in this
 repo at once; a plain `git worktree add`, nothing provisioned.
 **provisioned**: the worktree tier plus the repo's own provisioning script,
 only when a second running dev server or database is required. `<base>` is
 trunk, or the lane the plan header names in `**Integration:**`. The table,
 triggers and evidence are in [docs/isolation-tiers.md](../../docs/isolation-tiers.md).
 
-A plan escalates a task from the branch to the worktree tier whenever two or
-more writing tasks are unblocked at the same time. The lead records in the
+A plan escalates a task off trunk — to branch when a second seat goes live,
+to worktree whenever two or more writing tasks are unblocked at the same
+time. The lead records in the
 ledger, per task, the maximum number of concurrent writers, any
 dirty-checkout collision, and wall-clock time from claim to merge, so the
 next run of six or more tasks can be judged against the 7.3.0 baseline.
 
 Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets which seats sit. It is a scale the lead reads for every brief, never a category the brief matches, and the lead's own hands are not on it: the lead does not implement, not even a one-line fix — a spawn costs seconds and keeps the lead's context for leading. A request that arrives straight from your human partner is sized and delegated exactly like a brief from above.
 
-1. **One IC.** The smallest size: one implementer or writer on the branch tier, even for a one-line fix; the lead reviews its diff.
+1. **One IC.** The smallest size: one implementer or writer on trunk, even for a one-line fix; the lead reads its commits after they land.
 2. **Add the seat that answers the risk.** A design choice seats a skeptic before building; a costly failure seats a reviewer after.
 3. **One IC per independent piece, at once.** Several independent pieces get a writing seat each, plus whatever step 2 seats each piece's own risk calls for.
 
@@ -124,6 +130,12 @@ cannot be a seat of an existing one.
 teammate spawned once into the role pool with **no `isolation`** (see
 "## Role pool"); how it isolates after it claims follows the task's
 `Isolation:` line (see "## Isolation tiers").
+
+*Trunk tier.* The seat claims `Task N: implement` (or `[writer]`) from the
+shared list, stays on `<base>` in the lead's checkout — no branch, no
+worktree — commits there, and reports; there is nothing to merge. While a
+trunk-tier task is `in_progress` no one, the lead included, changes branch in
+that checkout.
 
 *Branch tier.* The seat claims `Task N: implement` (or `[writer]`) from the
 shared list, runs `git switch -c <Branch> <Lane>` in the lead's checkout,
@@ -209,7 +221,7 @@ digraph process {
     subgraph cluster_per_task {
         label="Per Task";
         "Lead creates Task N graph: implement, review, merge" [shape=box];
-        "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)" [shape=box];
+        "implementer self-claims, isolates per tier (trunk: stays on <base>; branch: git switch -c; worktree: EnterWorktree + git merge lane)" [shape=box];
         "Implementer asks questions?" [shape=diamond];
         "Answer questions, provide context" [shape=box];
         "Implementer implements, tests, commits, self-reviews, appends Verified: line" [shape=box];
@@ -227,7 +239,7 @@ digraph process {
         "Any load-bearing finding?" [shape=diamond];
         "Rule and continue; stop only if every path forward is a guess" [shape=box];
         "Park findings in ledger with rulings" [shape=box];
-        "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [shape=box];
+        "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge" [shape=box];
     }
 
     "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" [shape=box];
@@ -238,16 +250,16 @@ digraph process {
     "Use superteam:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: lane branch, workspace, pre-approval, task graph, role pool, state the mode" -> "Lead creates Task N graph: implement, review, merge";
-    "Lead creates Task N graph: implement, review, merge" -> "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)";
-    "implementer self-claims, isolates per tier (branch: git switch -c; worktree: EnterWorktree + git merge lane)" -> "Implementer asks questions?";
+    "Lead creates Task N graph: implement, review, merge" -> "implementer self-claims, isolates per tier (trunk: stays on <base>; branch: git switch -c; worktree: EnterWorktree + git merge lane)";
+    "implementer self-claims, isolates per tier (trunk: stays on <base>; branch: git switch -c; worktree: EnterWorktree + git merge lane)" -> "Implementer asks questions?";
     "Implementer asks questions?" -> "Answer questions, provide context" [label="yes"];
     "Answer questions, provide context" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line";
     "Implementer asks questions?" -> "Implementer implements, tests, commits, self-reviews, appends Verified: line" [label="no"];
     "Implementer implements, tests, commits, self-reviews, appends Verified: line" -> "Sizing seated a reviewer?";
     "Sizing seated a reviewer?" -> "reviewer self-claims, reads the branch diff, verdicts spec and quality" [label="yes"];
-    "Sizing seated a reviewer?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="no - report + suite is the gate"];
+    "Sizing seated a reviewer?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge" [label="no - report + suite is the gate"];
     "reviewer self-claims, reads the branch diff, verdicts spec and quality" -> "Spec ✅ and quality approved?";
-    "Spec ✅ and quality approved?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="yes"];
+    "Spec ✅ and quality approved?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge" [label="yes"];
     "Spec ✅ and quality approved?" -> "Finding conflicts with plan text?" [label="no"];
     "Finding conflicts with plan text?" -> "Rule on the conflict, ledger the ruling" [label="yes"];
     "Rule on the conflict, ledger the ruling" -> "Lead creates fix round R of 5: Task N fix R, Task N review R";
@@ -255,15 +267,15 @@ digraph process {
     "Lead creates fix round R of 5: Task N fix R, Task N review R" -> "implementer self-claims the fix, fixes in the same worktree branch";
     "implementer self-claims the fix, fixes in the same worktree branch" -> "reviewer self-claims the re-review, verdicts each finding";
     "reviewer self-claims the re-review, verdicts each finding" -> "All findings addressed?";
-    "All findings addressed?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" [label="yes"];
+    "All findings addressed?" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge" [label="yes"];
     "All findings addressed?" -> "R = 5?" [label="no"];
     "R = 5?" -> "Lead creates fix round R of 5: Task N fix R, Task N review R" [label="no - next round"];
     "R = 5?" -> "Adjudicate each open finding" [label="yes - breaker trips"];
     "Adjudicate each open finding" -> "Any load-bearing finding?";
     "Any load-bearing finding?" -> "Rule and continue; stop only if every path forward is a guess" [label="yes"];
     "Any load-bearing finding?" -> "Park findings in ledger with rulings" [label="no"];
-    "Park findings in ledger with rulings" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>";
-    "lead (branch tier) or integrator (worktree tier) merges the branch into <base>" -> "More tasks remain?";
+    "Park findings in ledger with rulings" -> "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge";
+    "lead (branch tier) or integrator (worktree tier) merges the branch into <base>; trunk tier: nothing to merge" -> "More tasks remain?";
     "More tasks remain?" -> "Lead creates Task N graph: implement, review, merge" [label="yes"];
     "More tasks remain?" -> "Dispatch two-axis final review (superteam:requesting-code-review)" [label="no"];
     "Dispatch two-axis final review (superteam:requesting-code-review)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
@@ -299,7 +311,8 @@ lead's checkout. Worktree seats branch from the repo default branch —
 `isolation: "worktree"` and `EnterWorktree` both do — and catch up with
 `git merge <base>` as their first step. Never start implementation on a
 main/master branch without your human partner's explicit consent; a
-branch-tier task branch is not main.
+branch-tier task branch is not main, and a trunk-tier seat commits on
+`<base>` because the plan chose it — that is the consent.
 
 Conversation memory does not survive compaction. In real sessions,
 controllers that lost their place have re-dispatched entire completed task
@@ -408,7 +421,8 @@ this order — review is two axes, and they run in parallel:
 
 The `review spec` and `review standards` tasks are created only when the
 the sizing seated a reviewer for that task or plan; a task with no reviewer
-seat has a family of implement, then merge or the lead's merge. A branch-tier family has three
+seat has a family of implement, then merge or the lead's merge. A trunk-tier
+family is the implement task alone. A branch-tier family has three
 tasks; the review completing is the lead's cue to merge.
 
 The description is the whole brief — no pointers, because a teammate in a
@@ -419,8 +433,9 @@ which prints the subject and the description body:
 ```
 Plan: docs/superteam/plans/<plan>.md   Spec: <path or "none">
 Lane: <lane branch>
-Isolation: branch            (the task's tier; a task with no line is branch)
-Branch: task-N               (branch tier: git switch -c in the lead's checkout)
+Isolation: trunk             (the task's tier; a task with no line is trunk)
+Trunk: <base>                (trunk tier: commit straight on it in the lead's checkout)
+Branch: task-N               (branch tier only: git switch -c in the lead's checkout)
 Worktree: task-N-impl        (worktree and provisioned tiers only: EnterWorktree name; branch worktree-task-N-impl)
 Files owned: path/a, path/b  (exact list; the review and merge tasks repeat it)
 Depends on: Task M (or "none")
@@ -625,7 +640,7 @@ worktree isolation on the call:
 ```
 Agent:
   name: "task-3-impl"            # its SendMessage address for fix rounds
-  isolation: "worktree"          # worktree/provisioned tier only; omit for branch tier — branch worktree-task-3-impl, from the repo default branch
+  isolation: "worktree"          # worktree/provisioned tier only; omit for trunk and branch tiers — branch worktree-task-3-impl, from the repo default branch
   model: [omit to take the agent's default; override only with a Model Selection reason written here]
   subagent_type: "superteam:implementer"  # superteam:writer for prose tasks; general-purpose if the plugin agent is not loaded
   description: "Implement Task 3: [task name]"
@@ -891,6 +906,10 @@ completion. On the branch tier — and on the worktree tier with no integrator
 seat — that clearing is your cue to merge, below. The dispatch shape is
 fallback mode's.
 
+**Trunk tier.** Nothing is merged. `git log <base>` for the seat's commits,
+read the diff, run the full suite, and revert a bad commit with `git revert`.
+Record the commit shas, wall clock and concurrent-writer count in the ledger.
+
 **Branch tier.** The lead merges: `git switch <base>`,
 `git merge --no-ff task-N` with the commit trailer, run the full suite,
 `git branch -d task-N`, and record the merge sha, wall clock and
@@ -1143,4 +1162,14 @@ A one-task plan on the branch tier is five lines:
 [reviewer-1 claims both review seats in turn, diffs main..task-1, both Approved]
 [Lead merges: git switch main; git merge --no-ff task-1; full suite green; git branch -d task-1]
 [Ledger: Task 1: complete (tier branch, size one IC +reviewer (costly failure), 41 min claim→merge, 1 concurrent writer)]
+```
+
+A one-task plan on the trunk tier is four lines — no branch, nothing to
+merge:
+
+```
+[Setup: <base> is main — no lane; one task on the list: Task 1 implement]
+[impl-1 claims Task 1, stays on main in this checkout, commits straight on main, reports]
+[Lead reads git log main for its commits and the diff, full suite green — nothing to revert]
+[Ledger: Task 1: complete (tier trunk, size one IC, commits a1b2c3d..d4e5f6a, 12 min claim→report, 1 concurrent writer)]
 ```

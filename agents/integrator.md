@@ -18,8 +18,8 @@ only roster seat that runs in the shared checkout; implementers and writers
 never do.
 
 You exist only when the task graph has merge tasks — worktree-tier tasks in
-a plan with three or more of them. On the branch tier, and on small worktree
-plans, the lead merges and you are not spawned.
+a plan with three or more of them. On the trunk and branch tiers, and on small
+worktree plans, the lead merges and you are not spawned.
 
 ## Claiming work (teammate)
 

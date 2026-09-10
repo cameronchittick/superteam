@@ -91,7 +91,7 @@ include this section.]
 **Files owned:** `exact/path/to/file.py`, `tests/exact/path/to/test.py`
 **Depends on:** none (or: Task 2, Task 3)
 **Model tier:** cheap | standard | most capable
-**Isolation:** branch | worktree | provisioned
+**Isolation:** trunk | branch | worktree | provisioned
 
 **Files:**
 - Create: `exact/path/to/file.py`
@@ -153,11 +153,13 @@ superteam:superteam-driven-development's Model Selection — cheap for 1-2 files
 with a complete spec, standard for multi-file integration, most capable for
 design judgment — and drives what each task costs.
 
-**Isolation: format.** Write `Isolation: branch`, `Isolation: worktree` or
-`Isolation: provisioned` — one word, in the header. Branch is the default
-and what a missing line means: the IC works on `task-N` in the lead's own
-checkout and the lead merges. Choose worktree only when this task will be
-written at the same time as another task in the same repo; choose
+**Isolation: format.** Write `Isolation: trunk`, `Isolation: branch`,
+`Isolation: worktree` or `Isolation: provisioned` — one word, in the header.
+Trunk is the default and what a missing line means: the IC commits straight
+on `<base>` in the lead's own checkout and the lead reads the commits after
+they land. Choose branch only when a review seat must sit between the work
+and trunk or a second seat is live; choose worktree only when this task will
+be written at the same time as another task in the same repo; choose
 provisioned only when the task needs a second running dev server or
 database. A plan with two or more tasks merging before trunk names its
 lane in a header line `**Integration:** lane/<name>`; otherwise
