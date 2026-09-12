@@ -145,7 +145,9 @@ Agent:
     Your final message is the report itself: begin directly with the
     spec-compliance verdict. Every line is a verdict, a finding with
     file:line, or a check you ran — no preamble, no process narration,
-    no closing summary.
+    no closing summary. As a teammate, `SendMessage` this same report to
+    the lead, then end your turn with one short line that does not restate
+    it.
 
     ## Calibration
 

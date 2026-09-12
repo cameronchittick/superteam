@@ -402,6 +402,22 @@ main() {
         && pass "agents/researcher.md reports to the name on the Lead: line" \
         || fail "agents/researcher.md reports to the name on the Lead: line"
 
+    # (k13) a teammate reports on purpose: every role file tells it to
+    #       SendMessage its report to the lead, and none still makes the
+    #       last message (which reaches the lead only as an idle notice)
+    #       the report
+    local role
+    for role in "${ROSTER[@]}"; do
+        grep -qF 'As a teammate, `SendMessage` your report to the lead' "$AGENTS/$role.md" \
+            && pass "agents/$role.md tells a teammate to SendMessage its report to the lead" \
+            || fail "agents/$role.md tells a teammate to SendMessage its report to the lead"
+        if grep -qiF 'last message is your report' "$AGENTS/$role.md"; then
+            fail "agents/$role.md does not say the last message is the report"
+        else
+            pass "agents/$role.md does not say the last message is the report"
+        fi
+    done
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it

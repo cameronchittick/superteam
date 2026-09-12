@@ -121,7 +121,7 @@ every seat:
 2. **The agent carries the model.** Each agent file sets `model` and `effort`; a call overrides `model` only with a reason from Model Selection written next to it.
 3. **Tools follow the role.** Read-only roles carry `disallowedTools`; the skill never widens them.
 4. **One role per seat.** A reviewer does not fix; a researcher does not edit; an implementer does not merge.
-5. **One report per turn.** No IC ends a turn while a command it started is still running; tests run in the foreground (or are waited on) and the result arrives in one report — an early "waiting" reply reaches you as repeated idle notices.
+5. **One report per turn.** No IC ends a turn while a command it started is still running; tests run in the foreground (or are waited on) and the result arrives in one report — a teammate's by one `SendMessage` to you, a subagent's as its returned reply. An early "waiting" reply is a report that lies about being done.
 
 The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
@@ -189,8 +189,8 @@ Agent:
 
 A reviewer may `SendMessage` the implementer by name to ask what a change
 was for; it never edits, and it never fixes. Both kinds report back to you:
-implementer results arrive as completion notifications, reviewer verdicts
-as their final message.
+a subagent's result arrives as its completion notification; a teammate's
+report or verdict arrives as its `SendMessage` to you.
 
 **Integrator** — `subagent_type: "superteam:integrator"`, no `isolation`,
 dispatched only when the graph has merge tasks — worktree-tier tasks in a
@@ -587,15 +587,20 @@ its own role's work, and a lead holding a task is a seat nobody can take.
   pending permission dialog: a teammate's prompt lands there and only a human
   can answer it, so a dead or stopped teammate's prompt must be dismissed
   (Esc or No) at once; an unanswered prompt stalls the whole team.
-- **The idle notification is the report.** Read it when it arrives; do not
-  poll. Then `TaskList` to see what moved and what unblocked.
+- **A teammate's message is the report.** Read it when it arrives; do not
+  poll. Then `TaskList` to see what moved and what unblocked. An idle notice
+  only means a teammate stopped: never spend a turn replying to one whose
+  content repeats a message you already handled.
 - **Answer questions within one pass.** A teammate that needs your answer
-  sets its task to pending and idles; answer it, then tell it to continue.
-  Never leave a teammate's question unanswered for more than one pass.
-- **Nudge before you reassign.** A task that shows `in_progress` with no
-  commit and no report after one monitor pass gets one `SendMessage` to its
-  owner by name. If the next pass is unchanged, reassign: `TaskUpdate` the
-  task back to `pending` with no owner, and message the pool.
+  sets its task to pending, messages you the question and idles; answer it,
+  then tell it to continue. Never leave a teammate's question unanswered
+  for more than one pass.
+- **Nudge once before you reassign.** A teammate that idles holding an
+  `in_progress` task with no message to you, or a task that shows
+  `in_progress` with no commit and no report after one monitor pass, gets one
+  `SendMessage` to its owner by name. If the next pass is unchanged,
+  reassign: `TaskUpdate` the task back to `pending` with no owner, and
+  message the pool.
 - **Verdicts make tasks, not dispatches.** On a review verdict with open
   findings, create the fix/review pair from "## Task graph" and let the pool
   claim them.
@@ -618,11 +623,12 @@ prints back — stays resident in your context for the rest of the session
 and is re-read on every later turn. Hand artifacts over as files.
 
 **Waiting on dispatched ICs:** on Claude Code, an IC's result arrives as
-a completion notification (subagent) or idle notification (teammate) —
-never poll for it. While you have local work — ledger updates, packaging
-the next review, reading reports — keep working; when you are genuinely
-idle, end your turn and let the notification wake you. On platforms with
-a wait interface, wait in bounded stretches (five to ten minutes), and
+a completion notification (subagent) or a `SendMessage` from the teammate —
+never poll for it. An idle notice alone means a teammate stopped, not that it
+reported. While you have local work — ledger updates, packaging the next
+review, reading reports — keep working; when you are genuinely idle, end
+your turn and let the next notification or message wake you. On platforms
+with a wait interface, wait in bounded stretches (five to ten minutes), and
 between stretches post one line of status and reconcile your live
 children: list them, and chase any that finished without reporting.
 

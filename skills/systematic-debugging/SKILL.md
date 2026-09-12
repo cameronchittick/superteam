@@ -170,7 +170,7 @@ You MUST complete each phase before proceeding to the next.
 
 **Detect:** `TaskCreate` in your tools, teams on, interactive — else use the fallback below.
 
-Spawn 3–5 `hyp-N` researcher teammates, one hypothesis each in the prompt. Tell each to read `~/.claude/teams/<team>/config.json` for its peers, and when its evidence contradicts a peer's hypothesis, `SendMessage` that peer the evidence. Each reports which hypotheses survived its own testing; the lead reads idle notifications, collects the survivors, and carries the winner into Phase 4.
+Spawn 3–5 `hyp-N` researcher teammates, one hypothesis each in the prompt. Tell each to read `~/.claude/teams/<team>/config.json` for its peers, and when its evidence contradicts a peer's hypothesis, `SendMessage` that peer the evidence. Each `SendMessage`s the lead which hypotheses survived its own testing; the lead reads those messages (an idle notification only means a teammate stopped), collects the survivors, and carries the winner into Phase 4.
 
 **Fallback:** sequential researcher subagents, one hypothesis at a time.
 

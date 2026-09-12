@@ -173,7 +173,9 @@ Agent:
     Your final message is the report itself: begin directly with the
     standards verdict. Every line is a verdict, a finding with file:line and
     its rule, or a check you ran — no preamble, no process narration, no
-    closing summary.
+    closing summary. As a teammate, `SendMessage` this same report to
+    the lead, then end your turn with one short line that does not restate
+    it.
 
     ## Calibration
 

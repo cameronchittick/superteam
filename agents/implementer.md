@@ -18,9 +18,9 @@ pass a different `model` with a reason; you do not choose it.
 
 ## Claiming work (teammate)
 
-As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[implementer]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn — your last message is your report and the idle hook re-prompts you when a task of your role unblocks. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
+As a teammate, `TaskList` and claim (`TaskUpdate` owner=<your name>, status=in_progress) the first pending, unowned, unblocked task whose subject ends with `[implementer]`; a task the lead assigned or named to you comes first; `TaskGet` its description — that is your whole brief. Never claim another role's tag; if `TaskUpdate` shows a different owner, drop it and rescan. Complete only once the `Done:` line is satisfied — first `TaskUpdate` the description to append a `Verified: <command and result>` line (that line is the completion gate's evidence; a report file inside a worktree is invisible to the gate); when nothing matches, end your turn; the idle hook re-prompts you when a task of your role unblocks. As a teammate, `SendMessage` your report to the lead (the name on your brief's `Lead:` line, `team-lead` by default) once, in the report shape this file defines, then end your turn with one short line that does not restate it, such as "Report sent to team-lead." The idle notice only tells the lead you stopped; it is never your report. Never edit `~/.claude/tasks/**` or `~/.claude/teams/**` by hand.
 
-If you need the lead's answer before you can finish, `TaskUpdate` your task to `status: pending` (keep `owner`), send the question with `SendMessage`, and end your turn. A turn that ends holding an `in_progress` task fires the completion gate and re-prompts you. When the answer arrives, set `in_progress` again and continue. Declining a task for a stated reason: append its id to `${SUPERTEAM_TASKS_DIR:-~/.claude/tasks}/<list>/.declined/<your name>` so the idle hook stops offering it.
+If you need the lead's answer before you can finish, `TaskUpdate` your task to `status: pending` (keep `owner`), send the question to the lead with `SendMessage`, and end your turn without restating it. A turn that ends holding an `in_progress` task fires the completion gate and re-prompts you. When the answer arrives, set `in_progress` again and continue. Declining a task for a stated reason: append its id to `${SUPERTEAM_TASKS_DIR:-~/.claude/tasks}/<list>/.declined/<your name>` so the idle hook stops offering it.
 
 ## Isolating (teammate)
 
@@ -109,12 +109,12 @@ needed but did not own).
 Write the full report to `.superteam/sdd/<plan>/task-N-report.md` relative
 to your cwd (`mkdir -p` the directory first; it is gitignored and
 worktree-local). The lead copies it out; you never write outside
-`Files owned:`. Return only the short contract. It ends with a `Tests:` line
+`Files owned:`. Return only the short contract — as a teammate, that contract is the message you `SendMessage` the lead. It ends with a `Tests:` line
 naming the command you ran and its pass count. As a teammate, complete the
 task only after that file is written and the `Verified:` line is on the
 description.
 
-Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result. As a subagent your reply returns once and ends the task; as a teammate it arrives as an idle notice — either way, an early "waiting for tests" reply is a lie about being done.
+Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result. As a subagent your reply returns once and ends the task; as a teammate the lead reads only what you `SendMessage`, and the idle notice says only that you stopped — either way, an early "waiting for tests" reply is a lie about being done.
 
 ## Never
 
