@@ -126,6 +126,39 @@ main() {
         fi
     done
 
+    # (d4) both rule texts state the second-seat gate: its three steps in
+    #      order, and that the split goes to both seats
+    for rule_file in "$DOC" "$SDD_SKILL"; do
+        for phrase in 'is a gate of three steps, in order' \
+            'set to worktree before anything else' \
+            'sent to both seats' \
+            'acknowledges the split by message' \
+            'waits for the acknowledgement rather than assuming delivery' \
+            'true to what it knew and false to what the lead knows'; do
+            if tr '\n' ' ' <"$rule_file" | tr -s ' ' | grep -qF "$phrase"; then
+                pass "$(basename "$rule_file") states the second-seat gate: $phrase"
+            else
+                fail "$(basename "$rule_file") states the second-seat gate: $phrase"
+            fi
+        done
+    done
+
+    # (d5) SDD skill states the spawn-directory check and the stalled-seat
+    #      check, and the worktree tier definition still stands
+    for phrase in 'never anywhere under `~/.claude`' \
+        'git rev-parse --show-toplevel' \
+        'return to the repo root before spawning' \
+        'workspace trust dialog' \
+        'tmux capture-pane -p -t <pane>' \
+        'kill the seat and respawn from the repo root, never answer the dialog' \
+        '**worktree**: two or more writing seats must write in this repo at once'; do
+        if tr '\n' ' ' <"$SDD_SKILL" | tr -s ' ' | grep -qF "$phrase"; then
+            pass "SDD SKILL.md states: $phrase"
+        else
+            fail "SDD SKILL.md states: $phrase"
+        fi
+    done
+
     # (e) writing-plans skill: skeptic trigger phrase and Isolation header line
     if grep -qF 'Sizing the work' "$PLAN_SKILL"; then
         pass "writing-plans SKILL.md has: Sizing the work"
