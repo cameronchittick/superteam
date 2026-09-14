@@ -281,6 +281,61 @@ EOF
 echo "3" > "$declined_dir/.declined/anna"
 assert_exit "a declined task id is never nudged again" 0 "$idle" SUPERTEAM_TASKS_DIR="$declined_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
 
+echo "Team hooks: teammate-idle-claim offers a task once, then cools down"
+
+# task_json ID SUBJECT STATUS OWNER
+task_json() {
+    printf '{"id":"%s","subject":"%s","description":"Files owned: skills/t%s\\nDone: report","status":"%s","owner":"%s","blockedBy":[]}\n' "$1" "$2" "$1" "$3" "$4"
+}
+# dir_mtime DIR -> epoch seconds, GNU stat then BSD stat
+dir_mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }
+
+# A second seat writes to the tasks directory while the first seat is idle:
+# the first seat is not offered its task again. The cooldown is 0 here so the
+# once-per-task rule alone keeps it quiet.
+once_dir="$TEST_ROOT/once-tasks"; mkdir -p "$once_dir"
+task_json 7 "Task 7: implement [implementer]" pending "" > "$once_dir/7.json"
+O=(SUPERTEAM_TASKS_DIR="$once_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" SUPERTEAM_IDLE_COOLDOWN=0)
+assert_stderr "anna is offered task 7" 2 'claim "Task 7' "$idle" "${O[@]}" -- "$IDLE_HOOK"
+before_mtime="$(dir_mtime "$once_dir")"
+sleep 1
+task_json 8 "Task 8: review spec [reviewer]" in_progress "reviewer-1" > "$once_dir/8.json.tmp"
+mv "$once_dir/8.json.tmp" "$once_dir/8.json"
+if [ "$(dir_mtime "$once_dir")" != "$before_mtime" ]; then
+    pass "a second seat's write moved the tasks dir mtime"
+else
+    fail "a second seat's write moved the tasks dir mtime"
+fi
+assert_exit "after a second seat writes to the tasks dir, anna is not offered task 7 again" 0 "$idle" "${O[@]}" -- "$IDLE_HOOK"
+
+# A different task inside the cooldown stays quiet; after the cooldown a
+# pending unowned task of the role is offered.
+cool_dir="$TEST_ROOT/cool-tasks"; mkdir -p "$cool_dir"
+task_json 1 "Task 1: implement [implementer]" pending "" > "$cool_dir/1.json"
+task_json 2 "Task 2: implement [implementer]" pending "" > "$cool_dir/2.json"
+C=(SUPERTEAM_TASKS_DIR="$cool_dir" SUPERTEAM_TEAMS_DIR="$teams_dir")
+assert_stderr "anna is offered task 1" 2 'claim "Task 1' "$idle" "${C[@]}" -- "$IDLE_HOOK"
+task_json 1 "Task 1: implement [implementer]" in_progress "bob-2" > "$cool_dir/1.json"
+assert_exit "a different task inside the default cooldown stays quiet" 0 "$idle" "${C[@]}" -- "$IDLE_HOOK"
+assert_exit "a different task inside a 600-second cooldown stays quiet" 0 "$idle" "${C[@]}" SUPERTEAM_IDLE_COOLDOWN=600 -- "$IDLE_HOOK"
+sleep 2
+assert_stderr "after the cooldown, a pending unowned task of the role is offered" 2 'claim "Task 2' "$idle" "${C[@]}" SUPERTEAM_IDLE_COOLDOWN=1 -- "$IDLE_HOOK"
+
+# A lead reassigning a task by clearing its owner gets it claimed: once the
+# hook has seen the task owned, the earlier offer no longer counts.
+re_dir="$TEST_ROOT/reassign-tasks"; mkdir -p "$re_dir"
+task_json 3 "Task 3: implement [implementer]" pending "" > "$re_dir/3.json"
+R=(SUPERTEAM_TASKS_DIR="$re_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" SUPERTEAM_IDLE_COOLDOWN=0)
+assert_stderr "anna is offered task 3" 2 'claim "Task 3' "$idle" "${R[@]}" -- "$IDLE_HOOK"
+task_json 3 "Task 3: implement [implementer]" in_progress "anna" > "$re_dir/3.json"
+assert_exit "anna holding task 3 is quiet" 0 "$idle" "${R[@]}" -- "$IDLE_HOOK"
+task_json 3 "Task 3: implement [implementer]" pending "" > "$re_dir/3.json"
+assert_stderr "after the lead clears task 3's owner, it is offered again" 2 'claim "Task 3' "$idle" "${R[@]}" -- "$IDLE_HOOK"
+
+bad_dir="$TEST_ROOT/bad-cooldown-tasks"; mkdir -p "$bad_dir"
+task_json 4 "Task 4: implement [implementer]" pending "" > "$bad_dir/4.json"
+assert_stderr "a non-numeric SUPERTEAM_IDLE_COOLDOWN falls back to the default, not an error" 2 'claim "Task 4' "$idle" SUPERTEAM_TASKS_DIR="$bad_dir" SUPERTEAM_TEAMS_DIR="$teams_dir" SUPERTEAM_IDLE_COOLDOWN=soon -- "$IDLE_HOOK"
+
 idle_help_lines="$({ "$IDLE_HOOK" --help 2>/dev/null || true; } | wc -l | tr -d ' ')"
 if [ "$idle_help_lines" -eq 5 ]; then
     pass "teammate-idle-claim --help prints 5 lines"
@@ -400,8 +455,9 @@ assert_stderr "an idle reviewer is offered the spec axis first (lowest id)" 2 'c
 cat > "$axis_idle/3.json" <<'EOF'
 {"id":"3","subject":"Task 2: review spec [reviewer]","description":"Files owned: none\nDone: verdict","status":"completed","owner":"reviewer-1","blockedBy":[]}
 EOF
+# (cooldown 0: this checks task selection, not the per-teammate cooldown)
 assert_stderr "with the spec axis done the reviewer is offered the standards axis" 2 'claim "Task 2: review standards \[reviewer\]"' \
-    "$rev_idle" SUPERTEAM_TASKS_DIR="$axis_idle" SUPERTEAM_TEAMS_DIR="$teams_dir" -- "$IDLE_HOOK"
+    "$rev_idle" SUPERTEAM_TASKS_DIR="$axis_idle" SUPERTEAM_TEAMS_DIR="$teams_dir" SUPERTEAM_IDLE_COOLDOWN=0 -- "$IDLE_HOOK"
 
 echo "Team hooks: task-brief: review axes and Standards line"
 

@@ -121,7 +121,7 @@ every seat:
 2. **The agent carries the model.** Each agent file sets `model` and `effort`; a call overrides `model` only with a reason from Model Selection written next to it.
 3. **Tools follow the role.** Read-only roles carry `disallowedTools`; the skill never widens them.
 4. **One role per seat.** A reviewer does not fix; a researcher does not edit; an implementer does not merge.
-5. **One report per turn.** No IC ends a turn while a command it started is still running; tests run in the foreground (or are waited on) and the result arrives in one report — a teammate's by one `SendMessage` to you, a subagent's as its returned reply. An early "waiting" reply is a report that lies about being done.
+5. **One report per turn.** No IC ends a turn while a command it started is still running; tests run in the foreground (or are waited on) and the result arrives in one report — a teammate's by one `SendMessage` to you, a subagent's as its returned reply. An early "waiting" reply is a report that lies about being done. A teammate's message is the only report; an idle, terminated or shutdown-approved notice is advisory (see "## Monitor loop").
 
 The roster is a merge-roles list — a new agent needs a written reason it
 cannot be a seat of an existing one.
@@ -521,6 +521,9 @@ Agent:
     agent body. Lane: `<lane>`. Model: `<model>`.
 ```
 
+Do not subscribe `notify_when_idle` for a teammate: it reports by
+`SendMessage`, and an idle subscription only adds one more advisory notice.
+
 The dispatch prompt carries only name, model and that pointer: split-pane
 mode replaces the system prompt with the agent body, so the role, the claim
 rule, the worktree steps and the report format already live there. Model
@@ -587,10 +590,20 @@ its own role's work, and a lead holding a task is a seat nobody can take.
   pending permission dialog: a teammate's prompt lands there and only a human
   can answer it, so a dead or stopped teammate's prompt must be dismissed
   (Esc or No) at once; an unanswered prompt stalls the whole team.
-- **A teammate's message is the report.** Read it when it arrives; do not
-  poll. Then `TaskList` to see what moved and what unblocked. An idle notice
-  only means a teammate stopped: never spend a turn replying to one whose
-  content repeats a message you already handled.
+- **A teammate's message is the only report.** Read it when it arrives; do
+  not poll. Act on that message, on `TaskList` (what moved, what unblocked)
+  and on `git log`, and on nothing else. Before acting on any
+  teammate message, check its task's status and the commits it names; if that
+  work already landed, drop it without a turn and without a reply.
+- **Notices are advisory; never wait on one.** An idle, terminated or
+  shutdown-approved notice may be hours late, out of order, or a stale echo
+  of a report you already handled. Never wait for one, never treat one as new
+  work, and never re-read one as a fresh report. This guidance exists for two
+  reasons: a notice carries the harness's summary of the teammate's final
+  turn, which is the report it already sent, so notices duplicate reports;
+  and notices can arrive very late, by hours and out of order, for reasons
+  not yet understood — the mechanism is unexplained and under investigation
+  with Claude Code.
 - **Answer questions within one pass.** A teammate that needs your answer
   sets its task to pending, messages you the question and idles; answer it,
   then tell it to continue. Never leave a teammate's question unanswered
@@ -624,8 +637,8 @@ and is re-read on every later turn. Hand artifacts over as files.
 
 **Waiting on dispatched ICs:** on Claude Code, an IC's result arrives as
 a completion notification (subagent) or a `SendMessage` from the teammate —
-never poll for it. An idle notice alone means a teammate stopped, not that it
-reported. While you have local work — ledger updates, packaging the next
+never poll for it. An idle notice is advisory: it may be hours late or out of
+order, it never means a teammate reported, and you never wait for one. While you have local work — ledger updates, packaging the next
 review, reading reports — keep working; when you are genuinely idle, end
 your turn and let the next notification or message wake you. On platforms
 with a wait interface, wait in bounded stretches (five to ten minutes), and
@@ -1073,6 +1086,9 @@ teardown" section is what shuts the pool down: when a role has no pending
 tasks left, `SendMessage` a `shutdown_request` to each idle teammate of that
 role; when every merge is done, merge the lane into trunk when the plan used one,
 and shut down the rest. Never shut down a teammate whose role still has an unclaimed task.
+A shutdown request counts as approved when you send it: move on without
+waiting for a shutdown-approved or terminated notice, and a missing notice
+is never a reason to stall or to re-send the request.
 
 ## Common Rationalizations
 

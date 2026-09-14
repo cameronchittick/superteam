@@ -418,6 +418,18 @@ main() {
         fi
     done
 
+    # (k14) a writing role reports once per state change, not once per
+    #       commit, and every report opens with its task id and commit sha
+    #       so a stale message is recognisable at a glance
+    for role in implementer writer integrator; do
+        grep -qF 'one report per state change' "$AGENTS/$role.md" \
+            && pass "agents/$role.md states the one-report-per-state-change rule" \
+            || fail "agents/$role.md states the one-report-per-state-change rule"
+        grep -qF 'opens with its task id and commit sha' "$AGENTS/$role.md" \
+            && pass "agents/$role.md says every report opens with its task id and commit sha" \
+            || fail "agents/$role.md says every report opens with its task id and commit sha"
+    done
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it

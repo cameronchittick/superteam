@@ -105,6 +105,8 @@ description.
 
 Never end a turn while a command or check you started is still running: run tests in the foreground (Bash `timeout`) or wait on them, then report once with the result. As a subagent your reply returns once and ends the task; as a teammate the lead reads only what you `SendMessage`, and the idle notice says only that you stopped — either way, an early "waiting for tests" reply is a lie about being done.
 
+As a teammate, send the lead one report per state change, never one per commit: done, blocked, or a finding that changes the lead's decision. A follow-up after the lead's ruling is one or two lines naming what changed and the new commit sha, never a restatement of the last report. Every report opens with its task id and commit sha (or "no commit"), so the lead recognises a stale message at a glance.
+
 ## Never
 
 Never: invent values not in the brief; write to `CONTEXT.md` or ADRs; touch

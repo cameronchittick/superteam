@@ -7,14 +7,26 @@
 # with 'claim "<subject>"' so the teammate keeps working. Never names
 # another role's task. Fails open (exit 0) on anything unexpected.
 #
-# Three ways it stays quiet, so a teammate is never nudged in a loop:
+# Four ways it stays quiet, so a teammate is never nudged in a loop:
 #   - it owns an in_progress task (it already has work);
-#   - nothing changed: <tasks dir>/.idle/<teammate> records the last nudged
-#     task id and the tasks dir mtime, and an unchanged pair exits 0;
+#   - the task was already offered to it: <tasks dir>/.idle/<teammate> lists
+#     every task id this hook has offered that teammate, and a listed id is
+#     not offered again however the tasks dir changes -- another seat's
+#     TaskUpdate never re-offers a task;
+#   - cooldown: that file's "last <epoch>" line is the time of the last offer,
+#     and no offer of any task is made within ${SUPERTEAM_IDLE_COOLDOWN:-600}
+#     seconds of it (a non-numeric value means 600);
 #   - the task is declined: <tasks dir>/.declined/<teammate> holds one task
 #     id per line, written by the teammate itself when it declines a task for
 #     a stated reason. This hook only reads that file, never writes it, and a
 #     listed id is never offered to that teammate again.
+#
+# Reassignment rule: an offer counts only while the task stays pending and
+# unowned. Each run drops from the teammate's list any offered id whose task
+# is now owned, not pending, or gone, so when a lead clears an owner to
+# reassign a task, it can be offered again (after the cooldown). A teammate
+# whose hook did not run while the task was owned is not re-offered it; the
+# lead names the task to that teammate instead.
 
 usage() {
     cat <<'EOF'
@@ -78,17 +90,52 @@ safe_name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9_.-' '_')"
 # nothing here ever writes it. An id listed there is never offered again.
 declined_file="$dir/.declined/$safe_name"
 
-# Idle state: <tasks dir>/.idle/<teammate> holds "<last nudged id> <dir mtime>".
-# Created before the mtime is read so making the directory does not itself
-# look like a change.
+# Idle state: <tasks dir>/.idle/<teammate> holds a "last <epoch>" line and
+# one offered task id per line. A line of any other shape (the older
+# "<id> <mtime>" pair) is read as its first field, an offered id; a
+# non-numeric field is ignored, so the file never names a path.
 mkdir -p "$dir/.idle" 2>/dev/null
 idle_file="$dir/.idle/$safe_name"
-dir_mtime="$(date -r "$dir" +%s 2>/dev/null || echo 0)"
-last_id=""
-last_mtime=""
+# date +%s is the same under GNU and BSD date; no other date form is used.
+now="$(date +%s 2>/dev/null)"
+case "$now" in ''|*[!0-9]*) exit 0 ;; esac
+cooldown="${SUPERTEAM_IDLE_COOLDOWN:-600}"
+case "$cooldown" in ''|*[!0-9]*) cooldown=600 ;; esac
+
+last_at=0
+offered=""
 if [ -f "$idle_file" ]; then
-    read -r last_id last_mtime < "$idle_file" || true
+    while read -r first second _; do
+        [ -n "$first" ] || continue
+        if [ "$first" = "last" ]; then
+            case "$second" in ''|*[!0-9]*) ;; *) last_at="$second" ;; esac
+        else
+            case "$first" in *[!0-9]*) ;; *) offered="$offered $first" ;; esac
+        fi
+    done < "$idle_file"
 fi
+
+# An offer counts only while its task is still pending and unowned.
+kept=""
+for id in $offered; do
+    f="$dir/$id.json"
+    [ -f "$f" ] || continue
+    t="$(tr '\n' ' ' < "$f")"
+    [ "$(json_field "$t" "status")" = "pending" ] || continue
+    [ -z "$(json_field "$t" "owner")" ] || continue
+    kept="$kept $id"
+done
+
+write_idle_state() {
+    local tmp="$idle_file.$$"
+    {
+        echo "last $last_at"
+        for id in $kept; do echo "$id"; done
+    } > "$tmp" 2>/dev/null && mv -f "$tmp" "$idle_file" 2>/dev/null
+    rm -f "$tmp" 2>/dev/null
+    return 0
+}
+[ "$kept" = "$offered" ] || write_idle_state
 
 # A teammate already holding work is never nudged.
 for f in "$dir"/*.json; do
@@ -124,12 +171,13 @@ for id in $(ls "$dir" 2>/dev/null | sed -n 's/\.json$//p' | sort -n); do
         is_done "$dep" || { blocked=1; break; }
     done
     [ "$blocked" -eq 0 ] || continue
-    # Same task, nothing changed on the list since the last nudge: let it idle
-    # rather than re-prompting a teammate that has already been told.
-    if [ "$id" = "$last_id" ] && [ "$dir_mtime" = "$last_mtime" ]; then
-        exit 0
-    fi
-    printf '%s %s\n' "$id" "$dir_mtime" > "$idle_file" 2>/dev/null
+    # Already offered to this teammate: never again while it stays unowned.
+    case " $kept " in *" $id "*) continue ;; esac
+    # Cooldown: one offer per teammate per window, whatever the task.
+    [ $((now - last_at)) -ge "$cooldown" ] || exit 0
+    last_at="$now"
+    kept="$kept $id"
+    write_idle_state
     echo "claim \"$subj\" — TaskUpdate owner=$name status=in_progress, then do it." >&2
     exit 2
 done
