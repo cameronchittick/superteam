@@ -85,6 +85,21 @@ only when a second running dev server or database is required. `<base>` is
 trunk, or the lane the plan header names in `**Integration:**`. The table,
 triggers and evidence are in [docs/isolation-tiers.md](../../docs/isolation-tiers.md).
 
+**The second-seat gate.** Adding a second writing seat to a task, or to a
+repo where one writing seat is live, is a gate of three steps, in order,
+and the new seat is not live until all three are done. A seat briefed as the only writer will finish alone, and its report
+will be true to what it knew and false to what the lead knows.
+
+1. The task's `Isolation:` line is set to worktree before anything else —
+   `TaskUpdate` the description if it reads trunk or branch or has no line.
+2. The split is written down once, naming the files each seat owns, and is
+   sent to both seats before the second seat is spawned: the existing seat
+   by `SendMessage`, the new seat in its spawn brief.
+3. The existing seat acknowledges the split by message, or reports it has
+   already finished, before the second seat is treated as live. A message to
+   a working seat arrives only after its current turn ends, so the lead
+   waits for the acknowledgement rather than assuming delivery.
+
 A plan escalates a task off trunk — to branch when a second seat goes live,
 to worktree whenever two or more writing tasks are unblocked at the same
 time. The lead records in the
@@ -511,6 +526,15 @@ Spawn each with a named `Agent` call and **no `isolation`** — the writing
 seat isolates itself after it claims (see "## Two kinds of IC"). Names are
 predictable: `impl-1`, `writer-1`, `reviewer-1`, `integrator-1`.
 
+**Check the spawn directory first.** Before any `Agent` spawn, confirm your
+shell's working directory is the repo root (or the task's worktree) and
+never anywhere under `~/.claude`. A seat starts in your current directory,
+and a wrong one lands it on the workspace trust dialog, which no agent can
+answer — twice that cost 13 hours across two leads. The check is one
+line: `pwd`, or `git rev-parse --show-toplevel` compared to the lane's root.
+A verification command that `cd`s elsewhere (a transcript or memory
+directory) must be followed by a return to the repo root before spawning.
+
 ```
 Agent:
   name: "impl-1"
@@ -587,6 +611,13 @@ its own role's work, and a lead holding a task is a seat nobody can take.
   pending permission dialog: a teammate's prompt lands there and only a human
   can answer it, so a dead or stopped teammate's prompt must be dismissed
   (Esc or No) at once; an unanswered prompt stalls the whole team.
+- **Check for a stalled seat every pass.** A seat stuck on a trust or
+  permission dialog in its own pane never claims, never writes, never
+  reports and never idles. A task still pending and unowned after one pass,
+  with its seat alive, means you read that seat's pane
+  (`tmux capture-pane -p -t <pane>`) and expect the dialog. The remedy is to
+  kill the seat and respawn from the repo root, never answer the dialog:
+  trusting the wrong folder puts the seat in the wrong tree.
 - **A teammate's message is the only report.** Read it when it arrives; do
   not poll. Act on that message, on `TaskList` (what moved, what unblocked)
   and on `git log`, and on nothing else. Before acting on any
@@ -674,6 +705,10 @@ starts from the repo default branch, so BASE is
 default branch tip before it has). Its diff is
 `git diff <lane>..worktree-<name>`. The review package and fix-round
 diffs need BASE — never `HEAD~1`.
+
+Before the call, run the spawn-directory check from "## Role pool": the
+subagent starts in your current directory, so `pwd` must be the repo root,
+never anywhere under `~/.claude`.
 
 Fill the call shape above: `name`, `isolation: "worktree"` (worktree tier only), the role's
 `subagent_type`, and `model` only with a written Model Selection reason. If

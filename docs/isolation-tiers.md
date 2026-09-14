@@ -41,6 +41,14 @@ for the measurements and the accepted verdicts behind this page.
 
 A plan escalates a task off trunk — to branch when a second seat goes live, to worktree whenever two or more writing tasks are unblocked at the same time. The lead records in the ledger, per task, the maximum number of concurrent writers, any dirty-checkout collision, and wall-clock time from claim to merge, so the next run of six or more tasks can be judged against the 7.3.0 baseline.
 
+### The second-seat gate
+
+Adding a second writing seat to a task, or to a repo where one writing seat is live, is a gate of three steps, in order, and the new seat is not live until all three are done. A seat briefed as the only writer will finish alone, and its report will be true to what it knew and false to what the lead knows.
+
+1. The task's `Isolation:` line is set to worktree before anything else — `TaskUpdate` the description if it reads trunk or branch or has no line.
+2. The split is written down once, naming the files each seat owns, and is sent to both seats before the second seat is spawned: the existing seat by `SendMessage`, the new seat in its spawn brief.
+3. The existing seat acknowledges the split by message, or reports it has already finished, before the second seat is treated as live. A message to a working seat arrives only after its current turn ends, so the lead waits for the acknowledgement rather than assuming delivery.
+
 ## Sizing the work
 
 Before anything is dispatched, the lead sizes the brief on five dimensions: how many files it touches; whether anything else is writing in the repo; the cost of a mistake; whether there is a design choice to make; how many independent pieces it has. The size sets which seats sit. It is a scale the lead reads for every brief, never a category the brief matches, and the lead's own hands are not on it: the lead does not implement, not even a one-line fix — a spawn costs seconds and keeps the lead's context for leading. A request that arrives straight from your human partner is sized and delegated exactly like a brief from above.
