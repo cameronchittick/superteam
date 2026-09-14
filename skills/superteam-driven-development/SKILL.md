@@ -540,11 +540,8 @@ haiku is for subagents only.
 Use the least powerful model that can handle each role to conserve cost and increase speed.
 
 **Defaults live in the agent files.** Each roster agent sets the model its
-role needs (`opus` for implementer, writer, reviewer and skeptic — the first
-three via the plugin's `worker_model`/`review_model` userConfig, default
-`opus`; `sonnet` for researcher and integrator). The model is set in
-`agents/*.md`; the `worker_model`/`review_model` userConfig keys document
-the defaults. Omit `model` on the call and the agent's default applies. This
+role needs (`opus` for implementer, writer, reviewer and skeptic; `sonnet`
+for researcher and integrator), set in `agents/*.md`. Omit `model` on the call and the agent's default applies. This
 section governs the overrides: a call sets `model` only for one of the
 reasons below, with the reason written next to it. The session's model is
 never the fallback.

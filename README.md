@@ -347,10 +347,8 @@ Where each task runs — an IC on trunk, on a branch in the lead's checkout, in 
 - **writer** — prose deliverables (spec/plan drafts, docs, skill text, ADR drafts) on its own branch, in a worktree only when the task's tier says so, self-review instead of TDD — opus
 - **integrator** — merges a reviewed branch, runs the full suite, removes the worktree when there was one, bumps manifests when told — sonnet
 
-The plugin's `worker_model` and `review_model` userConfig keys name the
-intended knob for the three `opus` seats, but Claude Code does not substitute
-`${user_config.*}` in agent frontmatter (verified 2.1.263), so the model is
-set directly in `agents/*.md`.
+Each role's model is set in its own `agents/*.md` file; the lead overrides
+it on a call only with a written reason.
 
 A role's `skills:` frontmatter preloads those skills on a **subagent** spawn
 only; a teammate spawn does not load them, so teammates invoke each with the

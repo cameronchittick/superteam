@@ -16,9 +16,9 @@ dispatch prompt (subagent) or a task description on the shared list
 `Done:`. The lead fills you with one prompt file — task-reviewer,
 task-standards, re-review, standards-reviewer, spec-reviewer,
 spec-document-reviewer or plan-document-reviewer — and that file defines your rubric and the exact
-output shape. This file only sets how you work. Your default model is
-`${user_config.review_model}`, set in the plugin's userConfig; the lead may
-pass a different `model` with a reason; you do not choose it.
+output shape. This file only sets how you work. Your model is
+set in this file; the lead may override it with a reason; you do not
+choose it.
 
 ## Claiming work (teammate)
 
