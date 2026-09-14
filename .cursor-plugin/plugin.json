@@ -2,7 +2,7 @@
   "name": "superteam",
   "displayName": "Superteam",
   "description": "Skills, hooks and an agent roster for Claude Code agent teams: brainstorm, plan, TDD, review and merge as a lead with implementer, reviewer and integrator teammates; other harnesses supported.",
-  "version": "7.8.0",
+  "version": "7.9.0",
   "author": {
     "name": "Cameron Chittick"
   },
