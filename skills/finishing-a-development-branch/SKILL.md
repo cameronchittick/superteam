@@ -59,7 +59,7 @@ to undo.
 
 Applies only when this skill is closing out an agent team (`superteam:superteam-driven-development`), not a plain single-branch finish.
 
-- When a role has no pending tasks left on `TaskList`, `SendMessage` `{"type":"shutdown_request","reason":"role pool empty"}` to each idle teammate of that role.
+- When a role has no pending tasks left on `TaskList`, `SendMessage` `{"type":"shutdown_request","reason":"role pool empty"}` to each idle teammate of that role. The request counts as approved when you send it: move on without waiting for a shutdown-approved or terminated notice — those notices can be hours late and out of order, for reasons still under investigation with Claude Code — and never re-send because one has not arrived.
 - Once every task's merge is done, merge the lane branch into trunk if the plan used one (`**Integration:** lane/...`, Step 5, Option 1); a trunk-integrated plan has nothing left to merge. Then shut down the rest of the team the same way.
 - Before deleting the team workspace, confirm `~/.claude/teams/<team>/config.json` lists no live `members` — a teammate still listed there is still running.
 
