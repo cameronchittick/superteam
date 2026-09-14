@@ -436,6 +436,39 @@ main() {
             || fail "agents/$role.md says every report opens with its task id and commit sha"
     done
 
+    # (k15) a seat's identity and its verification record match what it did
+    #       (two-writer test, 2026-09-14): a writer claimed as `writer-1`,
+    #       the example string, and never re-opened its task after a
+    #       post-completion commit, so Verified: named a superseded sha
+    local example claim_section register_section
+    for entry in writer:writer-1 implementer:impl-1 integrator:integrator-1; do
+        role="${entry%%:*}"
+        example="${entry#*:}"
+        grep -qF 'use it, unchanged, as the `owner` value' "$AGENTS/$role.md" \
+            && pass "agents/$role.md says the owner value is exactly the dispatch name" \
+            || fail "agents/$role.md says the owner value is exactly the dispatch name"
+        if grep -F "$example" "$AGENTS/$role.md" | grep -vqF 'never a default'; then
+            fail "agents/$role.md never shows \`$example\` without 'never a default'"
+            grep -nF "$example" "$AGENTS/$role.md" | grep -vF 'never a default' | sed 's/^/    /'
+        else
+            pass "agents/$role.md never shows \`$example\` without 'never a default'"
+        fi
+        claim_section="$(sed -n '/^## Claiming work (teammate)/,/^## /p' "$AGENTS/$role.md")"
+        if grep -qF 'commit made after the task is `completed` re-opens it' <<<"$claim_section" \
+            && grep -qF 'fresh `Verified:` line naming the newest sha' <<<"$claim_section"; then
+            pass "agents/$role.md claim rule re-opens the task on a post-completion commit with a fresh Verified line"
+        else
+            fail "agents/$role.md claim rule re-opens the task on a post-completion commit with a fresh Verified line"
+        fi
+        register_section="$(sed -n '/^## Report register/,$p' "$AGENTS/$role.md")"
+        if grep -qF 'by your dispatch name' <<<"$register_section" \
+            && grep -qF 'post-completion commit' <<<"$register_section"; then
+            pass "agents/$role.md Report register names the seat by its dispatch name and covers a post-completion follow-up"
+        else
+            fail "agents/$role.md Report register names the seat by its dispatch name and covers a post-completion follow-up"
+        fi
+    done
+
     # (l) every body opens by saying who the agent is — in split-pane mode
     #     the body replaces the system prompt and no dispatch template
     #     reaches it
