@@ -530,8 +530,7 @@ predictable: `impl-1`, `writer-1`, `reviewer-1`, `integrator-1`.
 shell's working directory is the repo root (or the task's worktree) and
 never anywhere under `~/.claude`. A seat starts in your current directory,
 and a wrong one lands it on the workspace trust dialog, which no agent can
-answer — twice that cost 13 hours across two leads. The check is one
-line: `pwd`, or `git rev-parse --show-toplevel` compared to the lane's root.
+answer. The check is one line: `pwd`, or `git rev-parse --show-toplevel` compared to the lane's root.
 A verification command that `cd`s elsewhere (a transcript or memory
 directory) must be followed by a return to the repo root before spawning.
 
