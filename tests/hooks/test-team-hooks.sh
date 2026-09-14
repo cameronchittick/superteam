@@ -321,6 +321,19 @@ assert_exit "a different task inside a 600-second cooldown stays quiet" 0 "$idle
 sleep 2
 assert_stderr "after the cooldown, a pending unowned task of the role is offered" 2 'claim "Task 2' "$idle" "${C[@]}" SUPERTEAM_IDLE_COOLDOWN=1 -- "$IDLE_HOOK"
 
+# A claim resets the cooldown: it only blocks a second offer that follows an
+# offer with no claim in between, so a seat that is working is never idled.
+work_dir="$TEST_ROOT/work-tasks"; mkdir -p "$work_dir"
+task_json 1 "Task 1: implement [implementer]" pending "" > "$work_dir/1.json"
+task_json 2 "Task 2: implement [implementer]" pending "" > "$work_dir/2.json"
+W=(SUPERTEAM_TASKS_DIR="$work_dir" SUPERTEAM_TEAMS_DIR="$teams_dir")
+assert_stderr "anna is offered task 1 (default cooldown)" 2 'claim "Task 1' "$idle" "${W[@]}" -- "$IDLE_HOOK"
+task_json 1 "Task 1: implement [implementer]" in_progress "anna" > "$work_dir/1.json"
+task_json 1 "Task 1: implement [implementer]" completed "anna" > "$work_dir/1.json"
+assert_stderr "a seat that claims and completes a task inside the cooldown is offered the next task at once" 2 'claim "Task 2' "$idle" "${W[@]}" -- "$IDLE_HOOK"
+task_json 3 "Task 3: implement [implementer]" pending "" > "$work_dir/3.json"
+assert_exit "an offer with no claim since still starts the cooldown" 0 "$idle" "${W[@]}" -- "$IDLE_HOOK"
+
 # A lead reassigning a task by clearing its owner gets it claimed: once the
 # hook has seen the task owned, the earlier offer no longer counts.
 re_dir="$TEST_ROOT/reassign-tasks"; mkdir -p "$re_dir"

@@ -15,7 +15,12 @@
 #     TaskUpdate never re-offers a task;
 #   - cooldown: that file's "last <epoch>" line is the time of the last offer,
 #     and no offer of any task is made within ${SUPERTEAM_IDLE_COOLDOWN:-600}
-#     seconds of it (a non-numeric value means 600);
+#     seconds of it (a non-numeric value means 600). A claim resets it: the
+#     "owned <ids>" line records the tasks the teammate owned at the last
+#     offer, and a task it owns now that is not on that line is a claim since
+#     the offer, so the window is cleared. The cooldown only blocks a second
+#     offer that follows an offer with no claim in between; a seat that is
+#     working is never idled by it;
 #   - the task is declined: <tasks dir>/.declined/<teammate> holds one task
 #     id per line, written by the teammate itself when it declines a task for
 #     a stated reason. This hook only reads that file, never writes it, and a
@@ -90,8 +95,8 @@ safe_name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9_.-' '_')"
 # nothing here ever writes it. An id listed there is never offered again.
 declined_file="$dir/.declined/$safe_name"
 
-# Idle state: <tasks dir>/.idle/<teammate> holds a "last <epoch>" line and
-# one offered task id per line. A line of any other shape (the older
+# Idle state: <tasks dir>/.idle/<teammate> holds a "last <epoch>" line, an
+# "owned <ids>" line and one offered task id per line. A line of any other shape (the older
 # "<id> <mtime>" pair) is read as its first field, an offered id; a
 # non-numeric field is ignored, so the file never names a path.
 mkdir -p "$dir/.idle" 2>/dev/null
@@ -104,16 +109,30 @@ case "$cooldown" in ''|*[!0-9]*) cooldown=600 ;; esac
 
 last_at=0
 offered=""
+owned_at_offer=""
 if [ -f "$idle_file" ]; then
-    while read -r first second _; do
+    while read -r first second rest; do
         [ -n "$first" ] || continue
         if [ "$first" = "last" ]; then
             case "$second" in ''|*[!0-9]*) ;; *) last_at="$second" ;; esac
+        elif [ "$first" = "owned" ]; then
+            owned_at_offer=" $second $rest "
         else
             case "$first" in *[!0-9]*) ;; *) offered="$offered $first" ;; esac
         fi
     done < "$idle_file"
 fi
+
+# Tasks this teammate owns now, whatever their status. One it did not own at
+# the last offer is a claim since that offer: the cooldown window is cleared.
+owned_now=""
+claimed=0
+for id in $(ls "$dir" 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\.json$/\1/p' | sort -n); do
+    [ "$(json_field "$(tr '\n' ' ' < "$dir/$id.json")" "owner")" = "$name" ] || continue
+    owned_now="$owned_now $id"
+    case "$owned_at_offer" in *" $id "*) ;; *) claimed=1 ;; esac
+done
+[ "$claimed" -eq 0 ] || last_at=0
 
 # An offer counts only while its task is still pending and unowned.
 kept=""
@@ -130,12 +149,13 @@ write_idle_state() {
     local tmp="$idle_file.$$"
     {
         echo "last $last_at"
+        echo "owned $owned_now"
         for id in $kept; do echo "$id"; done
     } > "$tmp" 2>/dev/null && mv -f "$tmp" "$idle_file" 2>/dev/null
     rm -f "$tmp" 2>/dev/null
     return 0
 }
-[ "$kept" = "$offered" ] || write_idle_state
+[ "$kept" = "$offered" ] && [ "$claimed" -eq 0 ] || write_idle_state
 
 # A teammate already holding work is never nudged.
 for f in "$dir"/*.json; do
